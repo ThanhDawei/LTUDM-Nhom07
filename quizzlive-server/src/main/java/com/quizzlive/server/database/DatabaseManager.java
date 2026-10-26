@@ -36,10 +36,12 @@ public class DatabaseManager {
             dataSource = new HikariDataSource(config);
             // Test connection
             try (Connection conn = dataSource.getConnection()) {
-                System.out.println("[DatabaseManager] Successfully connected to MySQL Database!");
+                String dbType = ServerConfig.getDbUrl().contains("postgresql") ? "PostgreSQL" : "MySQL";
+                System.out.println("[DatabaseManager] Successfully connected to " + dbType + " Database!");
             }
         } catch (Exception e) {
-            System.err.println("[DatabaseManager] MySQL not reachable (" + e.getMessage() + "). Falling back to embedded H2 Database for seamless development...");
+            String dbType = ServerConfig.getDbUrl().contains("postgresql") ? "PostgreSQL" : "MySQL";
+            System.err.println("[DatabaseManager] " + dbType + " not reachable (" + e.getMessage() + "). Falling back to embedded H2 Database for seamless development...");
             useMysql = false;
             if (dataSource != null) {
                 dataSource.close();
@@ -56,8 +58,13 @@ public class DatabaseManager {
         }
 
         if (ServerConfig.isDbAutoInit() || !useMysql) {
-            executeSqlScript("database/schema.sql");
-            executeSqlScript("database/seed_data.sql");
+            if (useMysql && ServerConfig.getDbUrl().contains("postgresql")) {
+                executeSqlScript("database/schema_postgres.sql");
+                executeSqlScript("database/seed_data_postgres.sql");
+            } else {
+                executeSqlScript("database/schema.sql");
+                executeSqlScript("database/seed_data.sql");
+            }
         }
 
         isInitialized = true;
