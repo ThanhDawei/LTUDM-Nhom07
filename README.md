@@ -54,5 +54,6 @@ Nếu máy chưa bật MySQL, hệ thống tự động fallback sang cơ sở d
 
 ### 3. Chạy Server
 ```powershell
-mvn -pl quizzlive-server exec:java -Dexec.mainClass="com.quizzlive.server.ServerApp"
+mvn -pl quizzlive-server exec:java
 ```
+*(Hoặc nếu dùng cờ -D trên PowerShell, cần bọc toàn bộ trong dấu ngoặc kép: `mvn -pl quizzlive-server exec:java "-Dexec.mainClass=com.quizzlive.server.ServerApp"`).*
