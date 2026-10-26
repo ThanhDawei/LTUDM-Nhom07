@@ -208,20 +208,10 @@ mvn -pl quizzlive-server exec:java
 Ngay khi khởi động:
 1. `DatabaseManager` kết nối CSDL và tự động kiểm tra/nạp bảng nếu chưa có.
 2. `SocketServer` mở cổng lắng nghe `8888`.
-3. Cửa sổ **Quizzlive Server Admin GUI** lập tức hiển thị với 4 tab trực quan:
+3. Cửa sổ **Quizzlive Server Admin GUI** lập tức hiển thị với 4 tab:
    - **Tab 1: Trạng thái & Người dùng**: Xem số người online, danh sách tài khoản, nút Khóa/Mở khóa tài khoản.
    - **Tab 2: Ngân hàng câu hỏi**: Lọc theo chủ đề/độ khó, thêm và xóa câu hỏi trắc nghiệm.
    - **Tab 3: Cấu hình trận đấu**: Cấu hình số câu (5), thời gian (10s), điểm số, lưu cấu hình vào DB.
    - **Tab 4: Thống kê & Báo cáo**: Top thắng nhiều nhất, Top chuỗi thắng dài nhất, Người tham gia nhiều nhất.
 
 ---
-
-## 👨‍💻 Hướng Dẫn Dành Cho Thành Viên Nhóm Phát Triển (Dev Guide)
-
-Dự án đã dựng sẵn khung sườn (Skeleton) và cấu trúc phân tầng rõ ràng. Các bạn dev chỉ cần mở các file sau để hoàn thiện logic nghiệp vụ:
-
-1. **`AuthService.java`**: Viết logic lưu tài khoản, sinh mã OTP 6 số lưu vào bảng `OTP`, kiểm tra mật khẩu khi đăng nhập.
-2. **`MatchmakingService.java`**: Viết logic ghép cặp 2 người chơi cùng chủ đề trong 60 giây; quá 60s phát gói `QUEUE_TIMEOUT_NOTIFY`.
-3. **`ChallengeService.java`**: Viết logic gửi lời mời thách đấu 1v1 cho người chơi đang online.
-4. **`BattleRoom.java`**: Viết logic đếm ngược 10 giây mỗi câu, chấm điểm theo thời gian còn lại, chuyển câu khi cả hai đã trả lời hoặc hết giờ, lưu kết quả chung cuộc vào CSDL.
-5. **`quizzlive-client`**: Xây dựng giao diện Client GUI (Java Swing / JavaFX) cho người chơi kết nối Socket tới Server theo các DTO đã định nghĩa sẵn trong `quizzlive-shared`.
