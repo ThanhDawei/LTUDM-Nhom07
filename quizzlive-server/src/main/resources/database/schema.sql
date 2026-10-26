@@ -1,0 +1,317 @@
+-- =========================================================================
+-- QUIZZLIVE DATABASE SCHEMA - NHÓM 07: TRANH TÀI KIẾN THỨC
+-- Compatible with MySQL 8.x / MariaDB & H2 (with MySQL mode)
+-- =========================================================================
+
+CREATE DATABASE IF NOT EXISTS `quizzlive_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `quizzlive_db`;
+
+-- 1. BẢNG NGUOI_DUNG (Tài khoản người chơi)
+CREATE TABLE IF NOT EXISTS `NGUOI_DUNG` (
+    `MaNguoiDung` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `TenDangNhap` VARCHAR(50) NOT NULL UNIQUE,
+    `MatKhau` VARCHAR(255) NOT NULL,
+    `Email` VARCHAR(100) NOT NULL UNIQUE,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, BLOCKED, PENDING
+    `TrangThaiOnline` BOOLEAN NOT NULL DEFAULT FALSE,
+    `LanDangNhapCuoi` DATETIME NULL,
+    `NgayTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. BẢNG HO_SO_NGUOI_DUNG (Thông tin cá nhân & điểm IQ)
+CREATE TABLE IF NOT EXISTS `HO_SO_NGUOI_DUNG` (
+    `MaNguoiDung` BIGINT PRIMARY KEY,
+    `HoTen` VARCHAR(100) NULL,
+    `AnhDaiDien` VARCHAR(500) NULL,
+    `GioiThieu` VARCHAR(500) NULL,
+    `DiemIQ` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    `TongSoTran` INT NOT NULL DEFAULT 0,
+    `TongSoTranThang` INT NOT NULL DEFAULT 0,
+    `TongSoTranThua` INT NOT NULL DEFAULT 0,
+    `ChuoiThangHienTai` INT NOT NULL DEFAULT 0,
+    `ChuoiThangDaiNhat` INT NOT NULL DEFAULT 0,
+    `TongDiem` BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT `fk_hoso_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. BẢNG OTP (Xác thực đăng ký/quên mật khẩu qua email)
+CREATE TABLE IF NOT EXISTS `OTP` (
+    `MaOTP` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `MaXacThuc` VARCHAR(10) NOT NULL,
+    `MucDich` VARCHAR(30) NOT NULL, -- REGISTER, RESET_PASSWORD
+    `ThoiGianHetHan` DATETIME NOT NULL,
+    `ThoiGianXacThuc` DATETIME NULL,
+    `ThoiGianTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_otp_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. BẢNG THONG_KE_NGUOI_CHOI (Thống kê hiệu suất thi đấu)
+CREATE TABLE IF NOT EXISTS `THONG_KE_NGUOI_CHOI` (
+    `MaNguoiDung` BIGINT PRIMARY KEY,
+    `TongSoTran` INT NOT NULL DEFAULT 0,
+    `TongSoThang` INT NOT NULL DEFAULT 0,
+    `TongSoThua` INT NOT NULL DEFAULT 0,
+    `TongSoHoa` INT NOT NULL DEFAULT 0,
+    `TongSoCau` INT NOT NULL DEFAULT 0,
+    `TongCauDung` INT NOT NULL DEFAULT 0,
+    `TongDiem` BIGINT NOT NULL DEFAULT 0,
+    `ChuoiThangDaiNhat` INT NOT NULL DEFAULT 0,
+    `DiemCaoNhat` INT NOT NULL DEFAULT 0,
+    CONSTRAINT `fk_thongke_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 5. BẢNG CHAN_NGUOI_DUNG (Chặn kết bạn / thách đấu)
+CREATE TABLE IF NOT EXISTS `CHAN_NGUOI_DUNG` (
+    `MaNguoiChan` BIGINT NOT NULL,
+    `MaNguoiBiChan` BIGINT NOT NULL,
+    `ThoiGianChan` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`MaNguoiChan`, `MaNguoiBiChan`),
+    CONSTRAINT `fk_chan_nguoichan` FOREIGN KEY (`MaNguoiChan`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_chan_bichan` FOREIGN KEY (`MaNguoiBiChan`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 6. BẢNG QUAN_TRI_VIEN (Admin quản lý hệ thống trên Server GUI)
+CREATE TABLE IF NOT EXISTS `QUAN_TRI_VIEN` (
+    `MaQuanTri` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `TenDangNhap` VARCHAR(50) NOT NULL UNIQUE,
+    `MatKhau` VARCHAR(255) NOT NULL,
+    `HoTen` VARCHAR(100) NULL,
+    `VaiTro` VARCHAR(30) NOT NULL DEFAULT 'ADMIN',
+    `TrangThai` BOOLEAN NOT NULL DEFAULT TRUE,
+    `NgayTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 7. BẢNG CHU_DE (Chủ đề câu hỏi)
+CREATE TABLE IF NOT EXISTS `CHU_DE` (
+    `MaChuDe` INT AUTO_INCREMENT PRIMARY KEY,
+    `TenChuDe` VARCHAR(100) NOT NULL,
+    `MoTa` VARCHAR(500) NULL,
+    `TrangThai` BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. BẢNG CAU_HOI (Ngân hàng câu hỏi trắc nghiệm & IQ hình ảnh)
+CREATE TABLE IF NOT EXISTS `CAU_HOI` (
+    `MaCauHoi` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaChuDe` INT NOT NULL,
+    `LoaiCauHoi` VARCHAR(20) NOT NULL DEFAULT 'STANDARD', -- STANDARD, IQ_IMAGE
+    `DoKho` VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',       -- EASY, MEDIUM, HARD
+    `NoiDung` TEXT NOT NULL,
+    `HinhAnh` VARCHAR(500) NULL,
+    `GiaiThich` TEXT NULL,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    `NguoiTao` BIGINT NULL,
+    `NgayTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_cauhoi_chude` FOREIGN KEY (`MaChuDe`) REFERENCES `CHU_DE`(`MaChuDe`) ON DELETE CASCADE,
+    CONSTRAINT `fk_cauhoi_nguoitao` FOREIGN KEY (`NguoiTao`) REFERENCES `QUAN_TRI_VIEN`(`MaQuanTri`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 9. BẢNG DAP_AN (4 đáp án A, B, C, D cho mỗi câu hỏi)
+CREATE TABLE IF NOT EXISTS `DAP_AN` (
+    `MaDapAn` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaCauHoi` BIGINT NOT NULL,
+    `KyHieu` CHAR(1) NOT NULL, -- A, B, C, D
+    `NoiDung` TEXT NOT NULL,
+    `HinhAnh` VARCHAR(500) NULL,
+    `LaDapAnDung` BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT `fk_dapan_cauhoi` FOREIGN KEY (`MaCauHoi`) REFERENCES `CAU_HOI`(`MaCauHoi`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. BẢNG CAU_HINH_TRAN (Cấu hình tham số trận đấu do Admin điều chỉnh)
+CREATE TABLE IF NOT EXISTS `CAU_HINH_TRAN` (
+    `MaCauHinh` INT AUTO_INCREMENT PRIMARY KEY,
+    `TenCauHinh` VARCHAR(100) NOT NULL,
+    `SoCauHoi` INT NOT NULL DEFAULT 5,
+    `ThoiGianMoiCau` INT NOT NULL DEFAULT 10,
+    `DiemCoBan` INT NOT NULL DEFAULT 100,
+    `ThuongTheoThoiGian` BOOLEAN NOT NULL DEFAULT TRUE,
+    `DiemSai` INT NOT NULL DEFAULT 0,
+    `DiemKhongTraLoi` INT NOT NULL DEFAULT 0,
+    `TrangThai` BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 11. BẢNG HANG_DOI_GHEP_CAP (Hàng đợi tìm trận 60 giây)
+CREATE TABLE IF NOT EXISTS `HANG_DOI_GHEP_CAP` (
+    `MaHangDoi` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `MaChuDe` INT NULL,
+    `DoKho` VARCHAR(20) NULL,
+    `ThoiGianVao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ThoiGianHetHan` DATETIME NOT NULL,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'WAITING', -- WAITING, MATCHED, TIMEOUT, CANCELLED
+    CONSTRAINT `fk_hangdoi_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_hangdoi_chude` FOREIGN KEY (`MaChuDe`) REFERENCES `CHU_DE`(`MaChuDe`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 12. BẢNG TRAN_DAU (Trận đấu trắc nghiệm 1v1 hoặc Giải đấu)
+CREATE TABLE IF NOT EXISTS `TRAN_DAU` (
+    `MaTran` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaTranCode` VARCHAR(20) NOT NULL UNIQUE,
+    `LoaiTran` VARCHAR(20) NOT NULL DEFAULT 'RANKED', -- RANKED, CHALLENGE, TOURNAMENT
+    `MaChuDe` INT NULL,
+    `DoKho` VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
+    `MaCauHinh` INT NULL,
+    `SoCauHoi` INT NOT NULL DEFAULT 5,
+    `ThoiGianMoiCau` INT NOT NULL DEFAULT 10,
+    `DiemCoBan` INT NOT NULL DEFAULT 100,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, PLAYING, FINISHED, CANCELLED
+    `ThoiGianBatDau` DATETIME NULL,
+    `ThoiGianKetThuc` DATETIME NULL,
+    `NguoiThang` BIGINT NULL,
+    CONSTRAINT `fk_trandau_chude` FOREIGN KEY (`MaChuDe`) REFERENCES `CHU_DE`(`MaChuDe`) ON DELETE SET NULL,
+    CONSTRAINT `fk_trandau_cauhinh` FOREIGN KEY (`MaCauHinh`) REFERENCES `CAU_HINH_TRAN`(`MaCauHinh`) ON DELETE SET NULL,
+    CONSTRAINT `fk_trandau_nguoithang` FOREIGN KEY (`NguoiThang`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 13. BẢNG LOI_MOI_THACH_DAU (Mời bạn bè trực tiếp khi online)
+CREATE TABLE IF NOT EXISTS `LOI_MOI_THACH_DAU` (
+    `MaLoiMoi` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaTran` BIGINT NULL,
+    `NguoiGui` BIGINT NOT NULL,
+    `NguoiNhan` BIGINT NOT NULL,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, ACCEPTED, REJECTED, EXPIRED
+    `ThoiGianGui` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ThoiGianPhanHoi` DATETIME NULL,
+    CONSTRAINT `fk_loimoi_trandau` FOREIGN KEY (`MaTran`) REFERENCES `TRAN_DAU`(`MaTran`) ON DELETE CASCADE,
+    CONSTRAINT `fk_loimoi_nguoigui` FOREIGN KEY (`NguoiGui`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_loimoi_nguoinhan` FOREIGN KEY (`NguoiNhan`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 14. BẢNG NGUOI_CHOI_TRAN (2 người chơi trong mỗi trận)
+CREATE TABLE IF NOT EXISTS `NGUOI_CHOI_TRAN` (
+    `MaTran` BIGINT NOT NULL,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `ViTri` INT NOT NULL DEFAULT 1, -- 1: Player 1, 2: Player 2
+    `Diem` INT NOT NULL DEFAULT 0,
+    `SoCauDung` INT NOT NULL DEFAULT 0,
+    `SoCauSai` INT NOT NULL DEFAULT 0,
+    `SoCauKhongTraLoi` INT NOT NULL DEFAULT 0,
+    `XepHang` INT NOT NULL DEFAULT 0, -- 1: Thắng, 2: Thua, 0: Hòa/Chưa kết thúc
+    `ThoiGianThamGia` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ThoiGianHoanThanh` DATETIME NULL,
+    PRIMARY KEY (`MaTran`, `MaNguoiDung`),
+    CONSTRAINT `fk_nguoichoi_tran` FOREIGN KEY (`MaTran`) REFERENCES `TRAN_DAU`(`MaTran`) ON DELETE CASCADE,
+    CONSTRAINT `fk_nguoichoi_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 15. BẢNG CAU_HOI_TRAN (5 câu hỏi được chọn ngẫu nhiên cho trận đấu)
+CREATE TABLE IF NOT EXISTS `CAU_HOI_TRAN` (
+    `MaCauHoiTran` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaTran` BIGINT NOT NULL,
+    `MaCauHoi` BIGINT NOT NULL,
+    `ThuTuCau` INT NOT NULL,
+    `ThoiGianBatDau` DATETIME NULL,
+    `HanTraLoi` DATETIME NULL,
+    CONSTRAINT `fk_cauhoitran_tran` FOREIGN KEY (`MaTran`) REFERENCES `TRAN_DAU`(`MaTran`) ON DELETE CASCADE,
+    CONSTRAINT `fk_cauhoitran_cauhoi` FOREIGN KEY (`MaCauHoi`) REFERENCES `CAU_HOI`(`MaCauHoi`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 16. BẢNG THU_TU_DAP_AN_TRAN (Xáo trộn thứ tự đáp án cho trận)
+CREATE TABLE IF NOT EXISTS `THU_TU_DAP_AN_TRAN` (
+    `MaCauHoiTran` BIGINT NOT NULL,
+    `MaDapAn` BIGINT NOT NULL,
+    `ThuTuHienThi` INT NOT NULL, -- 1, 2, 3, 4
+    PRIMARY KEY (`MaCauHoiTran`, `MaDapAn`),
+    CONSTRAINT `fk_thutudapan_cauhoitran` FOREIGN KEY (`MaCauHoiTran`) REFERENCES `CAU_HOI_TRAN`(`MaCauHoiTran`) ON DELETE CASCADE,
+    CONSTRAINT `fk_thutudapan_dapan` FOREIGN KEY (`MaDapAn`) REFERENCES `DAP_AN`(`MaDapAn`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 17. BẢNG TRA_LOI (Lưu lịch sử câu trả lời & điểm số từng người)
+CREATE TABLE IF NOT EXISTS `TRA_LOI` (
+    `MaTraLoi` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaCauHoiTran` BIGINT NOT NULL,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `MaDapAn` BIGINT NULL,
+    `ThoiGianTraLoi` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ThoiGianPhanHoi` INT NOT NULL DEFAULT 0, -- Số ms hoặc giây phản hồi
+    `KetQua` BOOLEAN NOT NULL DEFAULT FALSE,
+    `DiemNhanDuoc` INT NOT NULL DEFAULT 0,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'ANSWERED', -- ANSWERED, TIMEOUT, SKIPPED
+    CONSTRAINT `fk_traloi_cauhoitran` FOREIGN KEY (`MaCauHoiTran`) REFERENCES `CAU_HOI_TRAN`(`MaCauHoiTran`) ON DELETE CASCADE,
+    CONSTRAINT `fk_traloi_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_traloi_dapan` FOREIGN KEY (`MaDapAn`) REFERENCES `DAP_AN`(`MaDapAn`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 18. BẢNG GIAI_DAU (Giải đấu nhiều người theo bảng/vòng)
+CREATE TABLE IF NOT EXISTS `GIAI_DAU` (
+    `MaGiai` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `TenGiai` VARCHAR(200) NOT NULL,
+    `MoTa` TEXT NULL,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'UPCOMING', -- UPCOMING, ONGOING, COMPLETED, CANCELLED
+    `SoNguoiToiDa` INT NOT NULL DEFAULT 16,
+    `ThoiGianBatDau` DATETIME NULL,
+    `ThoiGianKetThuc` DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 19. BẢNG VONG_DAU (Vòng bảng, Vòng tứ kết, bán kết, chung kết)
+CREATE TABLE IF NOT EXISTS `VONG_DAU` (
+    `MaVong` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaGiai` BIGINT NOT NULL,
+    `TenVong` VARCHAR(100) NOT NULL,
+    `ThuTuVong` INT NOT NULL,
+    `LoaiVong` VARCHAR(20) NOT NULL DEFAULT 'KNOCKOUT', -- GROUP, KNOCKOUT
+    CONSTRAINT `fk_vongdau_giaidau` FOREIGN KEY (`MaGiai`) REFERENCES `GIAI_DAU`(`MaGiai`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 20. BẢNG BANG_DAU (Các bảng A, B, C...)
+CREATE TABLE IF NOT EXISTS `BANG_DAU` (
+    `MaBang` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaVong` BIGINT NOT NULL,
+    `TenBang` VARCHAR(50) NOT NULL,
+    CONSTRAINT `fk_bangdau_vongdau` FOREIGN KEY (`MaVong`) REFERENCES `VONG_DAU`(`MaVong`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 21. BẢNG TRAN_DAU_GIAI (Liên kết trận đấu vào giải đấu)
+CREATE TABLE IF NOT EXISTS `TRAN_DAU_GIAI` (
+    `MaTranGiai` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `MaGiai` BIGINT NOT NULL,
+    `MaVong` BIGINT NOT NULL,
+    `MaBang` BIGINT NULL,
+    `MaTran` BIGINT NULL,
+    `SoVong` INT NOT NULL DEFAULT 1,
+    `SoTran` INT NOT NULL DEFAULT 1,
+    CONSTRAINT `fk_trandaugiai_giaidau` FOREIGN KEY (`MaGiai`) REFERENCES `GIAI_DAU`(`MaGiai`) ON DELETE CASCADE,
+    CONSTRAINT `fk_trandaugiai_vongdau` FOREIGN KEY (`MaVong`) REFERENCES `VONG_DAU`(`MaVong`) ON DELETE CASCADE,
+    CONSTRAINT `fk_trandaugiai_bangdau` FOREIGN KEY (`MaBang`) REFERENCES `BANG_DAU`(`MaBang`) ON DELETE CASCADE,
+    CONSTRAINT `fk_trandaugiai_trandau` FOREIGN KEY (`MaTran`) REFERENCES `TRAN_DAU`(`MaTran`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 22. BẢNG NGUOI_THAM_GIA_GIAI (Danh sách thí sinh đăng ký giải)
+CREATE TABLE IF NOT EXISTS `NGUOI_THAM_GIA_GIAI` (
+    `MaGiai` BIGINT NOT NULL,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `MaBang` BIGINT NULL,
+    `HatGiong` INT NOT NULL DEFAULT 0,
+    `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
+    `ThoiGianDangKy` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`MaGiai`, `MaNguoiDung`),
+    CONSTRAINT `fk_nguoithamgia_giaidau` FOREIGN KEY (`MaGiai`) REFERENCES `GIAI_DAU`(`MaGiai`) ON DELETE CASCADE,
+    CONSTRAINT `fk_nguoithamgia_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_nguoithamgia_bangdau` FOREIGN KEY (`MaBang`) REFERENCES `BANG_DAU`(`MaBang`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 23. BẢNG XEP_HANG_GIAI (Bảng xếp hạng từng bảng đấu / toàn giải)
+CREATE TABLE IF NOT EXISTS `XEP_HANG_GIAI` (
+    `MaGiai` BIGINT NOT NULL,
+    `MaBang` BIGINT NOT NULL,
+    `MaNguoiDung` BIGINT NOT NULL,
+    `SoTran` INT NOT NULL DEFAULT 0,
+    `SoTranThang` INT NOT NULL DEFAULT 0,
+    `SoTranHoa` INT NOT NULL DEFAULT 0,
+    `SoTranThua` INT NOT NULL DEFAULT 0,
+    `TongDiem` INT NOT NULL DEFAULT 0,
+    `TangDiemThiDau` INT NOT NULL DEFAULT 0,
+    `ViTri` INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (`MaGiai`, `MaBang`, `MaNguoiDung`),
+    CONSTRAINT `fk_xephanggiai_giaidau` FOREIGN KEY (`MaGiai`) REFERENCES `GIAI_DAU`(`MaGiai`) ON DELETE CASCADE,
+    CONSTRAINT `fk_xephanggiai_bangdau` FOREIGN KEY (`MaBang`) REFERENCES `BANG_DAU`(`MaBang`) ON DELETE CASCADE,
+    CONSTRAINT `fk_xephanggiai_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================================================================
+-- INDEXES FOR PERFORMANCE OPTIMIZATION
+-- =========================================================================
+CREATE INDEX `idx_nguoidung_online` ON `NGUOI_DUNG`(`TrangThaiOnline`, `TrangThai`);
+CREATE INDEX `idx_hangdoi_search` ON `HANG_DOI_GHEP_CAP`(`TrangThai`, `MaChuDe`, `DoKho`, `ThoiGianHetHan`);
+CREATE INDEX `idx_cauhoi_chude_dokho` ON `CAU_HOI`(`MaChuDe`, `DoKho`, `TrangThai`, `LoaiCauHoi`);
+CREATE INDEX `idx_trandau_status` ON `TRAN_DAU`(`TrangThai`, `ThoiGianBatDau`);

@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  quizzlive-server:
+    build:
+      context: .
+      dockerfile: quizzlive-server/Dockerfile
+    container_name: quizzlive-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SERVER_PORT=8888
+      - SERVER_SSL_ENABLED=false
+    restart: always
