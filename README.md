@@ -29,8 +29,8 @@ Hệ thống thi đấu trắc nghiệm thời gian thực (Real-time Knowledge 
 
 ## 🗄️ Cấu trúc Cơ sở dữ liệu (Database Schema)
 
-CSDL được thiết kế chuẩn xác 100% theo sơ đồ thực thể liên kết (ERD) với 23 bảng:
-- **Tài khoản & Thống kê**: `NGUOI_DUNG`, `HO_SO_NGUOI_DUNG`, `OTP`, `THONG_KE_NGUOI_CHOI`, `CHAN_NGUOI_DUNG`, `QUAN_TRI_VIEN`
+CSDL được thiết kế chuẩn xác theo sơ đồ thực thể liên kết (ERD) với 22 bảng:
+- **Tài khoản & Thống kê**: `NGUOI_DUNG`, `HO_SO_NGUOI_DUNG`, `OTP`, `THONG_KE_NGUOI_CHOI`, `QUAN_TRI_VIEN`
 - **Ngân hàng câu hỏi & Cấu hình**: `CHU_DE`, `CAU_HOI`, `DAP_AN`, `CAU_HINH_TRAN`
 - **Trận đấu & Đồng bộ realtime**: `HANG_DOI_GHEP_CAP`, `TRAN_DAU`, `LOI_MOI_THACH_DAU`, `NGUOI_CHOI_TRAN`, `CAU_HOI_TRAN`, `THU_TU_DAP_AN_TRAN`, `TRA_LOI`
 - **Giải đấu**: `GIAI_DAU`, `VONG_DAU`, `BANG_DAU`, `TRAN_DAU_GIAI`, `NGUOI_THAM_GIA_GIAI`, `XEP_HANG_GIAI`
