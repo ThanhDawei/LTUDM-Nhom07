@@ -1,6 +1,6 @@
 # QUIZZLIVE - HỆ THỐNG TRANH TÀI KIẾN THỨC (NHÓM 07 - ĐỀ TÀI 09)
 
-Hệ thống thi đấu trắc nghiệm thời gian thực (Real-time Knowledge Quiz Battle) phát triển bằng **Java Multi-Module (Maven)**, hỗ trợ kiến trúc Client-Server đa luồng, Socket TCP, mã hóa TLS/SSL, CSDL quan hệ (MySQL / H2) và giao diện Quản trị Server GUI theo đúng tiêu chuẩn môn học Lập trình ứng dụng mạng - Trường ĐH Sài Gòn (SGU).
+Hệ thống thi đấu trắc nghiệm thời gian thực (Real-time Knowledge Quiz Battle) phát triển bằng **Java Multi-Module (Maven)**, hỗ trợ kiến trúc Client-Server đa luồng, Socket TCP thuần của JDK (`java.net.Socket`), mã hóa TLS/SSL, CSDL quan hệ (MySQL / H2) và giao diện Quản trị Server GUI theo đúng tiêu chuẩn môn học Lập trình ứng dụng mạng - Trường ĐH Sài Gòn (SGU).
 
 ---
 
@@ -16,7 +16,7 @@ Hệ thống thi đấu trắc nghiệm thời gian thực (Real-time Knowledge 
 | **6** | Client/Server | Chuyển câu khi CẢ HAI đã trả lời hoặc HẾT 10s; khi đó mỗi người thấy lựa chọn của đối thủ và đáp án đúng. | `BattleRoom.submitAnswer()`, `onBothAnswered()` |
 | **7** | Client/Server | Câu hỏi trong một trận không trùng nhau; thứ tự câu và đáp án được xáo trộn. | `QuestionDAO.getRandomQuestions()`, `Collections.shuffle()` |
 | **8** | Client/Server | Kết quả trận: sau 5 câu, ai điểm cao hơn thắng (lưu thành tích vào DB). | `BattleRoom.finishMatch()`, `UserDAO.updateMatchResult()` |
-| **9** | Client/Server | Giải đấu: tổ chức giải nhiều người theo vòng/bảng, có bảng xếp hạng giải. | `TournamentDAO`, `TournamentDTO` |
+| **9** | Client/Server | Giải đấu: tổ chức giải nhiều người theo vòng/bảng, có bảng xếp hạng giải. | `TournamentService`, `TournamentDTO` |
 | **10** | Client/Server | Xếp hạng chung: thứ hạng, chuỗi thắng/thua dài nhất, tỉ lệ thắng/thua; xem lịch sử trận. | `StatisticDAO`, `LeaderboardDTO` |
 | **11** | Client/Server | Test IQ bằng hình ảnh trong lúc chờ ghép cặp; không dùng xếp hạng; điểm IQ lưu vào hồ sơ. | `IQTestService`, `IQTestDTO`, `CAU_HOI (IQ_IMAGE)` |
 | **12** | Server | GUI quản trị: thêm/sửa câu hỏi trong ngân hàng (phân loại theo chủ đề/độ khó). | `ServerMainFrame` (Tab 2: Ngân Hàng Câu Hỏi) |
@@ -37,7 +37,7 @@ CSDL được thiết kế chuẩn xác 100% theo sơ đồ thực thể liên k
 
 Script SQL đầy đủ nằm tại:
 - `quizzlive-server/src/main/resources/database/schema.sql` (Tạo bảng, Foreign Keys, Indexes)
-- `quizzlive-server/src/main/resources/database/seed_data.sql` (Dữ liệu mẫu chủ đề, câu hỏi standard + ảnh IQ, admin, người chơi)
+- `quizzlive-server/src/main/resources/database/seed_data.sql` (Dữ liệu mẫu)
 
 ---
 
@@ -50,14 +50,9 @@ mvn clean compile
 
 ### 2. Cấu hình CSDL trong `quizzlive-server/src/main/resources/application.properties`
 Mặc định server sẽ tự động kết nối tới MySQL `localhost:3306/quizzlive_db`.  
-Nếu máy chưa bật MySQL, hệ thống tự động fallback sang cơ sở dữ liệu nhúng **H2 (in-memory MySQL mode)** và tự động nạp bảng + dữ liệu mẫu để bạn test ngay mà không lo lỗi kết nối!
+Nếu máy chưa bật MySQL, hệ thống tự động fallback sang cơ sở dữ liệu nhúng **H2 (in-memory MySQL mode)** và tự động nạp bảng + dữ liệu mẫu.
 
 ### 3. Chạy Server
 ```powershell
-# Chạy trực tiếp từ file jar hoặc IDE (chạy class ServerApp)
-java -cp "quizzlive-server/target/classes;quizzlive-shared/target/classes;..." com.quizzlive.server.ServerApp
+mvn -pl quizzlive-server exec:java -Dexec.mainClass="com.quizzlive.server.ServerApp"
 ```
-Khi chạy, Server sẽ:
-1. Tự động kết nối DB & tạo schema / seed data.
-2. Mở Socket lắng nghe tại cổng `8888`.
-3. Mở cửa sổ **Admin GUI** (`ServerMainFrame`) với 4 tab quản trị trực quan.
