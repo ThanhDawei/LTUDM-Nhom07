@@ -41,7 +41,12 @@ public class DatabaseManager {
             }
         } catch (Exception e) {
             String dbType = ServerConfig.getDbUrl().contains("postgresql") ? "PostgreSQL" : "MySQL";
-            System.err.println("[DatabaseManager] " + dbType + " not reachable (" + e.getMessage() + "). Falling back to embedded H2 Database for seamless development...");
+            System.err.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            System.err.println("[DatabaseManager] KHÔNG THỂ KẾT NỐI TỚI " + dbType.toUpperCase() + "!");
+            System.err.println("[DatabaseManager] Nguyên nhân: " + e.getMessage());
+            System.err.println("[DatabaseManager] -> Hệ thống đang tạm thời chuyển sang H2 Database (lưu tạm trong RAM).");
+            System.err.println("[DatabaseManager] -> Dữ liệu trên pgAdmin sẽ KHÔNG có cho đến khi bạn sửa đúng mật khẩu trong application.properties!");
+            System.err.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             useMysql = false;
             if (dataSource != null) {
                 dataSource.close();
@@ -93,20 +98,33 @@ public class DatabaseManager {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
-                    if (line.isEmpty() || line.startsWith("--") || line.startsWith("//")) {
+                    if (line.isEmpty() || line.startsWith("//")) {
                         continue;
                     }
-                    // Skip USE quizzlive_db or CREATE DATABASE in H2 mode
+                    // Strip inline SQL comment: -- ...
+                    int commentIdx = line.indexOf("--");
+                    if (commentIdx >= 0) {
+                        line = line.substring(0, commentIdx).trim();
+                    }
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+                    // Skip USE quizzlive_db or CREATE DATABASE in H2/Postgres
                     if (line.toUpperCase().startsWith("CREATE DATABASE") || line.toUpperCase().startsWith("USE ")) {
                         continue;
                     }
                     sqlBuilder.append(line).append(" ");
                     if (line.endsWith(";")) {
-                        String sql = sqlBuilder.toString().replace(";", "").trim();
-                        try {
-                            stmt.execute(sql);
-                        } catch (SQLException ex) {
-                            // Ignore minor duplicate/syntax warnings in development
+                        String sql = sqlBuilder.toString().trim();
+                        if (sql.endsWith(";")) {
+                            sql = sql.substring(0, sql.length() - 1).trim();
+                        }
+                        if (!sql.isEmpty()) {
+                            try {
+                                stmt.execute(sql);
+                            } catch (SQLException ex) {
+                                // Ignore duplicate key or existing table notices
+                            }
                         }
                         sqlBuilder.setLength(0);
                     }
