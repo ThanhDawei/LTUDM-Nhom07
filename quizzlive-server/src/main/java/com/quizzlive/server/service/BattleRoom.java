@@ -221,12 +221,63 @@ public class BattleRoom {
     }
 
     private synchronized void finishMatch() {
-        // Triển khai ở Commit 3 (Yêu cầu 8)
+        if (matchFinished)
+            return;
+        matchFinished = true;
+
+        boolean isDraw = (p1TotalScore == p2TotalScore);
+        Long winnerUserId = null;
+        String winnerUsername = null;
+
+        if (p1TotalScore > p2TotalScore) {
+            winnerUserId = player1.getUserId();
+            winnerUsername = player1.getUsername();
+        } else if (p2TotalScore > p1TotalScore) {
+            winnerUserId = player2.getUserId();
+            winnerUsername = player2.getUsername();
+        }
+
+        BattleDTO.FinalResultNotify finalResult = new BattleDTO.FinalResultNotify();
+        finalResult.matchId = matchId;
+        finalResult.isDraw = isDraw;
+        finalResult.winnerUserId = winnerUserId;
+        finalResult.winnerUsername = winnerUsername;
+
+        finalResult.player1 = new BattleDTO.PlayerRoundInfo();
+        finalResult.player1.userId = player1.getUserId();
+        finalResult.player1.username = player1.getUsername();
+        finalResult.player1.totalScore = p1TotalScore;
+
+        finalResult.player2 = new BattleDTO.PlayerRoundInfo();
+        finalResult.player2.userId = player2.getUserId();
+        finalResult.player2.username = player2.getUsername();
+        finalResult.player2.totalScore = p2TotalScore;
+
+        Packet finalPacket = new Packet(OpCode.BATTLE_FINAL_RESULT_NOTIFY, JsonUtil.toJson(finalResult));
+        player1.sendPacket(finalPacket);
+        player2.sendPacket(finalPacket);
+
+        userDAO.updateMatchResult(player1.getUserId(), p1TotalScore > p2TotalScore, isDraw, p1TotalScore);
+        userDAO.updateMatchResult(player2.getUserId(), p2TotalScore > p1TotalScore, isDraw, p2TotalScore);
+
+        scheduler.shutdown();
     }
 
     // khi có 1 ng bị disconnet
     public synchronized void handleDisconnect(long disconnectedUserId) {
-        // Triển khai ở Commit 3 (Yêu cầu 8)
+        if (matchFinished)
+            return;
+        matchFinished = true;
+
+        ClientSession winner = (disconnectedUserId == player1.getUserId()) ? player2 : player1;
+
+        winner.sendPacket(new Packet(
+                OpCode.BATTLE_OPPONENT_DISCONNECTED,
+                "{\"message\":\"Đối thủ đã mất kết nối hoặc thoát trận. Bạn được xử thắng!\"}"));
+
+        userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
+
+        scheduler.shutdown();
     }
 
     public long getMatchId() {
