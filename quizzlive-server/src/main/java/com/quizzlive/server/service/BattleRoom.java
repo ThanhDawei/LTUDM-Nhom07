@@ -122,29 +122,111 @@ public class BattleRoom {
         Packet questionPacket = new Packet(OpCode.BATTLE_QUESTION_NOTIFY, JsonUtil.toJson(questionNotify));
         player1.sendPacket(questionPacket);
         player2.sendPacket(questionPacket);
+
+        currentRoundTimer = scheduler.schedule(this::onRoundTimeout, TIME_LIMIT_SECONDS, TimeUnit.SECONDS);
     }
 
     // nhận câu hỏi tính điểm và dồng bộ
     public synchronized void submitAnswer(long userId, Long selectedAnswerId, int responseTime) {
+        if (userId == player1.getUserId() && !p1Answered) {
+            p1Answered = true;
+            p1SelectedAnswerId = selectedAnswerId;
+            p1ResponseTime = Math.min(responseTime, TIME_LIMIT_SECONDS);
+        } else if (userId == player2.getUserId() && !p2Answered) {
+            p2Answered = true;
+            p2SelectedAnswerId = selectedAnswerId;
+            p2ResponseTime = Math.min(responseTime, TIME_LIMIT_SECONDS);
+        }
 
+        if (p1Answered && p2Answered) {
+            if (currentRoundTimer != null && !currentRoundTimer.isDone()) {
+                currentRoundTimer.cancel(false);
+            }
+            onBothAnswered();
+        }
     }
 
     // quá 10s mà có 1 ng ko trl
     private synchronized void onRoundTimeout() {
+        if (!p1Answered) {
+            p1Answered = true;
+            p1SelectedAnswerId = null;
+            p1ResponseTime = TIME_LIMIT_SECONDS;
+        }
+        if (!p2Answered) {
+            p2Answered = true;
+            p2SelectedAnswerId = null;
+            p2ResponseTime = TIME_LIMIT_SECONDS;
+        }
 
+        onBothAnswered();
     }
 
     private synchronized void onBothAnswered() {
+        Question currentQ = questions.get(currentQuestionIndex);
 
+        long correctAnswerId = 0;
+        for (Answer ans : currentQ.getAnswers()) {
+            if (ans.isCorrect()) {
+                correctAnswerId = ans.getAnswerId();
+                break;
+            }
+        }
+
+        int p1ScoreEarned = 0;
+        boolean p1Correct = (p1SelectedAnswerId != null && p1SelectedAnswerId == correctAnswerId);
+        if (p1Correct) {
+            int remainingTime = Math.max(0, TIME_LIMIT_SECONDS - p1ResponseTime);
+            p1ScoreEarned = BASE_SCORE + (remainingTime * 10);
+        }
+        p1TotalScore += p1ScoreEarned;
+
+        int p2ScoreEarned = 0;
+        boolean p2Correct = (p2SelectedAnswerId != null && p2SelectedAnswerId == correctAnswerId);
+        if (p2Correct) {
+            int remainingTime = Math.max(0, TIME_LIMIT_SECONDS - p2ResponseTime);
+            p2ScoreEarned = BASE_SCORE + (remainingTime * 10);
+        }
+        p2TotalScore += p2ScoreEarned;
+
+        BattleDTO.RoundResultNotify roundResult = new BattleDTO.RoundResultNotify();
+        roundResult.matchId = matchId;
+        roundResult.questionIndex = currentQuestionIndex + 1;
+        roundResult.correctAnswerId = correctAnswerId;
+        roundResult.explanation = currentQ.getExplanation();
+
+        roundResult.player1 = new BattleDTO.PlayerRoundInfo();
+        roundResult.player1.userId = player1.getUserId();
+        roundResult.player1.username = player1.getUsername();
+        roundResult.player1.selectedAnswerId = p1SelectedAnswerId;
+        roundResult.player1.isCorrect = p1Correct;
+        roundResult.player1.scoreEarned = p1ScoreEarned;
+        roundResult.player1.totalScore = p1TotalScore;
+
+        roundResult.player2 = new BattleDTO.PlayerRoundInfo();
+        roundResult.player2.userId = player2.getUserId();
+        roundResult.player2.username = player2.getUsername();
+        roundResult.player2.selectedAnswerId = p2SelectedAnswerId;
+        roundResult.player2.isCorrect = p2Correct;
+        roundResult.player2.scoreEarned = p2ScoreEarned;
+        roundResult.player2.totalScore = p2TotalScore;
+
+        Packet roundResultPacket = new Packet(OpCode.BATTLE_ROUND_RESULT_NOTIFY, JsonUtil.toJson(roundResult));
+        player1.sendPacket(roundResultPacket);
+        player2.sendPacket(roundResultPacket);
+
+        currentQuestionIndex++;
+
+        scheduler.schedule(this::nextQuestion, 2500, TimeUnit.MILLISECONDS);
     }
 
     private synchronized void finishMatch() {
-
+        // Triển khai ở Commit 3 (Yêu cầu 8)
     }
 
     // khi có 1 ng bị disconnet
     public synchronized void handleDisconnect(long disconnectedUserId) {
-
+        // Triển khai ở Commit 3 (Yêu cầu 8)
     }
 
     public long getMatchId() {
