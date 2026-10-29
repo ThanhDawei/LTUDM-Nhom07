@@ -1,85 +1,161 @@
 package com.quizzlive.server.service;
 
+import com.quizzlive.server.dao.QuestionDAO;
+import com.quizzlive.server.dao.UserDAO;
+import com.quizzlive.server.entity.Answer;
+import com.quizzlive.server.entity.Question;
 import com.quizzlive.server.network.ClientSession;
+import com.quizzlive.shared.dto.BattleDTO;
+import com.quizzlive.shared.protocol.OpCode;
+import com.quizzlive.shared.protocol.Packet;
+import com.quizzlive.shared.util.JsonUtil;
 
-/**
- * Phòng thi đấu 1v1 thời gian thực
- * Phụ trách:
- * - Yêu cầu 5: Mỗi trận 5 câu (cấu hình được), mỗi câu 4 đáp án, tối đa 10s; điểm tính theo thời gian còn lại; sai/không trả lời 0 điểm.
- * - Yêu cầu 6: Chuyển câu khi CẢ HAI đã trả lời hoặc HẾT 10 giây; khi đó mỗi người thấy lựa chọn của đối thủ và đáp án đúng.
- * - Yêu cầu 7: Câu hỏi trong một trận không trùng nhau; thứ tự câu và đáp án được xáo trộn.
- * - Yêu cầu 8: Kết quả trận: sau 5 câu, ai điểm cao hơn thắng.
- * - Yêu cầu 14: Điều phối trận đấu, đồng bộ 2 người chơi.
- */
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 public class BattleRoom {
     private final long matchId;
     private final ClientSession player1;
     private final ClientSession player2;
+    private final Integer topicId;
+    private final String difficulty;
+
+    private final QuestionDAO questionDAO = new QuestionDAO();
+    private final UserDAO userDAO = new UserDAO();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    // cấu hình trận đấu
+    public static final int TOTAL_QUESTIONS = 5;
+    public static final int TIME_LIMIT_SECONDS = 10;
+    public static final int BASE_SCORE = 100;
+
+    private List<Question> questions = new ArrayList<>();// list câu hỏi ko trùng nhau
+    private int currentQuestionIndex = 0;
+    private ScheduledFuture<?> currentRoundTimer = null;
+
+    // trạng thái câu hỏi
+    private Long p1SelectedAnswerId = null;
+    private int p1ResponseTime = 0;
+    private boolean p1Answered = false;
+
+    private Long p2SelectedAnswerId = null;
+    private int p2ResponseTime = 0;
+    private boolean p2Answered = false;
+
+    // điểm
+    private int p1TotalScore = 0;
+    private int p2TotalScore = 0;
+    private boolean matchFinished = false;
 
     public BattleRoom(long matchId, ClientSession player1, ClientSession player2) {
+        this(matchId, player1, player2, null, "MEDIUM");
+    }
+
+    public BattleRoom(long matchId, ClientSession player1, ClientSession player2, Integer topicId, String difficulty) {
         this.matchId = matchId;
         this.player1 = player1;
         this.player2 = player2;
+        this.topicId = topicId;
+        this.difficulty = difficulty;
     }
 
-    /**
-     * TODO: Dev Nhóm 7 triển khai
-     * 1. Lấy danh sách 5 câu hỏi ngẫu nhiên từ QuestionDAO
-     * 2. Bắt đầu vòng thi đấu, gửi BATTLE_START_NOTIFY cho cả 2 người chơi
-     */
     public void start() {
-        // TODO: Viết code khởi chạy trận đấu
+        questions = questionDAO.getRandomQuestions(topicId, difficulty, TOTAL_QUESTIONS);// lấy câu hỏi ngẫu nhiên
+
+        if (questions == null || questions.size() < TOTAL_QUESTIONS) {// nếu không đủ câu hỏi thì lấy câu hỏi ngẫu nhiên
+            questions = questionDAO.getRandomQuestions(null, null, TOTAL_QUESTIONS);
+        }
+
+        Packet startPacket = new Packet(OpCode.BATTLE_START_NOTIFY, "{\"matchId\":" + matchId + "}");// gửi thông báo
+                                                                                                     // bắt đầu trận đấu
+        player1.sendPacket(startPacket);
+        player2.sendPacket(startPacket);
+
+        scheduler.schedule(this::nextQuestion, 2000, TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * TODO: Dev Nhóm 7 triển khai
-     * 1. Xáo trộn thứ tự 4 đáp án ngẫu nhiên (Yêu cầu 7)
-     * 2. Gửi gói BATTLE_QUESTION_NOTIFY cho 2 người chơi
-     * 3. Bật bộ đếm ngược 10 giây (Timer)
-     */
     public synchronized void nextQuestion() {
-        // TODO: Viết code phát câu hỏi kế tiếp
+        if (currentQuestionIndex >= TOTAL_QUESTIONS) {
+            finishMatch();
+            return;
+        }
+
+        // reset trạng thái ng chơi
+        p1SelectedAnswerId = null;
+        p1ResponseTime = 0;
+        p1Answered = false;
+
+        p2SelectedAnswerId = null;
+        p2ResponseTime = 0;
+        p2Answered = false;
+
+        Question currentQ = questions.get(currentQuestionIndex);
+
+        List<Answer> answers = new ArrayList<>(currentQ.getAnswers());
+        Collections.shuffle(answers);// xáo
+
+        BattleDTO.BattleQuestionNotify questionNotify = new BattleDTO.BattleQuestionNotify();
+        questionNotify.matchId = matchId;
+        questionNotify.questionIndex = currentQuestionIndex + 1;
+        questionNotify.totalQuestions = TOTAL_QUESTIONS;
+        questionNotify.timeLimitSeconds = TIME_LIMIT_SECONDS;
+        questionNotify.questionContent = currentQ.getContent();
+        questionNotify.questionImage = currentQ.getImage();
+        questionNotify.options = new ArrayList<>();
+
+        String[] keys = { "A", "B", "C", "D" };
+        for (int i = 0; i < answers.size() && i < 4; i++) {
+            Answer ans = answers.get(i);
+            BattleDTO.QuestionAnswerOption opt = new BattleDTO.QuestionAnswerOption();
+            opt.answerId = ans.getAnswerId();
+            opt.key = keys[i];
+            opt.content = ans.getContent();
+            opt.image = ans.getImage();
+            questionNotify.options.add(opt);
+        }
+        // gửi câu hỏi
+        Packet questionPacket = new Packet(OpCode.BATTLE_QUESTION_NOTIFY, JsonUtil.toJson(questionNotify));
+        player1.sendPacket(questionPacket);
+        player2.sendPacket(questionPacket);
     }
 
-    /**
-     * TODO: Dev Nhóm 7 triển khai
-     * 1. Nhận đáp án người chơi gửi lên
-     * 2. Tính điểm: nếu đúng -> Điểm = Điểm cơ bản + Điểm thưởng theo thời gian còn lại (Yêu cầu 5)
-     * 3. Kiểm tra điều kiện đồng bộ (Yêu cầu 6): Nếu CẢ HAI đã trả lời -> Dừng timer 10s và gọi onBothAnswered()
-     */
+    // nhận câu hỏi tính điểm và dồng bộ
     public synchronized void submitAnswer(long userId, Long selectedAnswerId, int responseTime) {
-        // TODO: Viết code chấm điểm câu trả lời phía server
+
     }
 
-    /**
-     * TODO: Dev Nhóm 7 triển khai
-     * Khi hết 10 giây hoặc cả 2 đã trả lời xong:
-     * Gửi gói tin BATTLE_ROUND_RESULT_NOTIFY công bố lựa chọn của cả 2 bên và đáp án đúng (Yêu cầu 6)
-     * Chờ 2-3 giây rồi gọi nextQuestion() hoặc finishMatch()
-     */
+    // quá 10s mà có 1 ng ko trl
+    private synchronized void onRoundTimeout() {
+
+    }
+
     private synchronized void onBothAnswered() {
-        // TODO: Viết code công bố kết quả vòng đấu
+
     }
 
-    /**
-     * TODO: Dev Nhóm 7 triển khai
-     * Sau khi hoàn thành 5 câu:
-     * 1. So sánh tổng điểm 2 bên để xác định người thắng / hòa (Yêu cầu 8)
-     * 2. Cập nhật thành tích vào CSDL (bảng HO_SO_NGUOI_DUNG, TRAN_DAU, NGUOI_CHOI_TRAN)
-     * 3. Gửi BATTLE_FINAL_RESULT_NOTIFY cho cả 2 người
-     */
     private synchronized void finishMatch() {
-        // TODO: Viết code kết thúc trận đấu và lưu CSDL
+
     }
 
-    /**
-     * TODO: Xử lý khi 1 người chơi bị ngắt kết nối giữa chừng
-     */
-    public void handleDisconnect(long disconnectedUserId) {
-        // TODO: Xử lý người thoát trận giữa chừng
+    // khi có 1 ng bị disconnet
+    public synchronized void handleDisconnect(long disconnectedUserId) {
+
     }
 
-    public long getMatchId() { return matchId; }
-    public ClientSession getPlayer1() { return player1; }
-    public ClientSession getPlayer2() { return player2; }
+    public long getMatchId() {
+        return matchId;
+    }
+
+    public ClientSession getPlayer1() {
+        return player1;
+    }
+
+    public ClientSession getPlayer2() {
+        return player2;
+    }
 }
