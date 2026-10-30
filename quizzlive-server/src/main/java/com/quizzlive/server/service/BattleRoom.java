@@ -1,8 +1,10 @@
 package com.quizzlive.server.service;
 
+import com.quizzlive.server.dao.MatchConfigDAO;
 import com.quizzlive.server.dao.QuestionDAO;
 import com.quizzlive.server.dao.UserDAO;
 import com.quizzlive.server.entity.Answer;
+import com.quizzlive.server.entity.MatchConfig;
 import com.quizzlive.server.entity.Question;
 import com.quizzlive.server.network.ClientSession;
 import com.quizzlive.shared.dto.BattleDTO;
@@ -27,12 +29,14 @@ public class BattleRoom {
 
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final UserDAO userDAO = new UserDAO();
+    private final MatchConfigDAO matchConfigDAO = new MatchConfigDAO();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    // cấu hình trận đấu
-    public static final int TOTAL_QUESTIONS = 5;
-    public static final int TIME_LIMIT_SECONDS = 10;
-    public static final int BASE_SCORE = 100;
+    // cấu hình trận đấu (nạp động từ CSDL do Admin quản trị)
+    private int totalQuestions = 5;
+    private int timeLimitSeconds = 10;
+    private int baseScore = 100;
+    private boolean speedBonus = true;
 
     private List<Question> questions = new ArrayList<>();// list câu hỏi ko trùng nhau
     private int currentQuestionIndex = 0;
@@ -62,13 +66,24 @@ public class BattleRoom {
         this.player2 = player2;
         this.topicId = topicId;
         this.difficulty = difficulty;
+        loadMatchConfig();
+    }
+
+    private void loadMatchConfig() {
+        MatchConfig config = matchConfigDAO.getActiveConfig();
+        if (config != null) {
+            if (config.getQuestionCount() > 0) this.totalQuestions = config.getQuestionCount();
+            if (config.getTimePerQuestion() > 0) this.timeLimitSeconds = config.getTimePerQuestion();
+            if (config.getBaseScore() > 0) this.baseScore = config.getBaseScore();
+            this.speedBonus = config.isSpeedBonus();
+        }
     }
 
     public void start() {
-        questions = questionDAO.getRandomQuestions(topicId, difficulty, TOTAL_QUESTIONS);// lấy câu hỏi ngẫu nhiên
+        questions = questionDAO.getRandomQuestions(topicId, difficulty, totalQuestions);// lấy câu hỏi ngẫu nhiên
 
-        if (questions == null || questions.size() < TOTAL_QUESTIONS) {// nếu không đủ câu hỏi thì lấy câu hỏi ngẫu nhiên
-            questions = questionDAO.getRandomQuestions(null, null, TOTAL_QUESTIONS);
+        if (questions == null || questions.size() < totalQuestions) {// nếu không đủ câu hỏi thì lấy câu hỏi ngẫu nhiên
+            questions = questionDAO.getRandomQuestions(null, null, totalQuestions);
         }
 
         Packet startPacket = new Packet(OpCode.BATTLE_START_NOTIFY, "{\"matchId\":" + matchId + "}");// gửi thông báo
@@ -80,7 +95,7 @@ public class BattleRoom {
     }
 
     public synchronized void nextQuestion() {
-        if (currentQuestionIndex >= TOTAL_QUESTIONS) {
+        if (currentQuestionIndex >= totalQuestions) {
             finishMatch();
             return;
         }
@@ -102,8 +117,8 @@ public class BattleRoom {
         BattleDTO.BattleQuestionNotify questionNotify = new BattleDTO.BattleQuestionNotify();
         questionNotify.matchId = matchId;
         questionNotify.questionIndex = currentQuestionIndex + 1;
-        questionNotify.totalQuestions = TOTAL_QUESTIONS;
-        questionNotify.timeLimitSeconds = TIME_LIMIT_SECONDS;
+        questionNotify.totalQuestions = totalQuestions;
+        questionNotify.timeLimitSeconds = timeLimitSeconds;
         questionNotify.questionContent = currentQ.getContent();
         questionNotify.questionImage = currentQ.getImage();
         questionNotify.options = new ArrayList<>();
@@ -123,7 +138,7 @@ public class BattleRoom {
         player1.sendPacket(questionPacket);
         player2.sendPacket(questionPacket);
 
-        currentRoundTimer = scheduler.schedule(this::onRoundTimeout, TIME_LIMIT_SECONDS, TimeUnit.SECONDS);
+        currentRoundTimer = scheduler.schedule(this::onRoundTimeout, timeLimitSeconds, TimeUnit.SECONDS);
     }
 
     // nhận câu hỏi tính điểm và dồng bộ
@@ -131,11 +146,11 @@ public class BattleRoom {
         if (userId == player1.getUserId() && !p1Answered) {
             p1Answered = true;
             p1SelectedAnswerId = selectedAnswerId;
-            p1ResponseTime = Math.min(responseTime, TIME_LIMIT_SECONDS);
+            p1ResponseTime = Math.min(responseTime, timeLimitSeconds);
         } else if (userId == player2.getUserId() && !p2Answered) {
             p2Answered = true;
             p2SelectedAnswerId = selectedAnswerId;
-            p2ResponseTime = Math.min(responseTime, TIME_LIMIT_SECONDS);
+            p2ResponseTime = Math.min(responseTime, timeLimitSeconds);
         }
 
         if (p1Answered && p2Answered) {
@@ -151,12 +166,12 @@ public class BattleRoom {
         if (!p1Answered) {
             p1Answered = true;
             p1SelectedAnswerId = null;
-            p1ResponseTime = TIME_LIMIT_SECONDS;
+            p1ResponseTime = timeLimitSeconds;
         }
         if (!p2Answered) {
             p2Answered = true;
             p2SelectedAnswerId = null;
-            p2ResponseTime = TIME_LIMIT_SECONDS;
+            p2ResponseTime = timeLimitSeconds;
         }
 
         onBothAnswered();
@@ -176,16 +191,16 @@ public class BattleRoom {
         int p1ScoreEarned = 0;
         boolean p1Correct = (p1SelectedAnswerId != null && p1SelectedAnswerId == correctAnswerId);
         if (p1Correct) {
-            int remainingTime = Math.max(0, TIME_LIMIT_SECONDS - p1ResponseTime);
-            p1ScoreEarned = BASE_SCORE + (remainingTime * 10);
+            int remainingTime = Math.max(0, timeLimitSeconds - p1ResponseTime);
+            p1ScoreEarned = baseScore + (speedBonus ? (remainingTime * 10) : 0);
         }
         p1TotalScore += p1ScoreEarned;
 
         int p2ScoreEarned = 0;
         boolean p2Correct = (p2SelectedAnswerId != null && p2SelectedAnswerId == correctAnswerId);
         if (p2Correct) {
-            int remainingTime = Math.max(0, TIME_LIMIT_SECONDS - p2ResponseTime);
-            p2ScoreEarned = BASE_SCORE + (remainingTime * 10);
+            int remainingTime = Math.max(0, timeLimitSeconds - p2ResponseTime);
+            p2ScoreEarned = baseScore + (speedBonus ? (remainingTime * 10) : 0);
         }
         p2TotalScore += p2ScoreEarned;
 
@@ -290,5 +305,17 @@ public class BattleRoom {
 
     public ClientSession getPlayer2() {
         return player2;
+    }
+
+    public int getTotalQuestions() {
+        return totalQuestions;
+    }
+
+    public int getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public int getBaseScore() {
+        return baseScore;
     }
 }

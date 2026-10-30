@@ -227,8 +227,8 @@ public class MatchmakingService {
         notifyP1.opponentFullName = (p2Profile != null && p2Profile.getFullName() != null) ? p2Profile.getFullName()
                 : t2.getUsername();
         notifyP1.opponentAvatar = (p2Profile != null) ? p2Profile.getAvatar() : null;
-        notifyP1.totalQuestions = 5;
-        notifyP1.timeLimitSeconds = 10;
+        notifyP1.totalQuestions = room.getTotalQuestions();
+        notifyP1.timeLimitSeconds = room.getTimeLimitSeconds();
         t1.getSession().sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifyP1)));
 
         // Gửi MATCH_FOUND_NOTIFY cho Player 2 (thông tin đối thủ là Player 1)
@@ -240,8 +240,8 @@ public class MatchmakingService {
         notifyP2.opponentFullName = (p1Profile != null && p1Profile.getFullName() != null) ? p1Profile.getFullName()
                 : t1.getUsername();
         notifyP2.opponentAvatar = (p1Profile != null) ? p1Profile.getAvatar() : null;
-        notifyP2.totalQuestions = 5;
-        notifyP2.timeLimitSeconds = 10;
+        notifyP2.totalQuestions = room.getTotalQuestions();
+        notifyP2.timeLimitSeconds = room.getTimeLimitSeconds();
         t2.getSession().sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifyP2)));
     }
 }

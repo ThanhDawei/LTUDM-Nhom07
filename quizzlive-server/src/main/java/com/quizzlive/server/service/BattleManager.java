@@ -26,7 +26,7 @@ public class BattleManager {
      */
     public BattleRoom createBattle(ClientSession p1, ClientSession p2, Integer topicId, String difficulty) {
         long matchId = matchIdGenerator.incrementAndGet();
-        BattleRoom room = new BattleRoom(matchId, p1, p2);
+        BattleRoom room = new BattleRoom(matchId, p1, p2, topicId, difficulty);
         activeRooms.put(matchId, room);
         room.start();
         return room;
