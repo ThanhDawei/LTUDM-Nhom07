@@ -20,6 +20,13 @@ public class AuthDTO {
         public String password;
     }
 
+    public static class UpdateProfileRequest implements Serializable {
+        public String fullName;
+        public String currentPassword;
+        public String newPassword;
+        public String avatarUrl;
+    }
+
     public static class AuthResponse implements Serializable {
         public boolean success;
         public String message;

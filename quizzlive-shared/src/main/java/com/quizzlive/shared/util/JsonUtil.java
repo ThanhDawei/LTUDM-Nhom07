@@ -19,6 +19,11 @@ public class JsonUtil {
         return gson.fromJson(json, classOfT);
     }
 
+    public static <T> T fromJson(String json, java.lang.reflect.Type typeOfT) {
+        if (json == null || json.trim().isEmpty()) return null;
+        return gson.fromJson(json, typeOfT);
+    }
+
     public static Gson getGson() {
         return gson;
     }

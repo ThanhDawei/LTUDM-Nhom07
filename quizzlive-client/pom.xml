@@ -21,4 +21,17 @@
             <version>${project.version}</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.4</version>
+                <configuration>
+                    <mainClass>com.quizzlive.client.ClientApp</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

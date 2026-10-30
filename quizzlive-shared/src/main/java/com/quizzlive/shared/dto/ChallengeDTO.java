@@ -22,4 +22,9 @@ public class ChallengeDTO {
         public long invitationId;
         public boolean accepted;
     }
+
+    public static class ChallengeResponse implements Serializable {
+        public boolean success;
+        public String message;
+    }
 }
