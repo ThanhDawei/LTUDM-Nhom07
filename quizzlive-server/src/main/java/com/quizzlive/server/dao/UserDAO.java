@@ -3,11 +3,16 @@ package com.quizzlive.server.dao;
 import com.quizzlive.server.database.DatabaseManager;
 import com.quizzlive.server.entity.User;
 import com.quizzlive.server.entity.UserProfile;
+import com.quizzlive.shared.dto.AuthDTO;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Tầng truy xuất dữ liệu tài khoản và hồ sơ người dùng trong CSDL.
+ * Phụ trách Yêu cầu 1: Đăng ký, đăng nhập, cập nhật thông tin cá nhân.
+ */
 public class UserDAO {
 
     public User findByUsername(String username) {
@@ -58,8 +63,8 @@ public class UserDAO {
         return null;
     }
 
-    public Long createUser(String username, String password, String email, String fullName) {
-        String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, NOW())";
+    public Long createUser(String username, String passwordHash, String email, String fullName) {
+        String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, ?)";
         String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen) VALUES (?, ?)";
         String sqlStats = "INSERT INTO THONG_KE_NGUOI_CHOI (MaNguoiDung) VALUES (?)";
 
@@ -69,10 +74,12 @@ public class UserDAO {
             conn.setAutoCommit(false);
 
             long userId = 0;
+            Timestamp now = new Timestamp(System.currentTimeMillis());
             try (PreparedStatement ps = conn.prepareStatement(sqlUser, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, username);
-                ps.setString(2, password);
+                ps.setString(2, passwordHash);
                 ps.setString(3, email);
+                ps.setTimestamp(4, now);
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) {
                     if (rs.next()) {
@@ -107,6 +114,25 @@ public class UserDAO {
         return null;
     }
 
+    public void updatePendingUser(Long userId, String passwordHash, String fullName) {
+        String sqlUser = "UPDATE NGUOI_DUNG SET MatKhau = ? WHERE MaNguoiDung = ?";
+        String sqlProfile = "UPDATE HO_SO_NGUOI_DUNG SET HoTen = ? WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(sqlUser)) {
+                ps.setString(1, passwordHash);
+                ps.setLong(2, userId);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sqlProfile)) {
+                ps.setString(1, fullName);
+                ps.setLong(2, userId);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void activateUser(Long userId) {
         String sql = "UPDATE NGUOI_DUNG SET TrangThai = 'ACTIVE' WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -119,11 +145,38 @@ public class UserDAO {
     }
 
     public void updateOnlineStatus(Long userId, boolean isOnline) {
-        String sql = "UPDATE NGUOI_DUNG SET TrangThaiOnline = ?, LanDangNhapCuoi = NOW() WHERE MaNguoiDung = ?";
+        String sql = "UPDATE NGUOI_DUNG SET TrangThaiOnline = ?, LanDangNhapCuoi = ? WHERE MaNguoiDung = ?";
+        Timestamp now = new Timestamp(System.currentTimeMillis());
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setBoolean(1, isOnline);
+            ps.setTimestamp(2, now);
+            ps.setLong(3, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updatePassword(Long userId, String passwordHash) {
+        String sql = "UPDATE NGUOI_DUNG SET MatKhau = ? WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, passwordHash);
             ps.setLong(2, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateProfile(Long userId, String fullName, String avatar) {
+        String sql = "UPDATE HO_SO_NGUOI_DUNG SET HoTen = ?, AnhDaiDien = COALESCE(?, AnhDaiDien) WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fullName);
+            ps.setString(2, avatar);
+            ps.setLong(3, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -217,6 +270,36 @@ public class UserDAO {
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 list.add(mapUser(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<AuthDTO.AuthResponse> getOnlineUsers(Long excludeUserId) {
+        List<AuthDTO.AuthResponse> list = new ArrayList<>();
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.DiemIQ " +
+                "FROM NGUOI_DUNG u " +
+                "LEFT JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
+                "WHERE u.TrangThaiOnline = TRUE AND u.TrangThai = 'ACTIVE' " +
+                (excludeUserId != null ? "AND u.MaNguoiDung <> ? " : "") +
+                "ORDER BY u.TenDangNhap ASC";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (excludeUserId != null) {
+                ps.setLong(1, excludeUserId);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    AuthDTO.AuthResponse item = new AuthDTO.AuthResponse();
+                    item.userId = rs.getLong("MaNguoiDung");
+                    item.username = rs.getString("TenDangNhap");
+                    item.fullName = rs.getString("HoTen");
+                    item.iqScore = rs.getDouble("DiemIQ");
+                    item.success = true;
+                    list.add(item);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();

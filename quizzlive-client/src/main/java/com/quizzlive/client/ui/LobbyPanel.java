@@ -310,6 +310,7 @@ public class LobbyPanel extends JPanel {
         this.currentUsername = auth.username;
         lblWelcome.setText("Xin chào, " + (auth.fullName != null ? auth.fullName : auth.username) + "!");
         lblUserStats.setText("Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
+        authService.requestOnlineUsers();
     }
 
     public void updateOnlineUsersList(List<AuthDTO.AuthResponse> users) {

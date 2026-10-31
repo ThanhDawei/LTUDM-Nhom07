@@ -8,6 +8,8 @@ import com.quizzlive.shared.protocol.OpCode;
 import com.quizzlive.shared.protocol.Packet;
 import com.quizzlive.shared.util.JsonUtil;
 
+import java.util.List;
+
 /**
  * LỚP ĐIỀU PHỐI GÓI TIN MẠNG (PACKET ROUTER)
  * Nhận gói tin từ ClientSession -> Giải mã payload -> Gọi Service tương ứng
@@ -56,6 +58,17 @@ public class PacketRouter {
                 session.setUserId(null);
                 session.setUsername(null);
                 session.sendPacket(new Packet(OpCode.LOGOUT_RESP, "{\"success\":true}"));
+                break;
+            }
+            case UPDATE_PROFILE_REQ: {
+                AuthDTO.UpdateProfileRequest req = JsonUtil.fromJson(json, AuthDTO.UpdateProfileRequest.class);
+                AuthDTO.AuthResponse resp = authService.updateProfile(session.getUserId(), req);
+                session.sendPacket(new Packet(OpCode.UPDATE_PROFILE_RESP, JsonUtil.toJson(resp)));
+                break;
+            }
+            case ONLINE_USERS_REQ: {
+                List<AuthDTO.AuthResponse> onlineUsers = authService.getOnlineUsers(session.getUserId());
+                session.sendPacket(new Packet(OpCode.ONLINE_USERS_RESP, JsonUtil.toJson(onlineUsers)));
                 break;
             }
 

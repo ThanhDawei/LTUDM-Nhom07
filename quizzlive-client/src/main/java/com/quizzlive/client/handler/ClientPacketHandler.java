@@ -87,6 +87,24 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
+            case UPDATE_PROFILE_RESP: {
+                AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
+                if (resp != null) {
+                    if (resp.success) {
+                        mainFrame.getLobbyPanel().updateUserInfo(resp);
+                        JOptionPane.showMessageDialog(mainFrame, resp.message, "Cập nhật hồ sơ", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(mainFrame, resp.message, "Lỗi cập nhật", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+                break;
+            }
+
+            case LOGOUT_RESP: {
+                mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
+                break;
+            }
+
             case ONLINE_USERS_RESP: {
                 Type listType = new TypeToken<List<AuthDTO.AuthResponse>>() {}.getType();
                 List<AuthDTO.AuthResponse> users = JsonUtil.fromJson(json, listType);
