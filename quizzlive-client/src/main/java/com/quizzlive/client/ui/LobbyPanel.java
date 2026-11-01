@@ -91,7 +91,10 @@ public class LobbyPanel extends JPanel {
 
         JButton btnLeaderboard = new JButton("🏆 Bảng Xếp Hạng");
         btnLeaderboard.setFocusPainted(false);
-        btnLeaderboard.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LEADERBOARD));
+        btnLeaderboard.addActionListener(e -> {
+            mainFrame.getLeaderboardPanel().refreshData(currentUserId);
+            mainFrame.showPanel(MainClientFrame.CARD_LEADERBOARD);
+        });
 
         JButton btnTournament = new JButton("🎖️ Giải Đấu");
         btnTournament.setFocusPainted(false);
@@ -342,10 +345,24 @@ public class LobbyPanel extends JPanel {
         lblWelcome.setText("Xin chào, " + (auth.fullName != null ? auth.fullName : auth.username) + "!");
         lblUserStats.setText("Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
         authService.requestOnlineUsers();
+        matchmakingService.requestTopicList();
     }
 
     public void updateIQDisplay(double newIq) {
         lblUserStats.setText("Điểm IQ: " + newIq);
+    }
+
+    public Long getCurrentUserId() {
+        return currentUserId;
+    }
+
+    public void updateTopicList(List<com.quizzlive.shared.dto.TopicDTO> topics) {
+        if (topics == null || topics.isEmpty()) return;
+        cbTopics.removeAllItems();
+        cbTopics.addItem(new TopicItem(0, "-- Tất cả chủ đề --"));
+        for (com.quizzlive.shared.dto.TopicDTO t : topics) {
+            cbTopics.addItem(new TopicItem(t.topicId, t.topicName));
+        }
     }
 
     public void updateOnlineUsersList(List<AuthDTO.AuthResponse> users) {
