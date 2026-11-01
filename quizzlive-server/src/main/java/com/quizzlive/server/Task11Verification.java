@@ -174,3 +174,4 @@ public class Task11Verification {
         System.exit(failed == 0 ? 0 : 1);
     }
 }
+

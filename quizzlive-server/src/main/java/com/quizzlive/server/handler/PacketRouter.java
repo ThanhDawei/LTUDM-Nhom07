@@ -22,6 +22,7 @@ public class PacketRouter {
 
     public PacketRouter(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
+        ChallengeService.getInstance().setSessionManager(sessionManager);
     }
 
     public void route(ClientSession session, Packet packet) {

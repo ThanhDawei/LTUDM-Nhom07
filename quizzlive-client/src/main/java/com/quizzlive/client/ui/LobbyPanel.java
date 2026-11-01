@@ -221,10 +221,18 @@ public class LobbyPanel extends JPanel {
     /**
      * Bắt đầu ghép cặp tự động (Yêu cầu 2, 4)
      */
+    private String mapDifficulty(String raw) {
+        if (raw == null) return "MEDIUM";
+        if (raw.equalsIgnoreCase("Dễ") || raw.equalsIgnoreCase("EASY")) return "EASY";
+        if (raw.equalsIgnoreCase("Khó") || raw.equalsIgnoreCase("HARD")) return "HARD";
+        if (raw.equalsIgnoreCase("Mọi cấp độ") || raw.equalsIgnoreCase("ALL")) return "ALL";
+        return "MEDIUM";
+    }
+
     private void startFindingMatch() {
         TopicItem selectedTopic = (TopicItem) cbTopics.getSelectedItem();
         Integer topicId = (selectedTopic == null || selectedTopic.id == 0) ? null : selectedTopic.id;
-        String difficulty = (String) cbDifficulty.getSelectedItem();
+        String difficulty = mapDifficulty((String) cbDifficulty.getSelectedItem());
 
         // Gửi gói tin QUEUE_JOIN_REQ lên server
         matchmakingService.joinQueue(topicId, difficulty);
@@ -247,9 +255,14 @@ public class LobbyPanel extends JPanel {
         long targetUserId = Long.parseLong(modelOnlineUsers.getValueAt(selectedRow, 0).toString());
         String targetUsername = modelOnlineUsers.getValueAt(selectedRow, 1).toString();
 
+        if (currentUserId != null && currentUserId == targetUserId) {
+            JOptionPane.showMessageDialog(this, "Bạn không thể tự thách đấu chính mình!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         TopicItem selectedTopic = (TopicItem) cbTopics.getSelectedItem();
         Integer topicId = (selectedTopic == null || selectedTopic.id == 0) ? null : selectedTopic.id;
-        String difficulty = (String) cbDifficulty.getSelectedItem();
+        String difficulty = mapDifficulty((String) cbDifficulty.getSelectedItem());
 
         int confirm = JOptionPane.showConfirmDialog(
                 this,
@@ -268,10 +281,28 @@ public class LobbyPanel extends JPanel {
      * Popup khi nhận được lời mời thách đấu từ người khác (Yêu cầu 3)
      */
     public void showIncomingChallengeDialog(ChallengeDTO.InviteNotify invite) {
+        String topicDesc = "Tất cả chủ đề";
+        if (invite.topicId != null && invite.topicId > 0) {
+            for (int i = 0; i < cbTopics.getItemCount(); i++) {
+                TopicItem item = cbTopics.getItemAt(i);
+                if (item != null && item.id == invite.topicId) {
+                    topicDesc = item.name;
+                    break;
+                }
+            }
+        }
+        String diffDesc = invite.difficulty != null ? invite.difficulty : "Trung bình";
+        if ("EASY".equalsIgnoreCase(diffDesc)) diffDesc = "Dễ";
+        else if ("HARD".equalsIgnoreCase(diffDesc)) diffDesc = "Khó";
+        else if ("MEDIUM".equalsIgnoreCase(diffDesc)) diffDesc = "Trung bình";
+
+        String displayName = (invite.fromFullName != null && !invite.fromFullName.trim().isEmpty())
+                ? invite.fromFullName
+                : invite.fromUsername;
         int choice = JOptionPane.showConfirmDialog(
                 this,
-                "Người chơi [" + invite.fromUsername + "] đang thách đấu bạn!\nĐộ khó: " + invite.difficulty + "\n\nBạn có chấp nhận thi đấu không?",
-                "Lời Mời Thách Đấu",
+                "Người chơi [" + displayName + "] đang thách đấu 1v1 với bạn!\n• Chủ đề: " + topicDesc + "\n• Độ khó: " + diffDesc + "\n\nBạn có chấp nhận thi đấu ngay không?",
+                "Lời Mời Thách Đấu 1v1 (YC 3)",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
