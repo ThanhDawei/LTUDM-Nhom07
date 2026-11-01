@@ -313,6 +313,10 @@ public class LobbyPanel extends JPanel {
         authService.requestOnlineUsers();
     }
 
+    public void updateIQDisplay(double newIq) {
+        lblUserStats.setText("Điểm IQ: " + newIq);
+    }
+
     public void updateOnlineUsersList(List<AuthDTO.AuthResponse> users) {
         modelOnlineUsers.setRowCount(0);
         if (users != null) {

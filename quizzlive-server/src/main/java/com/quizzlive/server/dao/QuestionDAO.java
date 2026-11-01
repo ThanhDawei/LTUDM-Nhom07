@@ -59,20 +59,91 @@ public class QuestionDAO {
         return questions;
     }
 
+    /**
+     * Lấy ngẫu nhiên 1 câu hỏi IQ hình ảnh (Yêu cầu 11).
+     * Tương thích 100% với cả MySQL, PostgreSQL và H2 mà không gặp lỗi hàm RAND()/RANDOM().
+     */
     public Question getRandomIQQuestion() {
-        String sql = "SELECT * FROM CAU_HOI WHERE LoaiCauHoi = 'IQ_IMAGE' AND TrangThai = 'ACTIVE' ORDER BY RAND() LIMIT 1";
+        List<Question> list = new ArrayList<>();
+        String sql = "SELECT * FROM CAU_HOI WHERE LoaiCauHoi = 'IQ_IMAGE' AND TrangThai = 'ACTIVE'";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
+            while (rs.next()) {
                 Question q = mapQuestion(rs);
                 q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
-                return q;
+                list.add(q);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+
+        if (list.isEmpty()) {
+            // Câu hỏi dự phòng mẫu nếu CSDL chưa nạp câu hỏi IQ
+            Question fallback = new Question();
+            fallback.setQuestionId(999L);
+            fallback.setTopicId(4);
+            fallback.setQuestionType("IQ_IMAGE");
+            fallback.setDifficulty("MEDIUM");
+            fallback.setContent("Quan sát quy luật xoay của kim và chọn hình còn thiếu ở vị trí dấu (?):");
+            fallback.setImage("iq_pattern_01.png");
+            fallback.setExplanation("Hình xoay theo chiều kim đồng hồ góc 45 độ ở mỗi bước.");
+
+            List<Answer> answers = new ArrayList<>();
+            Answer a1 = new Answer(); a1.setAnswerId(901L); a1.setQuestionId(999L); a1.setKeySymbol("A"); a1.setContent("Hình số 1 (Góc 0 độ)"); a1.setImage("iq_ans_01_a.png"); a1.setCorrect(false);
+            Answer a2 = new Answer(); a2.setAnswerId(902L); a2.setQuestionId(999L); a2.setKeySymbol("B"); a2.setContent("Hình số 2 (Góc 45 độ)"); a2.setImage("iq_ans_01_b.png"); a2.setCorrect(true);
+            Answer a3 = new Answer(); a3.setAnswerId(903L); a3.setQuestionId(999L); a3.setKeySymbol("C"); a3.setContent("Hình số 3 (Góc 90 độ)"); a3.setImage("iq_ans_01_c.png"); a3.setCorrect(false);
+            Answer a4 = new Answer(); a4.setAnswerId(904L); a4.setQuestionId(999L); a4.setKeySymbol("D"); a4.setContent("Hình số 4 (Góc 135 độ)"); a4.setImage("iq_ans_01_d.png"); a4.setCorrect(false);
+            answers.add(a1); answers.add(a2); answers.add(a3); answers.add(a4);
+            fallback.setAnswers(answers);
+            return fallback;
+        }
+
+        int randomIndex = (int) (Math.random() * list.size());
+        return list.get(randomIndex);
+    }
+
+    /**
+     * Kiểm tra đáp án người chơi chọn có chính xác hay không (Yêu cầu 11)
+     */
+    public boolean checkAnswer(Long questionId, Long answerId) {
+        if (questionId == null || answerId == null) return false;
+        if (questionId == 999L) return answerId == 902L;
+
+        String sql = "SELECT LaDapAnDung FROM DAP_AN WHERE MaCauHoi = ? AND MaDapAn = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, questionId);
+            ps.setLong(2, answerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("LaDapAnDung");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Lấy độ khó câu hỏi để cộng điểm IQ hợp lý
+     */
+    public String getQuestionDifficulty(Long questionId) {
+        if (questionId == null || questionId == 999L) return "MEDIUM";
+        String sql = "SELECT DoKho FROM CAU_HOI WHERE MaCauHoi = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, questionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("DoKho");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "MEDIUM";
     }
 
     public List<Question> getAllQuestionsForAdmin(Integer topicId, String difficulty) {
