@@ -1,5 +1,6 @@
 package com.quizzlive.client.ui;
 
+import com.quizzlive.client.network.SocketClient;
 import com.quizzlive.client.service.ClientAuthService;
 
 import javax.swing.*;
@@ -7,7 +8,7 @@ import java.awt.*;
 
 /**
  * Giao diện Đăng nhập phía Client
- * Phụ trách Yêu cầu 1
+ * Phụ trách Yêu cầu 1: Đăng nhập hệ thống, kiểm tra trạng thái kích hoạt OTP và khóa tài khoản
  */
 public class LoginPanel extends JPanel {
     private final MainClientFrame mainFrame;
@@ -56,7 +57,7 @@ public class LoginPanel extends JPanel {
         gbc.gridwidth = 1;
         gbc.gridy++;
         gbc.gridx = 0;
-        JLabel lblUser = new JLabel("Tên đăng nhập:");
+        JLabel lblUser = new JLabel("Tên đăng nhập / Email:");
         lblUser.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         card.add(lblUser, gbc);
 
@@ -112,16 +113,29 @@ public class LoginPanel extends JPanel {
         String password = new String(txtPassword.getPassword());
 
         if (username.isEmpty() || password.isEmpty()) {
+            lblStatus.setForeground(Color.RED);
             lblStatus.setText("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!");
             return;
         }
 
-        lblStatus.setForeground(Color.BLUE);
-        lblStatus.setText("Đang kết nối đến server...");
+        lblStatus.setForeground(new Color(41, 128, 185));
+        lblStatus.setText("Đang xử lý đăng nhập...");
         btnLogin.setEnabled(false);
 
-        // Gửi gói tin LOGIN_REQ qua socket
-        authService.sendLogin(username, password);
+        new Thread(() -> {
+            try {
+                if (!SocketClient.getInstance().isConnected()) {
+                    SocketClient.getInstance().connect();
+                }
+                authService.sendLogin(username, password);
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    lblStatus.setForeground(Color.RED);
+                    lblStatus.setText("Không thể kết nối đến máy chủ: " + e.getMessage());
+                    btnLogin.setEnabled(true);
+                });
+            }
+        }, "Client-Login-Worker").start();
     }
 
     /**
@@ -132,7 +146,6 @@ public class LoginPanel extends JPanel {
         if (success) {
             lblStatus.setText("");
             txtPassword.setText("");
-            // TODO: Chuyển sang màn hình Lobby
             mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
         } else {
             lblStatus.setForeground(Color.RED);

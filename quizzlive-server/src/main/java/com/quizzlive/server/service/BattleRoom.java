@@ -2,6 +2,7 @@ package com.quizzlive.server.service;
 
 import com.quizzlive.server.dao.MatchConfigDAO;
 import com.quizzlive.server.dao.QuestionDAO;
+import com.quizzlive.server.dao.StatisticDAO;
 import com.quizzlive.server.dao.UserDAO;
 import com.quizzlive.server.entity.Answer;
 import com.quizzlive.server.entity.MatchConfig;
@@ -27,9 +28,13 @@ public class BattleRoom {
     private final Integer topicId;
     private final String difficulty;
 
+    public static final int TOTAL_QUESTIONS = 5;
+    public static final int TIME_LIMIT_SECONDS = 10;
+
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final UserDAO userDAO = new UserDAO();
     private final MatchConfigDAO matchConfigDAO = new MatchConfigDAO();
+    private final StatisticDAO statisticDAO = new StatisticDAO();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     // cấu hình trận đấu (nạp động từ CSDL do Admin quản trị)
@@ -274,6 +279,18 @@ public class BattleRoom {
 
         userDAO.updateMatchResult(player1.getUserId(), p1TotalScore > p2TotalScore, isDraw, p1TotalScore);
         userDAO.updateMatchResult(player2.getUserId(), p2TotalScore > p1TotalScore, isDraw, p2TotalScore);
+
+        statisticDAO.saveMatchRecord(
+                matchId,
+                "MATCH_" + matchId,
+                player1.getUserId(),
+                player2.getUserId(),
+                p1TotalScore,
+                p2TotalScore,
+                winnerUserId,
+                topicId,
+                difficulty
+        );
 
         scheduler.shutdown();
     }

@@ -1,5 +1,7 @@
 package com.quizzlive.server.handler;
 
+import com.quizzlive.server.dao.QuestionDAO;
+import com.quizzlive.server.dao.StatisticDAO;
 import com.quizzlive.server.network.ClientSession;
 import com.quizzlive.server.network.SessionManager;
 import com.quizzlive.server.service.*;
@@ -7,6 +9,8 @@ import com.quizzlive.shared.dto.*;
 import com.quizzlive.shared.protocol.OpCode;
 import com.quizzlive.shared.protocol.Packet;
 import com.quizzlive.shared.util.JsonUtil;
+
+import java.util.List;
 
 /**
  * LỚP ĐIỀU PHỐI GÓI TIN MẠNG (PACKET ROUTER)
@@ -16,10 +20,13 @@ public class PacketRouter {
     private final AuthService authService = new AuthService();
     private final IQTestService iqTestService = new IQTestService();
     private final TournamentService tournamentService = new TournamentService();
+    private final StatisticDAO statisticDAO = new StatisticDAO();
+    private final QuestionDAO questionDAO = new QuestionDAO();
     private final SessionManager sessionManager;
 
     public PacketRouter(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
+        ChallengeService.getInstance().setSessionManager(sessionManager);
     }
 
     public void route(ClientSession session, Packet packet) {
@@ -56,6 +63,17 @@ public class PacketRouter {
                 session.setUserId(null);
                 session.setUsername(null);
                 session.sendPacket(new Packet(OpCode.LOGOUT_RESP, "{\"success\":true}"));
+                break;
+            }
+            case UPDATE_PROFILE_REQ: {
+                AuthDTO.UpdateProfileRequest req = JsonUtil.fromJson(json, AuthDTO.UpdateProfileRequest.class);
+                AuthDTO.AuthResponse resp = authService.updateProfile(session.getUserId(), req);
+                session.sendPacket(new Packet(OpCode.UPDATE_PROFILE_RESP, JsonUtil.toJson(resp)));
+                break;
+            }
+            case ONLINE_USERS_REQ: {
+                List<AuthDTO.AuthResponse> onlineUsers = authService.getOnlineUsers(session.getUserId());
+                session.sendPacket(new Packet(OpCode.ONLINE_USERS_RESP, JsonUtil.toJson(onlineUsers)));
                 break;
             }
 
@@ -114,6 +132,40 @@ public class PacketRouter {
             case TOURNAMENT_LIST_REQ: {
                 TournamentDTO.TournamentItem[] list = tournamentService.getActiveTournaments();
                 session.sendPacket(new Packet(OpCode.TOURNAMENT_LIST_RESP, JsonUtil.toJson(list)));
+                break;
+            }
+
+            // --- 7. BẢNG XẾP HẠNG & LỊCH SỬ (Yêu cầu 10) ---
+            case LEADERBOARD_REQ: {
+                LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(20);
+                session.sendPacket(new Packet(OpCode.LEADERBOARD_RESP, JsonUtil.toJson(resp)));
+                break;
+            }
+            case MATCH_HISTORY_REQ: {
+                long targetUserId = session.getUserId() != null ? session.getUserId() : 0L;
+                try {
+                    if (json != null && json.contains("userId")) {
+                        com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                        if (obj != null && obj.has("userId")) {
+                            targetUserId = obj.get("userId").getAsLong();
+                        }
+                    }
+                } catch (Exception ignored) {}
+                List<LeaderboardDTO.MatchHistoryItem> history = statisticDAO.getMatchHistory(targetUserId, 20);
+                session.sendPacket(new Packet(OpCode.MATCH_HISTORY_RESP, JsonUtil.toJson(history)));
+                break;
+            }
+
+            // --- 8. TOPIC / CHỦ ĐỀ & CẤU HÌNH (Yêu cầu 4) ---
+            case TOPIC_LIST_REQ: {
+                List<com.quizzlive.server.entity.Topic> topics = questionDAO.getAllTopics();
+                java.util.List<TopicDTO> topicDTOs = new java.util.ArrayList<>();
+                if (topics != null) {
+                    for (com.quizzlive.server.entity.Topic t : topics) {
+                        topicDTOs.add(new TopicDTO(t.getTopicId(), t.getTopicName(), t.getDescription()));
+                    }
+                }
+                session.sendPacket(new Packet(OpCode.TOPIC_LIST_RESP, JsonUtil.toJson(topicDTOs)));
                 break;
             }
 

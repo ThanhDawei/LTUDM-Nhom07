@@ -58,7 +58,7 @@ public class LeaderboardPanel extends JPanel {
 
         JButton btnRefresh = new JButton("Làm Mới");
         btnRefresh.setFocusPainted(false);
-        btnRefresh.addActionListener(e -> leaderboardService.requestLeaderboard());
+        btnRefresh.addActionListener(e -> refreshData(mainFrame.getLobbyPanel().getCurrentUserId()));
 
         JButton btnBack = new JButton("⬅️ Quay lại Phòng Chờ");
         btnBack.setFocusPainted(false);
@@ -132,6 +132,13 @@ public class LeaderboardPanel extends JPanel {
                         item.totalPoints
                 });
             }
+        }
+    }
+
+    public void refreshData(Long userId) {
+        leaderboardService.requestLeaderboard();
+        if (userId != null && userId > 0) {
+            leaderboardService.requestMatchHistory(userId);
         }
     }
 

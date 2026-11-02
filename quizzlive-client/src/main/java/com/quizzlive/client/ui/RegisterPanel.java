@@ -1,5 +1,6 @@
 package com.quizzlive.client.ui;
 
+import com.quizzlive.client.network.SocketClient;
 import com.quizzlive.client.service.ClientAuthService;
 
 import javax.swing.*;
@@ -52,7 +53,7 @@ public class RegisterPanel extends JPanel {
         card.add(lblTitle, gbc);
 
         gbc.gridy++;
-        JLabel lblSubtitle = new JLabel("Nhập email chính xác để nhận mã xác thực OTP", SwingConstants.CENTER);
+        JLabel lblSubtitle = new JLabel("Nhập email chính xác để nhận mã xác thực OTP (10 phút)", SwingConstants.CENTER);
         lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblSubtitle.setForeground(Color.GRAY);
         card.add(lblSubtitle, gbc);
@@ -124,17 +125,48 @@ public class RegisterPanel extends JPanel {
         String fullName = txtFullName.getText().trim();
 
         if (username.isEmpty() || password.isEmpty() || email.isEmpty() || fullName.isEmpty()) {
+            lblStatus.setForeground(Color.RED);
             lblStatus.setText("Vui lòng điền đầy đủ tất cả các trường!");
             return;
         }
 
-        lblStatus.setForeground(Color.BLUE);
+        if (username.length() < 3) {
+            lblStatus.setForeground(Color.RED);
+            lblStatus.setText("Tên đăng nhập phải có tối thiểu 3 ký tự!");
+            return;
+        }
+
+        if (password.length() < 6) {
+            lblStatus.setForeground(Color.RED);
+            lblStatus.setText("Mật khẩu phải có tối thiểu 6 ký tự!");
+            return;
+        }
+
+        if (!email.contains("@") || !email.contains(".")) {
+            lblStatus.setForeground(Color.RED);
+            lblStatus.setText("Định dạng email không hợp lệ!");
+            return;
+        }
+
+        lblStatus.setForeground(new Color(41, 128, 185));
         lblStatus.setText("Đang gửi yêu cầu đăng ký...");
         btnRegister.setEnabled(false);
         this.pendingEmail = email;
 
-        // Gửi REGISTER_REQ
-        authService.sendRegister(username, password, email, fullName);
+        new Thread(() -> {
+            try {
+                if (!SocketClient.getInstance().isConnected()) {
+                    SocketClient.getInstance().connect();
+                }
+                authService.sendRegister(username, password, email, fullName);
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    lblStatus.setForeground(Color.RED);
+                    lblStatus.setText("Không thể kết nối đến máy chủ: " + e.getMessage());
+                    btnRegister.setEnabled(true);
+                });
+            }
+        }, "Client-Register-Worker").start();
     }
 
     /**
@@ -157,15 +189,28 @@ public class RegisterPanel extends JPanel {
     private void promptOtpDialog() {
         String otp = JOptionPane.showInputDialog(
                 this,
-                "Mã OTP đã được gửi về email " + pendingEmail + ".\nVui lòng nhập mã OTP để kích hoạt:",
-                "Xác thực Email (OTP)",
+                "Mã OTP đã được gửi về email '" + pendingEmail + "'.\n(Xem log console Server nếu chạy cục bộ)\nVui lòng nhập mã OTP để kích hoạt:",
+                "Xác thực Email (OTP - 10 phút)",
                 JOptionPane.QUESTION_MESSAGE
         );
 
         if (otp != null && !otp.trim().isEmpty()) {
-            lblStatus.setForeground(Color.BLUE);
+            lblStatus.setForeground(new Color(41, 128, 185));
             lblStatus.setText("Đang xác thực OTP...");
-            authService.sendVerifyOtp(pendingEmail, otp.trim());
+
+            new Thread(() -> {
+                try {
+                    if (!SocketClient.getInstance().isConnected()) {
+                        SocketClient.getInstance().connect();
+                    }
+                    authService.sendVerifyOtp(pendingEmail, otp.trim());
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        lblStatus.setForeground(Color.RED);
+                        lblStatus.setText("Lỗi mạng khi gửi OTP: " + e.getMessage());
+                    });
+                }
+            }, "Client-VerifyOtp-Worker").start();
         }
     }
 
@@ -175,6 +220,7 @@ public class RegisterPanel extends JPanel {
     public void onVerifyOtpResponse(boolean success, String message) {
         if (success) {
             JOptionPane.showMessageDialog(this, "Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            txtPassword.setText("");
             mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
         } else {
             JOptionPane.showMessageDialog(this, "Xác thực OTP thất bại: " + message, "Lỗi OTP", JOptionPane.ERROR_MESSAGE);

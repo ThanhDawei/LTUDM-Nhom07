@@ -22,6 +22,11 @@ public class ServerConfig {
     private static boolean speedBonusEnabled = true;
     private static int matchmakingTimeoutSeconds = 60;
 
+    private static String smtpHost = "";
+    private static int smtpPort = 587;
+    private static String smtpUsername = "";
+    private static String smtpPassword = "";
+
     static {
         loadConfig();
     }
@@ -49,6 +54,11 @@ public class ServerConfig {
                 baseScore = Integer.parseInt(prop.getProperty("match.base-score", "100"));
                 speedBonusEnabled = Boolean.parseBoolean(prop.getProperty("match.speed-bonus-enabled", "true"));
                 matchmakingTimeoutSeconds = Integer.parseInt(prop.getProperty("matchmaking.timeout-seconds", "60"));
+
+                smtpHost = prop.getProperty("mail.smtp.host", "");
+                smtpPort = Integer.parseInt(prop.getProperty("mail.smtp.port", "587"));
+                smtpUsername = prop.getProperty("mail.smtp.username", "");
+                smtpPassword = prop.getProperty("mail.smtp.password", "");
             }
         } catch (Exception e) {
             System.out.println("[ServerConfig] Could not load application.properties, using defaults.");
@@ -72,4 +82,9 @@ public class ServerConfig {
     public static int getBaseScore() { return baseScore; }
     public static boolean isSpeedBonusEnabled() { return speedBonusEnabled; }
     public static int getMatchmakingTimeoutSeconds() { return matchmakingTimeoutSeconds; }
+
+    public static String getSmtpHost() { return smtpHost; }
+    public static int getSmtpPort() { return smtpPort; }
+    public static String getSmtpUsername() { return smtpUsername; }
+    public static String getSmtpPassword() { return smtpPassword; }
 }
