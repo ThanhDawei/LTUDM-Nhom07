@@ -61,7 +61,6 @@ public class UserDAO {
     public Long createUser(String username, String password, String email, String fullName) {
         String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, NOW())";
         String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen) VALUES (?, ?)";
-        String sqlStats = "INSERT INTO THONG_KE_NGUOI_CHOI (MaNguoiDung) VALUES (?)";
 
         Connection conn = null;
         try {
@@ -85,11 +84,6 @@ public class UserDAO {
                 psProfile.setLong(1, userId);
                 psProfile.setString(2, fullName);
                 psProfile.executeUpdate();
-            }
-
-            try (PreparedStatement psStats = conn.prepareStatement(sqlStats)) {
-                psStats.setLong(1, userId);
-                psStats.executeUpdate();
             }
 
             conn.commit();
@@ -158,9 +152,13 @@ public class UserDAO {
                     profile.setTotalMatches(rs.getInt("TongSoTran"));
                     profile.setWinMatches(rs.getInt("TongSoTranThang"));
                     profile.setLoseMatches(rs.getInt("TongSoTranThua"));
+                    profile.setDrawMatches(rs.getInt("TongSoHoa"));
                     profile.setCurrentStreak(rs.getInt("ChuoiThangHienTai"));
                     profile.setMaxStreak(rs.getInt("ChuoiThangDaiNhat"));
                     profile.setTotalPoints(rs.getLong("TongDiem"));
+                    profile.setTotalQuestions(rs.getInt("TongSoCau"));
+                    profile.setCorrectQuestions(rs.getInt("TongCauDung"));
+                    profile.setHighestScore(rs.getInt("DiemCaoNhat"));
                     return profile;
                 }
             }
@@ -187,22 +185,27 @@ public class UserDAO {
                 "TongSoTran = TongSoTran + 1, " +
                 "TongSoTranThang = TongSoTranThang + ?, " +
                 "TongSoTranThua = TongSoTranThua + ?, " +
+                "TongSoHoa = TongSoHoa + ?, " +
                 "ChuoiThangHienTai = CASE WHEN ? = 1 THEN ChuoiThangHienTai + 1 ELSE 0 END, " +
                 "ChuoiThangDaiNhat = GREATEST(ChuoiThangDaiNhat, CASE WHEN ? = 1 THEN ChuoiThangHienTai + 1 ELSE ChuoiThangDaiNhat END), " +
-                "TongDiem = TongDiem + ? " +
+                "TongDiem = TongDiem + ?, " +
+                "DiemCaoNhat = GREATEST(DiemCaoNhat, ?) " +
                 "WHERE MaNguoiDung = ?";
 
         int winInc = won ? 1 : 0;
         int loseInc = (!won && !isDraw) ? 1 : 0;
+        int drawInc = isDraw ? 1 : 0;
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sqlProfile)) {
             ps.setInt(1, winInc);
             ps.setInt(2, loseInc);
-            ps.setInt(3, winInc);
+            ps.setInt(3, drawInc);
             ps.setInt(4, winInc);
-            ps.setInt(5, scoreEarned);
-            ps.setLong(6, userId);
+            ps.setInt(5, winInc);
+            ps.setInt(6, scoreEarned);
+            ps.setInt(7, scoreEarned);
+            ps.setLong(8, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

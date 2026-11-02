@@ -1,5 +1,6 @@
 package com.quizzlive.server.dao;
 
+import com.quizzlive.server.config.ServerConfig;
 import com.quizzlive.server.database.DatabaseManager;
 import com.quizzlive.server.entity.Answer;
 import com.quizzlive.server.entity.Question;
@@ -10,6 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QuestionDAO {
+
+    private String getRandomFunction() {
+        return (ServerConfig.getDbUrl() != null && ServerConfig.getDbUrl().contains("postgresql")) ? "RANDOM()" : "RAND()";
+    }
 
     public List<Topic> getAllTopics() {
         List<Topic> topics = new ArrayList<>();
@@ -41,7 +46,7 @@ public class QuestionDAO {
         if (difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
             sql.append("AND DoKho = '").append(difficulty).append("' ");
         }
-        sql.append("ORDER BY RAND() LIMIT ?");
+        sql.append("ORDER BY ").append(getRandomFunction()).append(" LIMIT ?");
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -60,7 +65,7 @@ public class QuestionDAO {
     }
 
     public Question getRandomIQQuestion() {
-        String sql = "SELECT * FROM CAU_HOI WHERE LoaiCauHoi = 'IQ_IMAGE' AND TrangThai = 'ACTIVE' ORDER BY RAND() LIMIT 1";
+        String sql = "SELECT * FROM CAU_HOI WHERE LoaiCauHoi = 'IQ_IMAGE' AND TrangThai = 'ACTIVE' ORDER BY " + getRandomFunction() + " LIMIT 1";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

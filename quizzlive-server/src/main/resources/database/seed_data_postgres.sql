@@ -30,18 +30,11 @@ INSERT INTO NGUOI_DUNG (MaNguoiDung, TenDangNhap, MatKhau, Email, TrangThai, Tra
 (4, 'player_lan', '123456', 'lan@quizzlive.com', 'ACTIVE', FALSE, CURRENT_TIMESTAMP)
 ON CONFLICT (MaNguoiDung) DO NOTHING;
 
-INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu, DiemIQ, TongSoTran, TongSoTranThang, TongSoTranThua, ChuoiThangHienTai, ChuoiThangDaiNhat, TongDiem) VALUES
-(1, 'Nguyễn Văn Nam', 'avatar1.png', 'Thích tranh tài tri thức', 125.00, 20, 15, 5, 4, 7, 18500),
-(2, 'Trần Thị Hoa', 'avatar2.png', 'Đam mê lập trình mạng', 130.50, 25, 20, 5, 6, 9, 24600),
-(3, 'Lê Anh Tuấn', 'avatar3.png', 'Cao thủ trắc nghiệm', 118.00, 15, 8, 7, 1, 3, 9800),
-(4, 'Phạm Ngọc Lan', 'avatar4.png', 'Newbie học hỏi', 110.00, 10, 4, 6, 0, 2, 4500)
-ON CONFLICT (MaNguoiDung) DO NOTHING;
-
-INSERT INTO THONG_KE_NGUOI_CHOI (MaNguoiDung, TongSoTran, TongSoThang, TongSoThua, TongSoHoa, TongSoCau, TongCauDung, TongDiem, ChuoiThangDaiNhat, DiemCaoNhat) VALUES
-(1, 20, 15, 5, 0, 100, 82, 18500, 7, 980),
-(2, 25, 20, 5, 0, 125, 110, 24600, 9, 1000),
-(3, 15, 8, 7, 0, 75, 45, 9800, 3, 850),
-(4, 10, 4, 6, 0, 50, 28, 4500, 2, 600)
+INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu, DiemIQ, TongSoTran, TongSoTranThang, TongSoTranThua, TongSoHoa, ChuoiThangHienTai, ChuoiThangDaiNhat, TongDiem, TongSoCau, TongCauDung, DiemCaoNhat) VALUES
+(1, 'Nguyễn Văn Nam', 'avatar1.png', 'Thích tranh tài tri thức', 125.00, 20, 15, 5, 0, 4, 7, 18500, 100, 82, 980),
+(2, 'Trần Thị Hoa', 'avatar2.png', 'Đam mê lập trình mạng', 130.50, 25, 20, 5, 0, 6, 9, 24600, 125, 110, 1000),
+(3, 'Lê Anh Tuấn', 'avatar3.png', 'Cao thủ trắc nghiệm', 118.00, 15, 8, 7, 0, 1, 3, 9800, 75, 45, 850),
+(4, 'Phạm Ngọc Lan', 'avatar4.png', 'Newbie học hỏi', 110.00, 10, 4, 6, 0, 0, 2, 4500, 50, 28, 600)
 ON CONFLICT (MaNguoiDung) DO NOTHING;
 
 -- 5. Ngân hàng Câu hỏi & Đáp án
@@ -70,3 +63,15 @@ INSERT INTO DAP_AN (MaDapAn, MaCauHoi, KyHieu, NoiDung, LaDapAnDung) VALUES
 (15, 4, 'C', 'Hình số 3', FALSE),
 (16, 4, 'D', 'Hình số 4', FALSE)
 ON CONFLICT (MaDapAn) DO NOTHING;
+
+-- 6. Dữ liệu mẫu Giải Đấu & Xếp Hạng Giải (Requirement 9)
+INSERT INTO GIAI_DAU (MaGiai, TenGiai, MoTa, TrangThai, SoNguoiToiDa, ThoiGianBatDau) VALUES
+(1, 'Đại Chiến Tri Thức SGU 2026', 'Giải đấu trắc nghiệm kiến thức đa lĩnh vực toàn trường', 'UPCOMING', 16, CURRENT_TIMESTAMP + INTERVAL '1 day')
+ON CONFLICT (MaGiai) DO NOTHING;
+
+INSERT INTO XEP_HANG_GIAI (MaGiai, MaNguoiDung, BangDau, HatGiong, SoTran, SoTranThang, SoTranHoa, SoTranThua, TongDiem, ViTri) VALUES
+(1, 1, 'Bảng A', 1, 3, 3, 0, 0, 300, 1),
+(1, 2, 'Bảng A', 2, 3, 2, 0, 1, 200, 2),
+(1, 3, 'Bảng B', 1, 3, 2, 1, 0, 250, 1),
+(1, 4, 'Bảng B', 2, 3, 1, 0, 2, 100, 2)
+ON CONFLICT (MaGiai, MaNguoiDung) DO NOTHING;
