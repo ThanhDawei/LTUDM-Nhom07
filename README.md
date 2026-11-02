@@ -3,6 +3,10 @@
 **Trường Đại học Sài Gòn (SGU) - Khoa Công nghệ Thông tin**  
 **Nhóm thực hiện**: Nhóm 07  
 **Đề tài 09**: Tranh tài kiến thức (Thi đấu trắc nghiệm thời gian thực)
+**Thành viên nhóm bao gồm:**
+**Huỳnh Tuấn Thành - 3124410322 - @ThanhDawei**
+**Võ Thành Chiến - // - //**
+**Nguyễn Thanh Tâm - // - //**
 
 ---
 
@@ -24,18 +28,19 @@ Dự án tuân thủ nghiêm ngặt **100% quy định kỹ thuật của môn h
 |:---:|:---:|---|---|
 | **1** | Client/Server | Đăng ký tài khoản, đăng nhập, cập nhật thông tin cá nhân, **xác thực email bằng mã OTP** (thời hạn 10 phút). | `com.quizzlive.server.service.AuthService`<br>`com.quizzlive.server.dao.OtpDAO`<br>`com.quizzlive.shared.dto.AuthDTO` |
 | **2** | Client/Server | **Ghép cặp tự động trong 60 giây**; hết thời gian chưa ghép được thì gửi thông báo đưa người chơi về phòng chờ. | `com.quizzlive.server.service.MatchmakingService`<br>`com.quizzlive.shared.dto.MatchmakingDTO` |
-| **3** | Client/Server | **Thách đấu bạn bè**: Mời trực tiếp một người đang online vào trận đấu 1v1. | `com.quizzlive.server.service.ChallengeService`<br>`com.quizzlive.shared.dto.ChallengeDTO` |
-| **4** | Client | **Chọn chủ đề và độ khó** câu hỏi trước khi thi đấu (EASY, MEDIUM, HARD). | `com.quizzlive.server.dao.QuestionDAO`<br>`com.quizzlive.shared.dto.TopicDTO` |
-| **5** | Client/Server | Mỗi trận 5 câu (cấu hình được), mỗi câu 4 đáp án, tối đa 10 giây; **điểm tính theo thời gian còn lại**; trả lời sai hoặc không trả lời được 0 điểm. | `com.quizzlive.server.service.BattleRoom`<br>`com.quizzlive.server.dao.MatchConfigDAO` |
-| **6** | Client/Server | **Chuyển câu khi CẢ HAI đã trả lời hoặc HẾT 10 giây**; khi đó mỗi người thấy lựa chọn của đối thủ và đáp án đúng. | `BattleRoom.submitAnswer()`<br>`BattleRoom.onBothAnswered()` |
-| **7** | Client/Server | Câu hỏi trong một trận không trùng nhau; **thứ tự câu hỏi và thứ tự đáp án được xáo trộn ngẫu nhiên** ở mỗi ván đấu. | `QuestionDAO.getRandomQuestions()`<br>`BattleRoom.nextQuestion()` |
-| **8** | Client/Server | **Kết quả trận**: Sau 5 câu, ai điểm cao hơn thắng (cập nhật thành tích, chuỗi thắng/thua vào CSDL). | `BattleRoom.finishMatch()`<br>`UserDAO.updateMatchResult()` |
+| **3** | Client/Server | **Thách đấu bạn bè**: Mời trực tiếp một người đang online vào trận. | `com.quizzlive.server.service.ChallengeService`<br>`com.quizzlive.shared.dto.ChallengeDTO` |
+| **4** | Client | **Chọn chủ đề/độ khó** câu hỏi trước khi thi. | `com.quizzlive.server.dao.QuestionDAO`<br>`com.quizzlive.shared.dto.TopicDTO` |
+| **5** | Client/Server | Mỗi trận 5 câu (cấu hình được), mỗi câu 4 đáp án, tối đa 10 giây; điểm tính theo thời gian còn lại; sai hoặc không
+trả lời được 0 điểm.; **điểm tính theo thời gian còn lại**; trả lời sai hoặc không trả lời được 0 điểm. | `com.quizzlive.server.service.BattleRoom`<br>`com.quizzlive.server.dao.MatchConfigDAO` |
+| **6** | Client/Server | Chuyển câu khi cả hai đã trả lời hoặc hết 10 giây; khi đó mỗi người thấy lựa chọn của đối thủ và đáp án đúng. | `BattleRoom.submitAnswer()`<br>`BattleRoom.onBothAnswered()` |
+| **7** | Client/Server | Câu hỏi trong một trận không trùng nhau; **thứ tự câu hỏi và thứ tự đáp án được xáo trộn**. | `QuestionDAO.getRandomQuestions()`<br>`BattleRoom.nextQuestion()` |
+| **8** | Client/Server | **Kết quả trận**: Sau 5 câu, ai điểm cao hơn thắng. | `BattleRoom.finishMatch()`<br>`UserDAO.updateMatchResult()` |
 | **9** | Client/Server | **Giải đấu**: Tổ chức giải nhiều người theo vòng/bảng, có bảng xếp hạng của giải đấu. | `com.quizzlive.server.service.TournamentService`<br>`com.quizzlive.shared.dto.TournamentDTO` |
 | **10** | Client/Server | **Xếp hạng chung**: Xem thứ hạng, chuỗi thắng/thua dài nhất, tỉ lệ thắng/thua; xem lịch sử trận đấu. | `com.quizzlive.server.dao.StatisticDAO`<br>`com.quizzlive.shared.dto.LeaderboardDTO` |
 | **11** | Client/Server | **Test IQ bằng hình ảnh trong lúc chờ ghép cặp**; không dùng để xếp hạng; điểm IQ được lưu vào hồ sơ cá nhân. | `com.quizzlive.server.service.IQTestService`<br>`com.quizzlive.shared.dto.IQTestDTO` |
-| **12** | Server | **GUI quản trị**: Thêm, sửa, xóa câu hỏi trong ngân hàng câu hỏi (phân loại theo chủ đề/độ khó, có hình ảnh). | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 2: Ngân hàng câu hỏi)* |
-| **13** | Server | **GUI quản trị**: Cấu hình số câu hỏi mỗi trận (mặc định 5), thời gian mỗi câu (mặc định 10s) và điểm trận đấu. | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 3: Cấu hình trận đấu)* |
-| **14** | Server | **Điều phối ghép cặp, trận đấu và giải đấu**; đồng bộ trạng thái giữa hai người chơi. | `com.quizzlive.server.service.BattleManager`<br>`com.quizzlive.server.service.BattleRoom` |
+| **12** | Server | **GUI quản trị**: Thêm, sửa, xóa câu hỏi trong ngân hàng câu hỏi (phân loại theo chủ đề/độ khó). | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 2: Ngân hàng câu hỏi)* |
+| **13** | Server | **GUI quản trị**: Cấu hình số câu hỏi mỗi trận, thời gian mỗi câu và điểm trận đấu. | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 3: Cấu hình trận đấu)* |
+| **14** | Server | **Điều phối ghép cặp, trận đấu và giải đấu**; đồng bộ giữa hai người chơi. | `com.quizzlive.server.service.BattleManager`<br>`com.quizzlive.server.service.BattleRoom` |
 | **15** | Server | Thống kê tổng số người chơi, số đang online; **Khóa / Mở khóa người dùng**. | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 1: Quản lý người dùng)* |
 | **16** | Server | **Truy vấn cơ bản**: Người tham gia nhiều trận nhất, người thắng nhiều nhất, người có chuỗi thắng dài nhất. | `com.quizzlive.server.gui.ServerMainFrame`<br>*(Tab 4: Thống kê & Báo cáo)* |
 
