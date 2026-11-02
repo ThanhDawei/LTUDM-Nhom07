@@ -3,10 +3,10 @@
 **Trường Đại học Sài Gòn (SGU) - Khoa Công nghệ Thông tin**  
 **Nhóm thực hiện**: Nhóm 07  
 **Đề tài 09**: Tranh tài kiến thức (Thi đấu trắc nghiệm thời gian thực)
-**Thành viên nhóm bao gồm:**
-**Huỳnh Tuấn Thành - 3124410322 - @ThanhDawei**
-**Võ Thành Chiến - // - //**
-**Nguyễn Thanh Tâm - // - //**
+**Thành viên nhóm bao gồm:**:
+Huỳnh Tuấn Thành - 3124410322 - @ThanhDawei
+Võ Thành Chiến - // - //
+Nguyễn Thanh Tâm - // - //
 
 ---
 
