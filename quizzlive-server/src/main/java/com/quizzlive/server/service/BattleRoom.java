@@ -77,9 +77,15 @@ public class BattleRoom {
     private void loadMatchConfig() {
         MatchConfig config = matchConfigDAO.getActiveConfig();
         if (config != null) {
-            if (config.getQuestionCount() > 0) this.totalQuestions = config.getQuestionCount();
-            if (config.getTimePerQuestion() > 0) this.timeLimitSeconds = config.getTimePerQuestion();
-            if (config.getBaseScore() > 0) this.baseScore = config.getBaseScore();
+            if (config.getQuestionCount() > 0) {
+                this.totalQuestions = config.getQuestionCount();
+            }
+            if (config.getTimePerQuestion() > 0) {
+                this.timeLimitSeconds = config.getTimePerQuestion();
+            }
+            if (config.getBaseScore() > 0) {
+                this.baseScore = config.getBaseScore();
+            }
             this.speedBonus = config.isSpeedBonus();
         }
     }
