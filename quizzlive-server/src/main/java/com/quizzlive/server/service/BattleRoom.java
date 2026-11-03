@@ -96,7 +96,14 @@ public class BattleRoom {
         if (questions == null || questions.size() < totalQuestions) {// nếu không đủ câu hỏi thì lấy câu hỏi ngẫu nhiên
             questions = questionDAO.getRandomQuestions(null, null, totalQuestions);
         }
-
+        if (questions == null || questions.isEmpty()) {
+            System.err.println("[BattleRoom] Không tìm thấy câu hỏi nào trong CSDL!");
+            finishMatch();
+            return;
+        }
+        // ĐỒNG BỘ: Nếu CSDL chỉ có ít hơn 5 câu, tự động ép trận đấu thành số câu tối
+        // thiểu
+        this.totalQuestions = Math.min(this.totalQuestions, questions.size());
         Packet startPacket = new Packet(OpCode.BATTLE_START_NOTIFY, "{\"matchId\":" + matchId + "}");// gửi thông báo
                                                                                                      // bắt đầu trận đấu
         player1.sendPacket(startPacket);
@@ -106,7 +113,7 @@ public class BattleRoom {
     }
 
     public synchronized void nextQuestion() {
-        if (currentQuestionIndex >= totalQuestions) {
+        if (currentQuestionIndex >= totalQuestions || currentQuestionIndex >= questions.size()) {
             finishMatch();
             return;
         }
@@ -295,8 +302,7 @@ public class BattleRoom {
                 p2TotalScore,
                 winnerUserId,
                 topicId,
-                difficulty
-        );
+                difficulty);
 
         scheduler.shutdown();
     }

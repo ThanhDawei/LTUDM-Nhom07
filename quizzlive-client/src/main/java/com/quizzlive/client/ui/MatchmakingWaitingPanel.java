@@ -13,8 +13,10 @@ import java.util.List;
 /**
  * Giao diện Hàng đợi Ghép cặp tự động và Làm bài Test IQ bằng hình ảnh
  * Phụ trách:
- * - Yêu cầu 2: "Ghép cặp tự động trong 60 giây; hết thời gian chưa ghép được thì đưa về phòng chờ"
- * - Yêu cầu 11: "Test IQ bằng hình ảnh trong lúc chờ ghép cặp; không dùng để xếp hạng; điểm IQ lưu vào hồ sơ"
+ * - Yêu cầu 2: "Ghép cặp tự động trong 60 giây; hết thời gian chưa ghép được
+ * thì đưa về phòng chờ"
+ * - Yêu cầu 11: "Test IQ bằng hình ảnh trong lúc chờ ghép cặp; không dùng để
+ * xếp hạng; điểm IQ lưu vào hồ sơ"
  * Cấu hình: Không dùng băm và mã hóa.
  */
 public class MatchmakingWaitingPanel extends JPanel {
@@ -28,6 +30,7 @@ public class MatchmakingWaitingPanel extends JPanel {
     private JButton btnCancelQueue;
     private Timer queueTimer;
     private int remainingSeconds = 60;
+    private boolean isTimeoutHandled = false; // biến cờ chặn gọi trùng
 
     // Components cho Yêu cầu 11 (Test IQ bằng hình ảnh)
     private JLabel lblIqTitle;
@@ -55,8 +58,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         topQueuePanel.setBackground(Color.WHITE);
         topQueuePanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        ));
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)));
 
         JPanel queueInfo = new JPanel(new GridLayout(2, 1, 5, 5));
         queueInfo.setOpaque(false);
@@ -93,8 +95,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         iqCard.setBackground(Color.WHITE);
         iqCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(20, 25, 20, 25)
-        ));
+                BorderFactory.createEmptyBorder(20, 25, 20, 25)));
 
         JPanel iqHeader = new JPanel(new GridLayout(2, 1));
         iqHeader.setOpaque(false);
@@ -188,6 +189,7 @@ public class MatchmakingWaitingPanel extends JPanel {
      * Bắt đầu đếm ngược 60 giây khi người dùng bấm Tìm trận
      */
     public void startCountdown(int seconds) {
+        this.isTimeoutHandled = false; // Reset lại cờ khi người chơi bấm tìm trận mới
         this.remainingSeconds = seconds;
         progressBar.setMaximum(seconds);
         progressBar.setValue(seconds);
@@ -221,6 +223,7 @@ public class MatchmakingWaitingPanel extends JPanel {
     }
 
     private void cancelQueueAndReturn() {
+        this.isTimeoutHandled = true; // Chặn luôn để không bị hiện thông báo sau khi đã bấm hủy
         stopCountdown();
         matchmakingService.leaveQueue();
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
@@ -230,8 +233,13 @@ public class MatchmakingWaitingPanel extends JPanel {
      * Xử lý khi hết 60 giây chưa tìm thấy đối thủ (Yêu cầu 2)
      */
     public void handleQueueTimeout() {
+        if (isTimeoutHandled)
+            return; // Nếu đã hiện thông báo rồi thì BỎ QUA, không hiện lần 2
+        isTimeoutHandled = true;
         stopCountdown();
-        JOptionPane.showMessageDialog(this, "Hết thời gian 60 giây chưa tìm thấy đối thủ phù hợp!\nĐưa người chơi về phòng chờ.", "Thông báo ghép cặp (YC 2)", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this,
+                "Hết thời gian 60 giây chưa tìm thấy đối thủ phù hợp!\nĐưa người chơi về phòng chờ.",
+                "Thông báo ghép cặp (YC 2)", JOptionPane.INFORMATION_MESSAGE);
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
     }
 
@@ -242,13 +250,18 @@ public class MatchmakingWaitingPanel extends JPanel {
         }
 
         Long selectedAnswerId = null;
-        if (rbOptA.isSelected()) selectedAnswerId = (Long) rbOptA.getClientProperty("answerId");
-        else if (rbOptB.isSelected()) selectedAnswerId = (Long) rbOptB.getClientProperty("answerId");
-        else if (rbOptC.isSelected()) selectedAnswerId = (Long) rbOptC.getClientProperty("answerId");
-        else if (rbOptD.isSelected()) selectedAnswerId = (Long) rbOptD.getClientProperty("answerId");
+        if (rbOptA.isSelected())
+            selectedAnswerId = (Long) rbOptA.getClientProperty("answerId");
+        else if (rbOptB.isSelected())
+            selectedAnswerId = (Long) rbOptB.getClientProperty("answerId");
+        else if (rbOptC.isSelected())
+            selectedAnswerId = (Long) rbOptC.getClientProperty("answerId");
+        else if (rbOptD.isSelected())
+            selectedAnswerId = (Long) rbOptD.getClientProperty("answerId");
 
         if (selectedAnswerId == null) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 đáp án trước khi nộp!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 đáp án trước khi nộp!", "Thông báo",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -263,16 +276,18 @@ public class MatchmakingWaitingPanel extends JPanel {
      * Hiển thị câu hỏi IQ hình ảnh nhận được từ Server (Yêu cầu 11)
      */
     public void renderIQQuestion(IQTestDTO.IQQuestionNotify question) {
-        if (question == null) return;
+        if (question == null)
+            return;
         this.currentIqQuestionId = question.questionId;
-        lblIqTitle.setText("🧠 " + (question.content != null ? question.content : "Quan sát hình ảnh và chọn đáp án đúng:"));
+        lblIqTitle.setText(
+                "🧠 " + (question.content != null ? question.content : "Quan sát hình ảnh và chọn đáp án đúng:"));
         lblIqResult.setText("");
         btnSubmitIQ.setEnabled(true);
         bgIqOptions.clearSelection();
 
         // Gán đáp án vào các radio button
         List<BattleDTO.QuestionAnswerOption> options = question.options;
-        JRadioButton[] rbs = new JRadioButton[]{rbOptA, rbOptB, rbOptC, rbOptD};
+        JRadioButton[] rbs = new JRadioButton[] { rbOptA, rbOptB, rbOptC, rbOptD };
         for (int i = 0; i < rbs.length; i++) {
             if (options != null && i < options.size()) {
                 BattleDTO.QuestionAnswerOption opt = options.get(i);
@@ -301,7 +316,8 @@ public class MatchmakingWaitingPanel extends JPanel {
             lblIqImage.setText("");
         } else {
             lblIqImage.setIcon(null);
-            String desc = (imageUrl != null ? "[" + imageUrl + "] " : "") + (content != null ? content : "Quy luật logic");
+            String desc = (imageUrl != null ? "[" + imageUrl + "] " : "")
+                    + (content != null ? content : "Quy luật logic");
             lblIqImage.setText("<html><center style='color:#2c3e50; font-family: Segoe UI;'>"
                     + "<div style='font-size:14px; margin-bottom:8px;'><b>🧩 HÌNH MINH HỌA QUY LUẬT LOGIC</b></div>"
                     + "<div style='font-size:12px; color:#7f8c8d;'>" + desc + "</div>"
@@ -314,7 +330,8 @@ public class MatchmakingWaitingPanel extends JPanel {
      * Hiển thị kết quả chấm điểm IQ và cập nhật vào hồ sơ
      */
     public void renderIQResult(IQTestDTO.IQResultNotify result) {
-        if (result == null) return;
+        if (result == null)
+            return;
         btnSubmitIQ.setEnabled(true);
 
         if (result.isCorrect) {
