@@ -30,7 +30,8 @@ public class PacketRouter {
     }
 
     public void route(ClientSession session, Packet packet) {
-        if (packet == null || packet.getOpCode() == null) return;
+        if (packet == null || packet.getOpCode() == null)
+            return;
         OpCode op = packet.getOpCode();
         String json = packet.getPayloadJson();
 
@@ -112,8 +113,7 @@ public class PacketRouter {
             case BATTLE_SUBMIT_ANSWER_REQ: {
                 BattleDTO.AnswerSubmitRequest req = JsonUtil.fromJson(json, BattleDTO.AnswerSubmitRequest.class);
                 BattleManager.getInstance().handleAnswerSubmit(
-                        session.getUserId(), req.matchId, req.selectedAnswerId, req.responseTimeSeconds
-                );
+                        session.getUserId(), req.matchId, req.selectedAnswerId, req.responseTimeSeconds);
                 break;
             }
 
@@ -129,12 +129,30 @@ public class PacketRouter {
             }
 
             // --- 6. GIẢI ĐẤU (Yêu cầu 9) ---
-            case TOURNAMENT_LIST_REQ: {
+            case TOURNAMENT_LIST_REQ: {// lấy dsach giải đấu
                 TournamentDTO.TournamentItem[] list = tournamentService.getActiveTournaments();
                 session.sendPacket(new Packet(OpCode.TOURNAMENT_LIST_RESP, JsonUtil.toJson(list)));
                 break;
             }
-
+            case TOURNAMENT_JOIN_REQ: {// đk tham gia
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                long tournamentId = (obj != null && obj.has("tournamentId")) ? obj.get("tournamentId").getAsLong() : 1L;
+                boolean success = tournamentService.registerTournament(tournamentId, session.getUserId());
+                String msg = success ? "Đăng ký tham gia giải đấu thành công!"
+                        : "Bạn đã đăng ký giải đấu này rồi hoặc không thể đăng ký!";
+                session.sendPacket(new Packet(OpCode.TOURNAMENT_JOIN_RESP,
+                        "{\"success\":" + success + ",\"message\":\"" + msg + "\"}"));
+                break;
+            }
+            case TOURNAMENT_STANDINGS_REQ: {// xem chi tiết giải
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                long tournamentId = (obj != null && obj.has("tournamentId")) ? obj.get("tournamentId").getAsLong() : 1L;
+                TournamentDTO.StandingItem[] standings = tournamentService.getTournamentStandings(tournamentId);
+                TournamentDTO.TournamentDetailResponse detail = new TournamentDTO.TournamentDetailResponse();
+                detail.standings = java.util.Arrays.asList(standings);
+                session.sendPacket(new Packet(OpCode.TOURNAMENT_STANDINGS_RESP, JsonUtil.toJson(detail)));
+                break;
+            }
             // --- 7. BẢNG XẾP HẠNG & LỊCH SỬ (Yêu cầu 10) ---
             case LEADERBOARD_REQ: {
                 LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(20);
@@ -150,7 +168,8 @@ public class PacketRouter {
                             targetUserId = obj.get("userId").getAsLong();
                         }
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 List<LeaderboardDTO.MatchHistoryItem> history = statisticDAO.getMatchHistory(targetUserId, 20);
                 session.sendPacket(new Packet(OpCode.MATCH_HISTORY_RESP, JsonUtil.toJson(history)));
                 break;
