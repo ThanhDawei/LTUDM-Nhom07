@@ -28,6 +28,8 @@ public class SocketServer {
         try {
             // Reset trạng thái online cho toàn bộ người dùng khi khởi động lại máy chủ
             new UserDAO().resetAllOnlineStatus();
+            // Dọn dẹp tài khoản test rác để chỉ hiển thị tài khoản mẫu và tài khoản thật do người dùng đăng ký
+            new UserDAO().cleanupTestAccounts();
 
             ServerSocketFactory factory;
             if (ServerConfig.isSslEnabled()) {

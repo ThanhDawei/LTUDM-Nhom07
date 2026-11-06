@@ -287,6 +287,40 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Dọn dẹp toàn bộ tài khoản thử nghiệm phát sinh trong quá trình chạy test (nguoi1_test_..., test_..., player_alpha, player_beta)
+     * Đảm bảo CSDL chỉ lưu giữ 4 tài khoản mẫu ban đầu và các tài khoản thật do người dùng tự đăng ký.
+     */
+    public void cleanupTestAccounts() {
+        String sql = "DELETE FROM NGUOI_DUNG WHERE TenDangNhap LIKE 'nguoi1_test_%' " +
+                "OR TenDangNhap LIKE 'test_%' " +
+                "OR TenDangNhap IN ('player_alpha', 'player_beta')";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement()) {
+            int deleted = stmt.executeUpdate(sql);
+            if (deleted > 0) {
+                System.out.println("[UserDAO] Đã tự động dọn dẹp " + deleted + " tài khoản kiểm thử rác khỏi CSDL.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Xóa một tài khoản người dùng theo ID (Áp dụng ON DELETE CASCADE trên toàn bộ các bảng liên quan)
+     */
+    public boolean deleteUser(long userId) {
+        String sql = "DELETE FROM NGUOI_DUNG WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<User> getAllUsers() {
         List<User> list = new ArrayList<>();
         // Sắp xếp theo MaNguoiDung ASC để tài khoản mới tạo luôn nằm ở cuối bảng

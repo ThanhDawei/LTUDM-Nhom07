@@ -39,8 +39,8 @@ public class Task11Verification {
 
         // Khởi tạo CSDL
         try {
-            DatabaseManager.initialize();
-            System.out.println("  ✓ CSDL đã sẵn sàng.");
+            DatabaseManager.initializeForTesting();
+            System.out.println("  ✓ CSDL Test độc lập trong RAM đã sẵn sàng.");
         } catch (Exception e) {
             System.err.println("  ! Lỗi kết nối CSDL: " + e.getMessage());
         }

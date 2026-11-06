@@ -92,10 +92,15 @@ public class ServerMainFrame extends JFrame {
         btnBlock.setForeground(Color.RED);
         btnBlock.addActionListener(e -> toggleBlockUser());
 
+        JButton btnDeleteUser = new JButton("Xóa tài khoản");
+        btnDeleteUser.setForeground(new Color(192, 57, 43));
+        btnDeleteUser.addActionListener(e -> deleteSelectedUser());
+
         topBar.add(lblOnlineUsers);
         topBar.add(lblTotalUsers);
         topBar.add(btnRefreshUsers);
         topBar.add(btnBlock);
+        topBar.add(btnDeleteUser);
 
         panel.add(topBar, BorderLayout.NORTH);
 
@@ -273,6 +278,35 @@ public class ServerMainFrame extends JFrame {
         userDAO.blockUser(userId, !isBlocked);
         JOptionPane.showMessageDialog(this, isBlocked ? "Đã mở khóa người dùng!" : "Đã khóa người dùng thành công!");
         loadUsersData();
+    }
+
+    private void deleteSelectedUser() {
+        int row = tblUsers.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 người dùng trên bảng để xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Long userId = (Long) userTableModel.getValueAt(row, 0);
+        String username = (String) userTableModel.getValueAt(row, 1);
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản [" + username + "] (Mã ID: " + userId + ")?",
+                "Xác nhận xóa tài khoản",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            boolean success = userDAO.deleteUser(userId);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Đã xóa tài khoản [" + username + "] thành công!");
+                loadUsersData();
+            } else {
+                JOptionPane.showMessageDialog(this, "Xóa tài khoản thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void loadQuestionsData() {

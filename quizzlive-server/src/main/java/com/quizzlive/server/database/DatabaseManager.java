@@ -80,6 +80,31 @@ public class DatabaseManager {
         isInitialized = true;
     }
 
+    /**
+     * Khởi tạo CSDL riêng biệt trong bộ nhớ RAM cho các lớp kiểm thử tự động (Verification Tests).
+     * Đảm bảo kiểm thử KHÔNG ghi các tài khoản rác/test vào file CSDL thực tế của ứng dụng.
+     */
+    public static synchronized void initializeForTesting() {
+        if (dataSource != null) {
+            try {
+                dataSource.close();
+            } catch (Exception ignored) {}
+        }
+
+        HikariConfig h2TestConfig = new HikariConfig();
+        h2TestConfig.setDriverClassName("org.h2.Driver");
+        h2TestConfig.setJdbcUrl("jdbc:h2:mem:quizzlive_test_suite;DB_CLOSE_DELAY=-1;MODE=MySQL");
+        h2TestConfig.setUsername("sa");
+        h2TestConfig.setPassword("");
+        h2TestConfig.setMaximumPoolSize(5);
+        dataSource = new HikariDataSource(h2TestConfig);
+
+        executeSqlScript("database/schema.sql");
+        executeSqlScript("database/seed_data.sql");
+        isInitialized = true;
+        System.out.println("[DatabaseManager] Đã khởi tạo CSDL Test độc lập trong RAM (không ảnh hưởng file dữ liệu thật).");
+    }
+
     public static Connection getConnection() throws SQLException {
         if (dataSource == null) {
             initialize();

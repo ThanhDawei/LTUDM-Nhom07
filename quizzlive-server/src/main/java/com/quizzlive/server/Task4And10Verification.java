@@ -67,9 +67,9 @@ public class Task4And10Verification {
         System.out.println("===============================================================");
 
         try {
-            // 1. Khởi tạo CSDL
-            DatabaseManager.initialize();
-            System.out.println("  ✓ CSDL đã sẵn sàng.");
+            // 1. Khởi tạo CSDL Test độc lập trong RAM
+            DatabaseManager.initializeForTesting();
+            System.out.println("  ✓ CSDL Test độc lập trong RAM đã sẵn sàng.");
 
             SessionManager sessionManager = new SessionManager();
             PacketRouter packetRouter = new PacketRouter(sessionManager);

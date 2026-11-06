@@ -78,8 +78,8 @@ public class Task1Verification {
         // --- KHỞI TẠO CSDL ---
         System.out.println("\n[Khởi tạo CSDL cho kiểm thử]");
         try {
-            DatabaseManager.initialize();
-            System.out.println("  ✓ CSDL đã sẵn sàng.");
+            DatabaseManager.initializeForTesting();
+            System.out.println("  ✓ CSDL Test độc lập trong RAM đã sẵn sàng (không ghi dữ liệu test vào file chính).");
         } catch (Exception e) {
             System.err.println("  ! Lưu ý kết nối CSDL: " + e.getMessage());
         }
