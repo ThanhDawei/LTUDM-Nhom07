@@ -227,12 +227,31 @@ public class LobbyPanel extends JPanel {
         onlineHeader.add(btnRefreshOnline, BorderLayout.EAST);
         onlineCard.add(onlineHeader, BorderLayout.NORTH);
 
-        modelOnlineUsers = new DefaultTableModel(new String[]{"ID", "Tên người chơi", "Điểm IQ", "Trạng thái"}, 0) {
+        modelOnlineUsers = new DefaultTableModel(new String[]{"ID", "Ảnh", "Tên người chơi", "Điểm IQ", "Trạng thái"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
+            @Override
+            public Class<?> getColumnClass(int column) {
+                if (column == 1) return ImageIcon.class;
+                return Object.class;
+            }
         };
         tblOnlineUsers = new JTable(modelOnlineUsers);
-        tblOnlineUsers.setRowHeight(24);
+        tblOnlineUsers.setRowHeight(34);
+        tblOnlineUsers.getColumnModel().getColumn(0).setPreferredWidth(40);
+        tblOnlineUsers.getColumnModel().getColumn(1).setPreferredWidth(45);
+        tblOnlineUsers.getColumnModel().getColumn(2).setPreferredWidth(170);
+        tblOnlineUsers.getColumnModel().getColumn(3).setPreferredWidth(80);
+        tblOnlineUsers.getColumnModel().getColumn(4).setPreferredWidth(85);
+        tblOnlineUsers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblOnlineUsers.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    handleSendChallenge();
+                }
+            }
+        });
         onlineCard.add(new JScrollPane(tblOnlineUsers), BorderLayout.CENTER);
 
         btnChallenge = new JButton("⚡ Mời Thách Đấu Người Này");
@@ -283,7 +302,7 @@ public class LobbyPanel extends JPanel {
         }
 
         long targetUserId = Long.parseLong(modelOnlineUsers.getValueAt(selectedRow, 0).toString());
-        String targetUsername = modelOnlineUsers.getValueAt(selectedRow, 1).toString();
+        String targetName = modelOnlineUsers.getValueAt(selectedRow, 2).toString();
 
         if (currentUserId != null && currentUserId == targetUserId) {
             JOptionPane.showMessageDialog(this, "Bạn không thể tự thách đấu chính mình!", "Thông báo", JOptionPane.WARNING_MESSAGE);
@@ -294,16 +313,22 @@ public class LobbyPanel extends JPanel {
         Integer topicId = (selectedTopic == null || selectedTopic.id == 0) ? null : selectedTopic.id;
         String difficulty = mapDifficulty((String) cbDifficulty.getSelectedItem());
 
+        String topicName = selectedTopic != null ? selectedTopic.name : "Tất cả chủ đề";
+        String diffName = cbDifficulty != null ? (String) cbDifficulty.getSelectedItem() : "Mọi cấp độ";
+
         int confirm = JOptionPane.showConfirmDialog(
                 this,
-                "Bạn có chắc muốn gửi lời mời thách đấu tới " + targetUsername + "?",
-                "Xác nhận thách đấu",
-                JOptionPane.YES_NO_OPTION
+                "Bạn có chắc muốn gửi lời mời thách đấu 1v1 tới [" + targetName + "]?\n" +
+                "• Chủ đề câu hỏi: " + topicName + "\n" +
+                "• Mức độ khó: " + diffName,
+                "Xác Nhận Thách Đấu (Yêu Cầu 3)",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
             challengeService.sendChallenge(targetUserId, topicId, difficulty);
-            JOptionPane.showMessageDialog(this, "Đã gửi lời mời thách đấu tới " + targetUsername + ". Vui lòng chờ phản hồi!");
+            JOptionPane.showMessageDialog(this, "Đã gửi lời mời thách đấu tới " + targetName + "!\nVui lòng chờ đối thủ phản hồi (trong tối đa 60 giây).", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -325,14 +350,33 @@ public class LobbyPanel extends JPanel {
         if ("EASY".equalsIgnoreCase(diffDesc)) diffDesc = "Dễ";
         else if ("HARD".equalsIgnoreCase(diffDesc)) diffDesc = "Khó";
         else if ("MEDIUM".equalsIgnoreCase(diffDesc)) diffDesc = "Trung bình";
+        else if ("ALL".equalsIgnoreCase(diffDesc)) diffDesc = "Mọi cấp độ";
 
         String displayName = (invite.fromFullName != null && !invite.fromFullName.trim().isEmpty())
-                ? invite.fromFullName
+                ? invite.fromFullName + " (" + invite.fromUsername + ")"
                 : invite.fromUsername;
+
+        ImageIcon invAvatar = AvatarUtil.getAvatarIcon(invite.fromAvatar, 52);
+        JPanel inviteBox = new JPanel(new BorderLayout(15, 10));
+        inviteBox.setOpaque(false);
+        JLabel lblIcon = new JLabel(invAvatar);
+
+        String iqInfo = (invite.fromIqScore != null && invite.fromIqScore > 0) ? (invite.fromIqScore + " IQ") : "Chưa test";
+        JLabel lblMsg = new JLabel("<html><div style='font-family: Segoe UI;'>" +
+                "<b style='font-size: 13px; color: #2980b9;'>" + displayName + "</b> vừa gửi lời mời thách đấu 1v1 tới bạn!<br><br>" +
+                "• <b>Điểm IQ đối thủ:</b> " + iqInfo + "<br>" +
+                "• <b>Chủ đề thi đấu:</b> " + topicDesc + "<br>" +
+                "• <b>Độ khó câu hỏi:</b> " + diffDesc + "<br><br>" +
+                "<span style='color: #27ae60;'>Bạn có chấp nhận vào trận ngay bây giờ không?</span>" +
+                "</div></html>");
+
+        inviteBox.add(lblIcon, BorderLayout.WEST);
+        inviteBox.add(lblMsg, BorderLayout.CENTER);
+
         int choice = JOptionPane.showConfirmDialog(
                 this,
-                "Người chơi [" + displayName + "] đang thách đấu 1v1 với bạn!\n• Chủ đề: " + topicDesc + "\n• Độ khó: " + diffDesc + "\n\nBạn có chấp nhận thi đấu ngay không?",
-                "Lời Mời Thách Đấu 1v1 (YC 3)",
+                inviteBox,
+                "⚔️ LỜI MỜI THÁCH ĐẤU 1V1 (YÊU CẦU 3)",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
@@ -411,6 +455,19 @@ public class LobbyPanel extends JPanel {
         }
     }
 
+    private Timer onlineRefreshTimer;
+
+    private void startOnlineRefreshTimer() {
+        if (onlineRefreshTimer == null) {
+            onlineRefreshTimer = new Timer(5000, e -> {
+                if (isShowing() && currentUserId != null) {
+                    authService.requestOnlineUsers();
+                }
+            });
+            onlineRefreshTimer.start();
+        }
+    }
+
     public void updateUserInfo(AuthDTO.AuthResponse auth) {
         this.currentUserId = auth.userId;
         this.currentUsername = auth.username;
@@ -427,6 +484,7 @@ public class LobbyPanel extends JPanel {
 
         authService.requestOnlineUsers();
         matchmakingService.requestTopicList();
+        startOnlineRefreshTimer();
     }
 
     public void updateIQDisplay(double newIq) {
@@ -450,7 +508,20 @@ public class LobbyPanel extends JPanel {
         modelOnlineUsers.setRowCount(0);
         if (users != null) {
             for (AuthDTO.AuthResponse u : users) {
-                modelOnlineUsers.addRow(new Object[]{u.userId, u.username, u.iqScore != null ? u.iqScore : "-", "Online"});
+                if (currentUserId != null && u.userId != null && u.userId.equals(currentUserId)) {
+                    continue; // Không hiển thị chính mình trong danh sách đối thủ online
+                }
+                String displayName = (u.fullName != null && !u.fullName.trim().isEmpty())
+                        ? u.fullName + " (" + u.username + ")"
+                        : u.username;
+                ImageIcon avatarIcon = AvatarUtil.getAvatarIcon(u.avatarUrl, 26);
+                modelOnlineUsers.addRow(new Object[]{
+                        u.userId,
+                        avatarIcon,
+                        displayName,
+                        (u.iqScore != null && u.iqScore > 0) ? u.iqScore : "Chưa test",
+                        "🟢 Online"
+                });
             }
         }
     }

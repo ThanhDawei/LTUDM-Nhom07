@@ -314,7 +314,7 @@ public class UserDAO {
 
     public List<AuthDTO.AuthResponse> getOnlineUsers(Long excludeUserId) {
         List<AuthDTO.AuthResponse> list = new ArrayList<>();
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.DiemIQ " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.AnhDaiDien, h.GioiThieu, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "LEFT JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
                 "WHERE u.TrangThaiOnline = TRUE AND u.TrangThai = 'ACTIVE' " +
@@ -331,6 +331,8 @@ public class UserDAO {
                     item.userId = rs.getLong("MaNguoiDung");
                     item.username = rs.getString("TenDangNhap");
                     item.fullName = rs.getString("HoTen");
+                    item.avatarUrl = rs.getString("AnhDaiDien");
+                    item.bio = rs.getString("GioiThieu");
                     item.iqScore = rs.getDouble("DiemIQ");
                     item.success = true;
                     list.add(item);

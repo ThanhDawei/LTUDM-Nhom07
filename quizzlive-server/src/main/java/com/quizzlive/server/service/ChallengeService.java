@@ -82,7 +82,13 @@ public class ChallengeService {
             return;
         }
 
-        // 2. Tìm ClientSession của đối thủ trong SessionManager
+        // 2. Kiểm tra nếu chính người gửi đang trong trận đấu
+        if (BattleManager.getInstance().isUserInBattle(sender.getUserId())) {
+            sendResponse(sender, false, "Bạn đang tham gia một trận đấu khác!");
+            return;
+        }
+
+        // 3. Tìm ClientSession của đối thủ trong SessionManager
         ClientSession targetSession = (this.sessionManager != null)
                 ? this.sessionManager.getSessionByUserId(req.targetUserId)
                 : null;
@@ -92,11 +98,17 @@ public class ChallengeService {
             return;
         }
 
-        // 3. Chuẩn hóa độ khó và chủ đề
+        // 4. Kiểm tra đối thủ có đang trong trận đấu khác không
+        if (BattleManager.getInstance().isUserInBattle(req.targetUserId)) {
+            sendResponse(sender, false, "Người chơi này đang bận thi đấu một trận khác!");
+            return;
+        }
+
+        // 5. Chuẩn hóa độ khó và chủ đề
         String difficulty = normalizeDifficulty(req.difficulty);
         Integer topicId = (req.topicId != null && req.topicId > 0) ? req.topicId : null;
 
-        // 4. Kiểm tra xem đã có lời mời PENDING còn hạn giữa 2 người hay chưa
+        // 6. Kiểm tra xem đã có lời mời PENDING còn hạn giữa 2 người hay chưa
         for (ChallengeInvitation existing : activeInvitations.values()) {
             if ("PENDING".equals(existing.status) &&
                     existing.senderUserId == sender.getUserId() &&
@@ -107,11 +119,11 @@ public class ChallengeService {
             }
         }
 
-        // 5. Lưu lời mời vào CSDL (LOI_MOI_THACH_DAU)
+        // 7. Lưu lời mời vào CSDL (LOI_MOI_THACH_DAU)
         long dbId = challengeDAO.saveInvitation(sender.getUserId(), req.targetUserId, "PENDING");
         long invitationId = (dbId > 0) ? dbId : invitationIdSeq.incrementAndGet();
 
-        // 6. Lưu vào bộ nhớ RAM
+        // 8. Lưu vào bộ nhớ RAM
         ChallengeInvitation invitation = new ChallengeInvitation();
         invitation.invitationId = invitationId;
         invitation.senderSession = sender;
@@ -126,18 +138,21 @@ public class ChallengeService {
         invitation.status = "PENDING";
         activeInvitations.put(invitationId, invitation);
 
-        // 7. Lấy thông tin hồ sơ của người gửi để gửi cho đối thủ hiển thị
+        // 9. Lấy thông tin hồ sơ của người gửi để gửi cho đối thủ hiển thị
         UserProfile senderProfile = userDAO.getUserProfile(sender.getUserId());
         String senderFullName = (senderProfile != null && senderProfile.getFullName() != null)
                 ? senderProfile.getFullName()
                 : sender.getUsername();
 
-        // 8. Gửi gói tin CHALLENGE_INVITE_NOTIFY cho đối thủ
+        // 10. Gửi gói tin CHALLENGE_INVITE_NOTIFY cho đối thủ
         ChallengeDTO.InviteNotify notify = new ChallengeDTO.InviteNotify();
         notify.invitationId = invitationId;
         notify.fromUserId = sender.getUserId();
         notify.fromUsername = sender.getUsername();
         notify.fromFullName = senderFullName;
+        notify.fromAvatar = (senderProfile != null && senderProfile.getAvatar() != null)
+                ? senderProfile.getAvatar() : "avatar1.png";
+        notify.fromIqScore = (senderProfile != null) ? senderProfile.getIqScore() : null;
         notify.topicId = topicId;
         notify.difficulty = difficulty;
         targetSession.sendPacket(new Packet(OpCode.CHALLENGE_INVITE_NOTIFY, JsonUtil.toJson(notify)));
@@ -188,15 +203,33 @@ public class ChallengeService {
         }
 
         // 3. Trường hợp ĐỒNG Ý (accepted = true)
+        ClientSession senderSession = getSenderSession(invitation);
+        if (senderSession == null || senderSession.getUserId() == null) {
+            invitation.status = "EXPIRED";
+            activeInvitations.remove(req.invitationId);
+            challengeDAO.updateInvitationStatus(req.invitationId, "EXPIRED");
+            sendResponse(responder, false, "Người thách đấu đã rời khỏi game hoặc mất kết nối!");
+            return;
+        }
+
+        if (BattleManager.getInstance().isUserInBattle(invitation.senderUserId) ||
+            BattleManager.getInstance().isUserInBattle(responder.getUserId())) {
+            invitation.status = "EXPIRED";
+            activeInvitations.remove(req.invitationId);
+            challengeDAO.updateInvitationStatus(req.invitationId, "EXPIRED");
+            sendResponse(responder, false, "Một trong hai người chơi đang bận trong một trận đấu khác!");
+            sendResponse(senderSession, false, "Kèo thách đấu không thể bắt đầu do có người đang trong trận đấu khác!");
+            return;
+        }
+
         invitation.status = "ACCEPTED";
         activeInvitations.remove(req.invitationId);
         challengeDAO.updateInvitationStatus(req.invitationId, "ACCEPTED");
 
-        ClientSession senderSession = getSenderSession(invitation);
-        if (senderSession == null || senderSession.getUserId() == null) {
-            sendResponse(responder, false, "Người thách đấu đã rời khỏi game hoặc mất kết nối!");
-            return;
-        }
+        // Ghi nhận quan hệ thách đấu / bạn bè vào CSDL bảng BAN_BE
+        try {
+            new com.quizzlive.server.dao.FriendDAO().addFriend(invitation.senderUserId, responder.getUserId());
+        } catch (Exception ignored) {}
 
         System.out.println("[ChallengeService] Kèo thách đấu đã được chấp nhận: " +
                 senderSession.getUsername() + " VS " + responder.getUsername());

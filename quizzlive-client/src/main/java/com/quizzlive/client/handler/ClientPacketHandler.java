@@ -112,11 +112,11 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
-            // --- 2. MATCHMAKING (Yêu cầu 2) ---
+            // --- 2. MATCHMAKING & CHALLENGE BATTLE (Yêu cầu 2, 3) ---
             case MATCH_FOUND_NOTIFY: {
                 mainFrame.getWaitingPanel().stopCountdown();
-                JOptionPane.showMessageDialog(mainFrame, "Đã tìm thấy đối thủ! Trận đấu bắt đầu ngay bây giờ.", "Vào Trận!", JOptionPane.INFORMATION_MESSAGE);
                 mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
+                JOptionPane.showMessageDialog(mainFrame, "Đã kết nối trận đấu 1v1 thành công! Trận đấu bắt đầu ngay bây giờ.", "Vào Trận!", JOptionPane.INFORMATION_MESSAGE);
                 break;
             }
 

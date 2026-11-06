@@ -33,7 +33,22 @@ public class BattleManager {
     }
 
     /**
-     * TODO: Điều hướng câu trả lời từ người chơi vào đúng phòng đấu
+     * Kiểm tra xem người chơi có đang trong trận đấu 1v1 chưa kết thúc hay không
+     */
+    public boolean isUserInBattle(long userId) {
+        for (BattleRoom room : activeRooms.values()) {
+            if (!room.isMatchFinished()) {
+                if ((room.getPlayer1() != null && room.getPlayer1().getUserId() != null && room.getPlayer1().getUserId() == userId) ||
+                    (room.getPlayer2() != null && room.getPlayer2().getUserId() != null && room.getPlayer2().getUserId() == userId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Điều hướng câu trả lời từ người chơi vào đúng phòng đấu
      */
     public void handleAnswerSubmit(long userId, long matchId, Long selectedAnswerId, int responseTime) {
         BattleRoom room = activeRooms.get(matchId);

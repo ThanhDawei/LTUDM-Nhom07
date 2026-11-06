@@ -305,4 +305,8 @@ public class BattleRoom {
     public ClientSession getPlayer2() {
         return player2;
     }
+
+    public boolean isMatchFinished() {
+        return matchFinished;
+    }
 }
