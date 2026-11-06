@@ -28,7 +28,11 @@ public class LobbyPanel extends JPanel {
     private final ClientChallengeService challengeService = new ClientChallengeService();
 
     private JLabel lblWelcome;
+    private JLabel lblBio;
     private JLabel lblUserStats;
+    private JLabel lblAvatarBadge;
+    private String currentAvatar = "avatar1.png";
+    private String currentBio = "";
     private JComboBox<TopicItem> cbTopics;
     private JComboBox<String> cbDifficulty;
     private JTable tblOnlineUsers;
@@ -72,17 +76,23 @@ public class LobbyPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 18, 12, 18)
         ));
 
-        JPanel userBox = new JPanel(new GridLayout(2, 1));
+        JPanel userBox = new JPanel(new GridLayout(3, 1, 2, 2));
         userBox.setOpaque(false);
+
         lblWelcome = new JLabel("Xin chào, Người chơi!");
         lblWelcome.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblWelcome.setForeground(new Color(41, 128, 185));
+
+        lblBio = new JLabel("Giới thiệu: Đang tải...");
+        lblBio.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblBio.setForeground(Color.GRAY);
 
         lblUserStats = new JLabel("Điểm IQ: -- | Thắng: 0 | Chuỗi thắng: 0");
         lblUserStats.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblUserStats.setForeground(Color.DARK_GRAY);
 
         userBox.add(lblWelcome);
+        userBox.add(lblBio);
         userBox.add(lblUserStats);
         topPanel.add(userBox, BorderLayout.WEST);
 
@@ -318,32 +328,59 @@ public class LobbyPanel extends JPanel {
     }
 
     /**
-     * Cập nhật thông tin cá nhân (Yêu cầu 1)
+     * Cập nhật thông tin cá nhân: Họ tên, Ảnh đại diện, Giới thiệu & Đổi mật khẩu (Yêu cầu 1)
      */
     private void showUpdateProfileDialog() {
         JTextField txtName = new JTextField(20);
+        txtName.setText(lblWelcome.getText().replace("Xin chào, ", "").replace("!", "").trim());
+
+        JComboBox<String> cbAvatar = new JComboBox<>(new String[]{"avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"});
+        if (currentAvatar != null) {
+            cbAvatar.setSelectedItem(currentAvatar);
+        }
+
+        JTextField txtBio = new JTextField(20);
+        txtBio.setText(currentBio != null ? currentBio : "");
+
         JPasswordField txtCurPass = new JPasswordField(20);
         JPasswordField txtNewPass = new JPasswordField(20);
 
-        JPanel panel = new JPanel(new GridLayout(3, 2, 8, 8));
+        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 8));
         panel.add(new JLabel("Họ tên mới:"));
         panel.add(txtName);
-        panel.add(new JLabel("Mật khẩu hiện tại:"));
+        panel.add(new JLabel("Ảnh đại diện (avatar):"));
+        panel.add(cbAvatar);
+        panel.add(new JLabel("Giới thiệu bản thân:"));
+        panel.add(txtBio);
+        panel.add(new JLabel("Mật khẩu hiện tại (nếu đổi):"));
         panel.add(txtCurPass);
         panel.add(new JLabel("Mật khẩu mới (nếu đổi):"));
         panel.add(txtNewPass);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Cập nhật thông tin cá nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
+        int result = JOptionPane.showConfirmDialog(this, panel, "Cập Nhật Hồ Sơ Cá Nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
         if (result == JOptionPane.OK_OPTION) {
-            authService.sendUpdateProfile(txtName.getText().trim(), new String(txtCurPass.getPassword()), new String(txtNewPass.getPassword()), null);
+            String selectedAvatar = (String) cbAvatar.getSelectedItem();
+            String bioText = txtBio.getText().trim();
+            authService.sendUpdateProfile(
+                    txtName.getText().trim(),
+                    new String(txtCurPass.getPassword()),
+                    new String(txtNewPass.getPassword()),
+                    selectedAvatar,
+                    bioText
+            );
         }
     }
 
     public void updateUserInfo(AuthDTO.AuthResponse auth) {
         this.currentUserId = auth.userId;
         this.currentUsername = auth.username;
+        this.currentAvatar = auth.avatarUrl != null ? auth.avatarUrl : "avatar1.png";
+        this.currentBio = auth.bio != null ? auth.bio : "Thành viên Quizzlive";
+
         lblWelcome.setText("Xin chào, " + (auth.fullName != null ? auth.fullName : auth.username) + "!");
-        lblUserStats.setText("Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
+        lblBio.setText("“" + this.currentBio + "”");
+        lblUserStats.setText("Ảnh: " + this.currentAvatar + " | Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
+
         authService.requestOnlineUsers();
         matchmakingService.requestTopicList();
     }

@@ -64,8 +64,12 @@ public class UserDAO {
     }
 
     public Long createUser(String username, String passwordHash, String email, String fullName) {
+        return createUser(username, passwordHash, email, fullName, "avatar1.png", "Thành viên mới Quizzlive");
+    }
+
+    public Long createUser(String username, String passwordHash, String email, String fullName, String avatar, String bio) {
         String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, ?)";
-        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen) VALUES (?, ?)";
+        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu) VALUES (?, ?, ?, ?)";
         String sqlStats = "INSERT INTO THONG_KE_NGUOI_CHOI (MaNguoiDung) VALUES (?)";
 
         Connection conn = null;
@@ -91,6 +95,8 @@ public class UserDAO {
             try (PreparedStatement psProfile = conn.prepareStatement(sqlProfile)) {
                 psProfile.setLong(1, userId);
                 psProfile.setString(2, fullName);
+                psProfile.setString(3, avatar != null ? avatar : "avatar1.png");
+                psProfile.setString(4, bio != null ? bio : "Thành viên mới Quizzlive");
                 psProfile.executeUpdate();
             }
 
@@ -171,12 +177,21 @@ public class UserDAO {
     }
 
     public void updateProfile(Long userId, String fullName, String avatar) {
-        String sql = "UPDATE HO_SO_NGUOI_DUNG SET HoTen = ?, AnhDaiDien = COALESCE(?, AnhDaiDien) WHERE MaNguoiDung = ?";
+        updateProfile(userId, fullName, avatar, null);
+    }
+
+    public void updateProfile(Long userId, String fullName, String avatar, String bio) {
+        String sql = "UPDATE HO_SO_NGUOI_DUNG SET " +
+                "HoTen = COALESCE(?, HoTen), " +
+                "AnhDaiDien = COALESCE(?, AnhDaiDien), " +
+                "GioiThieu = COALESCE(?, GioiThieu) " +
+                "WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, fullName);
-            ps.setString(2, avatar);
-            ps.setLong(3, userId);
+            ps.setString(1, (fullName != null && !fullName.trim().isEmpty()) ? fullName.trim() : null);
+            ps.setString(2, (avatar != null && !avatar.trim().isEmpty()) ? avatar.trim() : null);
+            ps.setString(3, (bio != null && !bio.trim().isEmpty()) ? bio.trim() : null);
+            ps.setLong(4, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -262,15 +277,34 @@ public class UserDAO {
         }
     }
 
+    public void resetAllOnlineStatus() {
+        String sql = "UPDATE NGUOI_DUNG SET TrangThaiOnline = FALSE";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public List<User> getAllUsers() {
         List<User> list = new ArrayList<>();
         // Sắp xếp theo MaNguoiDung ASC để tài khoản mới tạo luôn nằm ở cuối bảng
-        String sql = "SELECT * FROM NGUOI_DUNG ORDER BY MaNguoiDung ASC, NgayTao ASC";
+        String sql = "SELECT u.*, h.HoTen, h.AnhDaiDien, h.GioiThieu " +
+                "FROM NGUOI_DUNG u " +
+                "LEFT JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
+                "ORDER BY u.MaNguoiDung ASC, u.NgayTao ASC";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                list.add(mapUser(rs));
+                User u = mapUser(rs);
+                try {
+                    u.setFullName(rs.getString("HoTen"));
+                    u.setAvatar(rs.getString("AnhDaiDien"));
+                    u.setBio(rs.getString("GioiThieu"));
+                } catch (Exception ignored) {}
+                list.add(u);
             }
         } catch (SQLException e) {
             e.printStackTrace();

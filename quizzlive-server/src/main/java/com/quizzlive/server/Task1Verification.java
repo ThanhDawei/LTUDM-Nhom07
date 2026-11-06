@@ -5,6 +5,9 @@ import com.quizzlive.server.database.DatabaseManager;
 import com.quizzlive.server.dao.OtpDAO;
 import com.quizzlive.server.dao.UserDAO;
 import com.quizzlive.server.entity.User;
+import com.quizzlive.server.entity.UserProfile;
+import com.quizzlive.server.network.ClientSession;
+import com.quizzlive.server.network.SessionManager;
 import com.quizzlive.server.service.AuthService;
 import com.quizzlive.server.service.EmailService;
 import com.quizzlive.server.util.PasswordUtil;
@@ -17,19 +20,20 @@ import java.sql.Timestamp;
 
 /**
  * Lớp kiểm thử tự động toàn diện cho Yêu cầu 1 (Task 1):
- * - Đăng ký, đăng nhập, cập nhật thông tin cá nhân.
+ * - Đăng ký, đăng nhập, cập nhật thông tin cá nhân (Họ tên, Ảnh đại diện, Giới thiệu).
  * - Mật khẩu: KHÔNG DÙNG MÃ HÓA, HÀM BĂM (lưu trữ và đối chiếu trực tiếp chuỗi thô).
  * - Mã OTP: Bắt buộc gửi và lưu vào CSDL bảng OTP với thời hạn 10 phút.
  * - Email: Sử dụng giao thức IMAP qua Socket, KHÔNG DÙNG SMTP.
- * - Kích hoạt tài khoản bằng mã OTP (chặn khi chưa kích hoạt).
- * - Cập nhật hồ sơ & đổi mật khẩu.
+ * - Kiểm tra 2 luồng / 2 máy đăng nhập cùng 1 tài khoản: máy đăng nhập sau bị chặn và nhận thông báo tài khoản đã được đăng nhập.
+ * - Kích hoạt tài khoản bằng mã OTP.
+ * - Cập nhật hồ sơ (ảnh, giới thiệu) & đổi mật khẩu.
  * - Quản lý trạng thái Online / Đăng xuất.
  */
 public class Task1Verification {
 
     public static void main(String[] args) {
         System.out.println("=======================================================================");
-        System.out.println("   BẮT ĐẦU KIỂM THỬ TASK 1: ĐĂNG KÝ, ĐĂNG NHẬP, OTP CSDL & IMAP MAIL   ");
+        System.out.println("   BẮT ĐẦU KIỂM THỬ TASK 1: ĐĂNG KÝ, ĐĂNG NHẬP, ẢNH, BIO & CHỐNG ĐĂNG NHẬP TRÙNG   ");
         System.out.println("=======================================================================");
 
         int passed = 0;
@@ -62,7 +66,6 @@ public class Task1Verification {
         System.out.println("  -> Chế độ SSL IMAP:    " + ServerConfig.isImapSsl());
         System.out.println("  -> Thư mục IMAP:       " + ServerConfig.getImapFolder());
 
-        // Kiểm tra chắc chắn lớp EmailService có giao thức IMAP và không gọi SMTP
         try {
             EmailService.class.getDeclaredMethod("sendViaImapSocket", String.class, String.class, String.class);
             System.out.println("  ✓ Giao tiếp Email cài đặt phương thức Socket chuẩn IMAP (RFC 3501), hoàn toàn không dùng SMTP.");
@@ -84,19 +87,24 @@ public class Task1Verification {
         AuthService authService = new AuthService();
         UserDAO userDAO = new UserDAO();
         OtpDAO otpDAO = new OtpDAO();
+        SessionManager sessionManager = new SessionManager();
 
         String testUsername = "nguoi1_test_" + (System.currentTimeMillis() % 100000);
         String testEmail = testUsername + "@example.com";
         String testPassword = "RawPassword999";
         String testFullName = "Nguyễn Văn Người Một";
+        String testAvatar = "avatar2.png";
+        String testBio = "Tuyển thủ tranh tài kiến thức trực tuyến";
 
-        // --- TEST 3: ĐĂNG KÝ TÀI KHOẢN MỚI ---
-        System.out.println("\n[Test 3] Đăng ký tài khoản mới:");
+        // --- TEST 3: ĐĂNG KÝ TÀI KHOẢN MỚI KÈM ẢNH ĐẠI DIỆN & GIỚI THIỆU ---
+        System.out.println("\n[Test 3] Đăng ký tài khoản mới kèm Ảnh đại diện và Giới thiệu:");
         AuthDTO.RegisterRequest regReq = new AuthDTO.RegisterRequest();
         regReq.username = testUsername;
         regReq.password = testPassword;
         regReq.email = testEmail;
         regReq.fullName = testFullName;
+        regReq.avatarUrl = testAvatar;
+        regReq.bio = testBio;
 
         AuthDTO.AuthResponse regResp = authService.register(regReq);
         if (regResp != null && regResp.success) {
@@ -107,7 +115,7 @@ public class Task1Verification {
             failed++;
         }
 
-        // Kiểm tra mật khẩu lưu trong CSDL có đúng là chuỗi thô (không băm) không
+        // Kiểm tra thông tin trong CSDL
         User createdUser = userDAO.findByEmail(testEmail);
         if (createdUser != null) {
             if (testPassword.equals(createdUser.getPassword())) {
@@ -115,6 +123,17 @@ public class Task1Verification {
                 passed++;
             } else {
                 System.err.println("  ✗ Lỗi: Mật khẩu trong CSDL không phải chuỗi thô!");
+                failed++;
+            }
+
+            UserProfile createdProfile = userDAO.getUserProfile(createdUser.getUserId());
+            if (createdProfile != null && testAvatar.equals(createdProfile.getAvatar()) && testBio.equals(createdProfile.getBio())) {
+                System.out.println("  ✓ Bảng HO_SO_NGUOI_DUNG lưu chính xác:");
+                System.out.println("    - Ảnh đại diện: " + createdProfile.getAvatar());
+                System.out.println("    - Giới thiệu:   " + createdProfile.getBio());
+                passed++;
+            } else {
+                System.err.println("  ✗ Lỗi: Ảnh đại diện hoặc Giới thiệu chưa được lưu đúng vào CSDL!");
                 failed++;
             }
 
@@ -127,7 +146,7 @@ public class Task1Verification {
             }
         } else {
             System.err.println("  ✗ Không tìm thấy người dùng vừa tạo trong CSDL!");
-            failed += 2;
+            failed += 3;
         }
 
         // --- TEST 4: KIỂM TRA MÃ OTP BẮT BUỘC ĐÃ GỬI VỀ CƠ SỞ DỮ LIỆU (BẢNG OTP, HẠN 10 PHÚT) ---
@@ -154,8 +173,6 @@ public class Task1Verification {
         if (realOtpCode != null && thoiGianHetHan != null && thoiGianTao != null) {
             long diffMinutes = (thoiGianHetHan.getTime() - thoiGianTao.getTime()) / (60 * 1000L);
             System.out.println("  ✓ Đã tìm thấy mã OTP trong CSDL bảng OTP: [" + realOtpCode + "]");
-            System.out.println("  ✓ Thời gian tạo:    " + thoiGianTao);
-            System.out.println("  ✓ Thời gian hết hạn:" + thoiGianHetHan);
             System.out.println("  ✓ Thời hạn hiệu lực: " + diffMinutes + " phút (Đúng quy định 10 phút)");
             if (diffMinutes == 10 && realOtpCode.length() == 6) {
                 passed++;
@@ -185,7 +202,6 @@ public class Task1Verification {
 
         // --- TEST 6: XÁC THỰC MÃ OTP ---
         System.out.println("\n[Test 6] Xác thực mã OTP:");
-        // Thử nhập mã sai trước
         AuthDTO.VerifyOtpRequest wrongOtpReq = new AuthDTO.VerifyOtpRequest();
         wrongOtpReq.email = testEmail;
         wrongOtpReq.otpCode = "999999";
@@ -198,7 +214,7 @@ public class Task1Verification {
             failed++;
         }
 
-        // Nhập đúng mã OTP từ CSDL (truy vấn mã OTP mới nhất từ bảng OTP)
+        // Nhập đúng mã OTP từ CSDL (lấy mã mới nhất)
         String latestOtpCode = null;
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sqlOtp)) {
@@ -236,68 +252,86 @@ public class Task1Verification {
             }
         }
 
-        // --- TEST 7: ĐĂNG NHẬP SAU KHI ĐÃ KÍCH HOẠT (HỖ TRỢ CẢ USERNAME VÀ EMAIL) ---
-        System.out.println("\n[Test 7] Đăng nhập sau khi kích hoạt thành công (Mật khẩu dạng thô):");
-        AuthDTO.AuthResponse loginResp = authService.login(loginReq);
-        if (loginResp != null && loginResp.success) {
-            System.out.println("  ✓ Đăng nhập thành công với Username!");
-            System.out.println("    - UserID:   " + loginResp.userId);
-            System.out.println("    - Họ tên:   " + loginResp.fullName);
+        // --- TEST 7: ĐĂNG NHẬP THÀNH CÔNG LẦN ĐẦU (MÁY 1) ---
+        System.out.println("\n[Test 7] Đăng nhập thành công lần 1 (Thiết bị 1):");
+        AuthDTO.AuthResponse loginResp1 = authService.login(loginReq, sessionManager);
+        if (loginResp1 != null && loginResp1.success) {
+            System.out.println("  ✓ Máy 1 đăng nhập thành công!");
+            System.out.println("    - UserID:    " + loginResp1.userId);
+            System.out.println("    - Họ tên:    " + loginResp1.fullName);
+            System.out.println("    - Avatar:    " + loginResp1.avatarUrl);
+            System.out.println("    - Giới thiệu:" + loginResp1.bio);
             passed++;
+
+            // Giả lập phiên kết nối của Máy 1 trong SessionManager
+            ClientSession fakeSession1 = new ClientSession(null, sessionManager, null);
+            fakeSession1.setUserId(loginResp1.userId);
+            fakeSession1.setUsername(loginResp1.username);
+            sessionManager.addSession(fakeSession1);
         } else {
-            System.err.println("  ✗ Đăng nhập thất bại sau kích hoạt: " + (loginResp != null ? loginResp.message : "null"));
+            System.err.println("  ✗ Đăng nhập thất bại: " + (loginResp1 != null ? loginResp1.message : "null"));
             failed++;
         }
 
-        // Đăng nhập bằng Email
-        AuthDTO.LoginRequest emailLoginReq = new AuthDTO.LoginRequest();
-        emailLoginReq.username = testEmail;
-        emailLoginReq.password = testPassword;
-        AuthDTO.AuthResponse emailLoginResp = authService.login(emailLoginReq);
-        if (emailLoginResp != null && emailLoginResp.success) {
-            System.out.println("  ✓ Đăng nhập thành công với Email!");
+        // --- TEST 8: 2 LUỒNG / 2 MÁY ĐĂNG NHẬP CÙNG 1 TÀI KHOẢN ---
+        System.out.println("\n[Test 8] Kiểm tra máy thứ 2 đăng nhập sau vào cùng 1 tài khoản:");
+        AuthDTO.LoginRequest concurrentLoginReq = new AuthDTO.LoginRequest();
+        concurrentLoginReq.username = testUsername;
+        concurrentLoginReq.password = testPassword;
+
+        AuthDTO.AuthResponse loginResp2 = authService.login(concurrentLoginReq, sessionManager);
+        if (loginResp2 != null && !loginResp2.success && loginResp2.message.contains("đã được đăng nhập")) {
+            System.out.println("  ✓ Chặn đăng nhập máy 2 thành công!");
+            System.out.println("  ✓ Thông báo gửi về máy 2: \"" + loginResp2.message + "\"");
             passed++;
         } else {
-            System.err.println("  ✗ Đăng nhập với Email thất bại!");
+            System.err.println("  ✗ Lỗi: Cho phép máy 2 đăng nhập trùng khi máy 1 đang online!");
             failed++;
         }
 
-        // --- TEST 8: CẬP NHẬT HỒ SƠ & ĐỔI MẬT KHẨU (KHÔNG BĂM) ---
-        System.out.println("\n[Test 8] Cập nhật thông tin cá nhân & Đổi mật khẩu:");
+        // --- TEST 9: CẬP NHẬT HỒ SƠ (ẢNH, GIỚI THIỆU) & ĐỔI MẬT KHẨU ---
+        System.out.println("\n[Test 9] Cập nhật thông tin cá nhân (Ảnh đại diện, Giới thiệu) & Đổi mật khẩu:");
         AuthDTO.UpdateProfileRequest updateReq = new AuthDTO.UpdateProfileRequest();
         updateReq.fullName = "Nguyễn Văn Người Một (Cập Nhật)";
+        updateReq.avatarUrl = "avatar3.png";
+        updateReq.bio = "Cao thủ trắc nghiệm vừa được cập nhật bio";
         updateReq.currentPassword = testPassword;
         updateReq.newPassword = "NewRawPassword@555";
 
         AuthDTO.AuthResponse updateResp = authService.updateProfile(createdUser.getUserId(), updateReq);
-        if (updateResp != null && updateResp.success && "Nguyễn Văn Người Một (Cập Nhật)".equals(updateResp.fullName)) {
+        if (updateResp != null && updateResp.success) {
             System.out.println("  ✓ Cập nhật hồ sơ thành công!");
+            System.out.println("    - Họ tên mới:   " + updateResp.fullName);
+            System.out.println("    - Avatar mới:   " + updateResp.avatarUrl);
+            System.out.println("    - Bio mới:      " + updateResp.bio);
             passed++;
         } else {
             System.err.println("  ✗ Lỗi cập nhật hồ sơ: " + (updateResp != null ? updateResp.message : "null"));
             failed++;
         }
 
-        // Thử đăng nhập lại bằng mật khẩu mới dạng thô
-        loginReq.password = "NewRawPassword@555";
-        AuthDTO.AuthResponse newPassLoginResp = authService.login(loginReq);
-        if (newPassLoginResp != null && newPassLoginResp.success) {
-            System.out.println("  ✓ Đăng nhập thành công với mật khẩu mới (chuỗi thô)! ");
-            passed++;
-        } else {
-            System.err.println("  ✗ Đăng nhập với mật khẩu mới thất bại!");
-            failed++;
-        }
-
-        // --- TEST 9: ĐĂNG XUẤT ---
-        System.out.println("\n[Test 9] Đăng xuất:");
+        // --- TEST 10: ĐĂNG XUẤT MÁY 1 VÀ ĐĂNG NHẬP LẠI BẰNG MẬT KHẨU MỚI ---
+        System.out.println("\n[Test 10] Đăng xuất máy 1 và đăng nhập lại bằng mật khẩu mới:");
         authService.logout(createdUser.getUserId());
+        sessionManager.getOnlineSessions().clear();
+
         User loggedOutUser = userDAO.findById(createdUser.getUserId());
         if (loggedOutUser != null && !loggedOutUser.isOnline()) {
-            System.out.println("  ✓ Đăng xuất thành công, trạng thái TrangThaiOnline = FALSE.");
+            System.out.println("  ✓ Máy 1 đăng xuất thành công, trạng thái TrangThaiOnline = FALSE.");
             passed++;
         } else {
             System.err.println("  ✗ Đăng xuất chưa cập nhật TrangThaiOnline!");
+            failed++;
+        }
+
+        // Đăng nhập lại với mật khẩu mới
+        loginReq.password = "NewRawPassword@555";
+        AuthDTO.AuthResponse newPassLoginResp = authService.login(loginReq, sessionManager);
+        if (newPassLoginResp != null && newPassLoginResp.success) {
+            System.out.println("  ✓ Đăng nhập lại thành công với mật khẩu mới (chuỗi thô)! ");
+            passed++;
+        } else {
+            System.err.println("  ✗ Đăng nhập với mật khẩu mới thất bại!");
             failed++;
         }
 

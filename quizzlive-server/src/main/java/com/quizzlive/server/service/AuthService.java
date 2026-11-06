@@ -106,8 +106,10 @@ public class AuthService {
         // Mật khẩu không dùng mã hóa, hàm băm (lưu dạng chuỗi thô)
         String passwordRaw = PasswordUtil.hashPassword(password);
 
-        // Tạo tài khoản trạng thái PENDING
-        Long userId = userDAO.createUser(username, passwordRaw, email, fullName);
+        // Tạo tài khoản trạng thái PENDING kèm ảnh đại diện và giới thiệu
+        String avatar = (req.avatarUrl != null && !req.avatarUrl.trim().isEmpty()) ? req.avatarUrl.trim() : "avatar1.png";
+        String bio = (req.bio != null && !req.bio.trim().isEmpty()) ? req.bio.trim() : "Thành viên mới Quizzlive";
+        Long userId = userDAO.createUser(username, passwordRaw, email, fullName, avatar, bio);
         if (userId == null) {
             resp.success = false;
             resp.message = "Đăng ký thất bại do lỗi hệ thống CSDL!";
@@ -185,6 +187,19 @@ public class AuthService {
      * 5. Cập nhật trạng thái Online
      */
     public AuthDTO.AuthResponse login(AuthDTO.LoginRequest req) {
+        return login(req, null);
+    }
+
+    /**
+     * Xử lý Đăng nhập (Yêu cầu 1):
+     * 1. Hỗ trợ đăng nhập bằng tên tài khoản hoặc email
+     * 2. Kiểm tra mật khẩu (đối chiếu trực tiếp dạng thô, không dùng mã hóa, hàm băm)
+     * 3. Kiểm tra tài khoản có bị khóa không (Yêu cầu 15)
+     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa (nếu chưa, sinh OTP mới lưu CSDL 10 phút & gửi qua IMAP)
+     * 5. Kiểm tra đa luồng / 2 máy đăng nhập cùng 1 tài khoản (nếu máy khác đã đăng nhập thì thông báo tài khoản đã được đăng nhập)
+     * 6. Cập nhật trạng thái Online & nạp thông tin họ tên, ảnh đại diện, giới thiệu
+     */
+    public AuthDTO.AuthResponse login(AuthDTO.LoginRequest req, com.quizzlive.server.network.SessionManager sessionManager) {
         AuthDTO.AuthResponse resp = new AuthDTO.AuthResponse();
 
         if (req == null) {
@@ -214,7 +229,7 @@ public class AuthService {
             return resp;
         }
 
-        // Kiểm tra mật khẩu băm có salt
+        // Kiểm tra mật khẩu trực tiếp (không dùng mã hóa, hàm băm)
         boolean passwordOk = PasswordUtil.verifyPassword(password, user.getPassword());
         if (!passwordOk) {
             resp.success = false;
@@ -241,18 +256,33 @@ public class AuthService {
             return resp;
         }
 
-
+        // Kiểm tra 2 luồng / 2 thiết bị đăng nhập 1 tài khoản:
+        // Nếu máy này đăng nhập trước mà máy kia đăng nhập sau thì thông báo cho máy sau: "Tài khoản đã được đăng nhập!"
+        if (sessionManager != null) {
+            com.quizzlive.server.network.ClientSession activeSession = sessionManager.getSessionByUserId(user.getUserId());
+            if (activeSession != null) {
+                resp.success = false;
+                resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
+                return resp;
+            }
+        } else if (user.isOnline()) {
+            resp.success = false;
+            resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
+            return resp;
+        }
 
         // Cập nhật trạng thái Online
         userDAO.updateOnlineStatus(user.getUserId(), true);
 
-        // Lấy thông tin hồ sơ
+        // Lấy thông tin hồ sơ (kèm ảnh đại diện, giới thiệu)
         UserProfile profile = userDAO.getUserProfile(user.getUserId());
 
         resp.success = true;
         resp.userId = user.getUserId();
         resp.username = user.getUsername();
         resp.fullName = profile != null && profile.getFullName() != null ? profile.getFullName() : user.getUsername();
+        resp.avatarUrl = profile != null && profile.getAvatar() != null ? profile.getAvatar() : "avatar1.png";
+        resp.bio = profile != null && profile.getBio() != null ? profile.getBio() : "Thành viên Quizzlive";
         resp.iqScore = profile != null ? profile.getIqScore() : 0.0;
         resp.message = "Đăng nhập thành công!";
         return resp;
@@ -292,9 +322,9 @@ public class AuthService {
             userDAO.updatePassword(userId, PasswordUtil.hashPassword(req.newPassword.trim()));
         }
 
-        // Cập nhật họ tên và ảnh đại diện
-        if (req.fullName != null && !req.fullName.trim().isEmpty()) {
-            userDAO.updateProfile(userId, req.fullName.trim(), req.avatarUrl);
+        // Cập nhật họ tên, ảnh đại diện và giới thiệu
+        if ((req.fullName != null && !req.fullName.trim().isEmpty()) || req.avatarUrl != null || req.bio != null) {
+            userDAO.updateProfile(userId, req.fullName, req.avatarUrl, req.bio);
         }
 
         UserProfile profile = userDAO.getUserProfile(userId);
@@ -302,6 +332,8 @@ public class AuthService {
         resp.userId = userId;
         resp.username = user.getUsername();
         resp.fullName = profile != null ? profile.getFullName() : user.getUsername();
+        resp.avatarUrl = profile != null ? profile.getAvatar() : "avatar1.png";
+        resp.bio = profile != null ? profile.getBio() : "";
         resp.iqScore = profile != null ? profile.getIqScore() : 0.0;
         resp.message = "Cập nhật hồ sơ thành công!";
         return resp;

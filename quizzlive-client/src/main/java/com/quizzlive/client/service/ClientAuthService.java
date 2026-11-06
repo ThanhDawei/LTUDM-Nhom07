@@ -27,11 +27,17 @@ public class ClientAuthService {
      * TODO: Dev Client gọi hàm này khi người dùng nhấn nút "Đăng Ký"
      */
     public void sendRegister(String username, String password, String email, String fullName) {
+        sendRegister(username, password, email, fullName, "avatar1.png", "Thành viên mới Quizzlive");
+    }
+
+    public void sendRegister(String username, String password, String email, String fullName, String avatarUrl, String bio) {
         AuthDTO.RegisterRequest req = new AuthDTO.RegisterRequest();
         req.username = username;
         req.password = password;
         req.email = email;
         req.fullName = fullName;
+        req.avatarUrl = avatarUrl;
+        req.bio = bio;
         socketClient.sendPacket(new Packet(OpCode.REGISTER_REQ, JsonUtil.toJson(req)));
     }
 
@@ -49,11 +55,16 @@ public class ClientAuthService {
      * TODO: Dev Client gọi hàm này khi người dùng cập nhật thông tin cá nhân (Yêu cầu 1)
      */
     public void sendUpdateProfile(String fullName, String currentPassword, String newPassword, String avatarUrl) {
+        sendUpdateProfile(fullName, currentPassword, newPassword, avatarUrl, null);
+    }
+
+    public void sendUpdateProfile(String fullName, String currentPassword, String newPassword, String avatarUrl, String bio) {
         AuthDTO.UpdateProfileRequest req = new AuthDTO.UpdateProfileRequest();
         req.fullName = fullName;
         req.currentPassword = currentPassword;
         req.newPassword = newPassword;
         req.avatarUrl = avatarUrl;
+        req.bio = bio;
         socketClient.sendPacket(new Packet(OpCode.UPDATE_PROFILE_REQ, JsonUtil.toJson(req)));
     }
 

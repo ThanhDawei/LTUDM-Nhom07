@@ -1,6 +1,7 @@
 package com.quizzlive.server.network;
 
 import com.quizzlive.server.config.ServerConfig;
+import com.quizzlive.server.dao.UserDAO;
 import com.quizzlive.server.handler.PacketRouter;
 
 import javax.net.ServerSocketFactory;
@@ -25,6 +26,9 @@ public class SocketServer {
     public void start() {
         isRunning = true;
         try {
+            // Reset trạng thái online cho toàn bộ người dùng khi khởi động lại máy chủ
+            new UserDAO().resetAllOnlineStatus();
+
             ServerSocketFactory factory;
             if (ServerConfig.isSslEnabled()) {
                 System.out.println("[Quizzlive Server] Enabling SSL/TLS Encryption...");

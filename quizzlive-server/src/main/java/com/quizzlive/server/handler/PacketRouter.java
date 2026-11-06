@@ -50,7 +50,7 @@ public class PacketRouter {
             }
             case LOGIN_REQ: {
                 AuthDTO.LoginRequest req = JsonUtil.fromJson(json, AuthDTO.LoginRequest.class);
-                AuthDTO.AuthResponse resp = authService.login(req);
+                AuthDTO.AuthResponse resp = authService.login(req, sessionManager);
                 if (resp != null && resp.success) {
                     session.setUserId(resp.userId);
                     session.setUsername(resp.username);

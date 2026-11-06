@@ -18,6 +18,8 @@ public class RegisterPanel extends JPanel {
     private JPasswordField txtPassword;
     private JTextField txtEmail;
     private JTextField txtFullName;
+    private JComboBox<String> cbAvatar;
+    private JTextField txtBio;
     private JButton btnRegister;
     private JButton btnBackToLogin;
     private JLabel lblStatus;
@@ -89,6 +91,20 @@ public class RegisterPanel extends JPanel {
 
         gbc.gridy++;
         gbc.gridx = 0;
+        card.add(new JLabel("Ảnh đại diện:"), gbc);
+        gbc.gridx = 1;
+        cbAvatar = new JComboBox<>(new String[]{"avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"});
+        card.add(cbAvatar, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        card.add(new JLabel("Giới thiệu:"), gbc);
+        gbc.gridx = 1;
+        txtBio = new JTextField("Đam mê kiến thức và trắc nghiệm", 18);
+        card.add(txtBio, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
         gbc.gridwidth = 2;
         lblStatus = new JLabel(" ", SwingConstants.CENTER);
         lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -123,6 +139,8 @@ public class RegisterPanel extends JPanel {
         String password = new String(txtPassword.getPassword());
         String email = txtEmail.getText().trim();
         String fullName = txtFullName.getText().trim();
+        String avatar = (String) cbAvatar.getSelectedItem();
+        String bio = txtBio.getText().trim();
 
         if (username.isEmpty() || password.isEmpty() || email.isEmpty() || fullName.isEmpty()) {
             lblStatus.setForeground(Color.RED);
@@ -158,7 +176,7 @@ public class RegisterPanel extends JPanel {
                 if (!SocketClient.getInstance().isConnected()) {
                     SocketClient.getInstance().connect();
                 }
-                authService.sendRegister(username, password, email, fullName);
+                authService.sendRegister(username, password, email, fullName, avatar, bio);
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
                     lblStatus.setForeground(Color.RED);

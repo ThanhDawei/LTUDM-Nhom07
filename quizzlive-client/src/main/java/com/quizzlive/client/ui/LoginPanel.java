@@ -150,6 +150,9 @@ public class LoginPanel extends JPanel {
         } else {
             lblStatus.setForeground(Color.RED);
             lblStatus.setText(message != null ? message : "Đăng nhập thất bại!");
+            if (message != null && message.contains("đã được đăng nhập")) {
+                JOptionPane.showMessageDialog(this, message, "Cảnh Báo Đăng Nhập", JOptionPane.WARNING_MESSAGE);
+            }
         }
     }
 }

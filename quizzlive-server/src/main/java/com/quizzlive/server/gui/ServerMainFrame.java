@@ -100,7 +100,7 @@ public class ServerMainFrame extends JFrame {
         panel.add(topBar, BorderLayout.NORTH);
 
         // User table
-        String[] columns = {"Mã ID", "Tên đăng nhập", "Email", "Trạng thái", "Online", "Ngày tạo"};
+        String[] columns = {"Mã ID", "Tên đăng nhập", "Email", "Họ tên", "Ảnh", "Giới thiệu", "Trạng thái", "Online", "Ngày tạo"};
         userTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -246,6 +246,9 @@ public class ServerMainFrame extends JFrame {
                     u.getUserId(),
                     u.getUsername(),
                     u.getEmail(),
+                    u.getFullName() != null ? u.getFullName() : "",
+                    u.getAvatar() != null ? u.getAvatar() : "avatar1.png",
+                    u.getBio() != null ? u.getBio() : "",
                     u.getStatus(),
                     u.isOnline() ? "Online" : "Offline",
                     u.getCreatedAt()
@@ -264,7 +267,7 @@ public class ServerMainFrame extends JFrame {
         }
 
         Long userId = (Long) userTableModel.getValueAt(row, 0);
-        String currentStatus = (String) userTableModel.getValueAt(row, 3);
+        String currentStatus = (String) userTableModel.getValueAt(row, 6);
         boolean isBlocked = "BLOCKED".equalsIgnoreCase(currentStatus);
 
         userDAO.blockUser(userId, !isBlocked);
