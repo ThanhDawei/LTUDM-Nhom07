@@ -86,7 +86,10 @@ public class ServerMainFrame extends JFrame {
         lblTotalUsers.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         JButton btnRefreshUsers = new JButton("Làm mới danh sách");
-        btnRefreshUsers.addActionListener(e -> loadUsersData());
+        btnRefreshUsers.addActionListener(e -> {
+            loadUsersData();
+            JOptionPane.showMessageDialog(this, "Đã cập nhật danh sách người dùng mới nhất!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        });
 
         JButton btnBlock = new JButton("Khóa / Mở khóa người dùng");
         btnBlock.setForeground(Color.RED);

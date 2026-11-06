@@ -68,7 +68,8 @@ public class UserDAO {
     }
 
     public Long createUser(String username, String passwordHash, String email, String fullName, String avatar, String bio) {
-        String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, ?)";
+        String sqlNextId = "SELECT COALESCE(MAX(MaNguoiDung), 0) + 1 AS NextId FROM NGUOI_DUNG";
+        String sqlUser = "INSERT INTO NGUOI_DUNG (MaNguoiDung, TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, ?, 'PENDING', FALSE, ?)";
         String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu) VALUES (?, ?, ?, ?)";
         String sqlStats = "INSERT INTO THONG_KE_NGUOI_CHOI (MaNguoiDung) VALUES (?)";
 
@@ -77,19 +78,22 @@ public class UserDAO {
             conn = DatabaseManager.getConnection();
             conn.setAutoCommit(false);
 
-            long userId = 0;
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            try (PreparedStatement ps = conn.prepareStatement(sqlUser, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, username);
-                ps.setString(2, passwordHash);
-                ps.setString(3, email);
-                ps.setTimestamp(4, now);
-                ps.executeUpdate();
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        userId = rs.getLong(1);
-                    }
+            long userId = 1;
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sqlNextId)) {
+                if (rs.next()) {
+                    userId = rs.getLong("NextId");
                 }
+            }
+
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            try (PreparedStatement ps = conn.prepareStatement(sqlUser)) {
+                ps.setLong(1, userId);
+                ps.setString(2, username);
+                ps.setString(3, passwordHash);
+                ps.setString(4, email);
+                ps.setTimestamp(5, now);
+                ps.executeUpdate();
             }
 
             try (PreparedStatement psProfile = conn.prepareStatement(sqlProfile)) {
@@ -304,6 +308,51 @@ public class UserDAO {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        resequenceUserIds();
+    }
+
+    /**
+     * Đánh lại số thứ tự Mã ID (1, 2, 3, 4, 5...) liên tục không để bị nhảy số / cách quãng
+     */
+    public void resequenceUserIds() {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            boolean isH2 = conn.getMetaData().getDatabaseProductName().equalsIgnoreCase("H2");
+            try (Statement stmt = conn.createStatement()) {
+                if (isH2) {
+                    stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+                } else {
+                    stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+                }
+
+                List<Long> ids = new ArrayList<>();
+                try (ResultSet rs = stmt.executeQuery("SELECT MaNguoiDung FROM NGUOI_DUNG ORDER BY MaNguoiDung ASC")) {
+                    while (rs.next()) {
+                        ids.add(rs.getLong("MaNguoiDung"));
+                    }
+                }
+
+                long seq = 1;
+                for (Long oldId : ids) {
+                    if (oldId != seq) {
+                        stmt.executeUpdate("UPDATE NGUOI_DUNG SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                        stmt.executeUpdate("UPDATE HO_SO_NGUOI_DUNG SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                        stmt.executeUpdate("UPDATE THONG_KE_NGUOI_CHOI SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                        stmt.executeUpdate("UPDATE OTP SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                    }
+                    seq++;
+                }
+
+                if (isH2) {
+                    stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+                    stmt.execute("ALTER TABLE NGUOI_DUNG ALTER COLUMN MaNguoiDung RESTART WITH " + seq);
+                } else {
+                    stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+                    stmt.execute("ALTER TABLE NGUOI_DUNG AUTO_INCREMENT = " + seq);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -314,7 +363,11 @@ public class UserDAO {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);
-            return ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) {
+                resequenceUserIds();
+            }
+            return ok;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
