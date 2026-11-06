@@ -124,47 +124,112 @@ public class QuestionDAO {
     }
 
     /**
-     * Lấy ngẫu nhiên 1 câu hỏi IQ hình ảnh (Yêu cầu 11).
-     * Tương thích 100% với cả MySQL, PostgreSQL và H2 mà không gặp lỗi hàm RAND()/RANDOM().
+     * Tự động khởi tạo bảng LICHSU_TEST_IQ nếu chưa tồn tại
      */
-    public Question getRandomIQQuestion() {
-        List<Question> list = new ArrayList<>();
-        String sql = "SELECT * FROM CAU_HOI WHERE LoaiCauHoi = 'IQ_IMAGE' AND TrangThai = 'ACTIVE'";
+    public void ensureIQTableExists() {
+        String sql = "CREATE TABLE IF NOT EXISTS LICHSU_TEST_IQ (" +
+                "MaNguoiDung BIGINT NOT NULL, " +
+                "MaCauHoi BIGINT NOT NULL, " +
+                "DaTangIQ BOOLEAN NOT NULL DEFAULT TRUE, " +
+                "ThoiGianLam TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "PRIMARY KEY (MaNguoiDung, MaCauHoi))";
         try (Connection conn = DatabaseManager.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                Question q = mapQuestion(rs);
-                q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
-                list.add(q);
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        } catch (SQLException ignored) {}
+    }
+
+    /**
+     * Lấy ngẫu nhiên 1 câu hỏi IQ hình ảnh từ ngân hàng câu hỏi (Yêu cầu 11).
+     * Loại trừ các câu hỏi mà người chơi đã trả lời tăng IQ trước đó.
+     */
+    public Question getRandomIQQuestion(Long userId) {
+        ensureIQTableExists();
+        List<Question> list = new ArrayList<>();
+        String sql = "SELECT * FROM CAU_HOI WHERE (LoaiCauHoi = 'IQ_IMAGE' OR MaChuDe = 4) AND TrangThai = 'ACTIVE'";
+        if (userId != null && userId > 0) {
+            sql += " AND MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE)";
+        }
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (userId != null && userId > 0) {
+                ps.setLong(1, userId);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Question q = mapQuestion(rs);
+                    q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
+                    list.add(q);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
         if (list.isEmpty()) {
-            // Câu hỏi dự phòng mẫu nếu CSDL chưa nạp câu hỏi IQ
-            Question fallback = new Question();
-            fallback.setQuestionId(999L);
-            fallback.setTopicId(4);
-            fallback.setQuestionType("IQ_IMAGE");
-            fallback.setDifficulty("MEDIUM");
-            fallback.setContent("Quan sát quy luật xoay của kim và chọn hình còn thiếu ở vị trí dấu (?):");
-            fallback.setImage("iq_pattern_01.png");
-            fallback.setExplanation("Hình xoay theo chiều kim đồng hồ góc 45 độ ở mỗi bước.");
-
-            List<Answer> answers = new ArrayList<>();
-            Answer a1 = new Answer(); a1.setAnswerId(901L); a1.setQuestionId(999L); a1.setKeySymbol("A"); a1.setContent("Hình số 1 (Góc 0 độ)"); a1.setImage("iq_ans_01_a.png"); a1.setCorrect(false);
-            Answer a2 = new Answer(); a2.setAnswerId(902L); a2.setQuestionId(999L); a2.setKeySymbol("B"); a2.setContent("Hình số 2 (Góc 45 độ)"); a2.setImage("iq_ans_01_b.png"); a2.setCorrect(true);
-            Answer a3 = new Answer(); a3.setAnswerId(903L); a3.setQuestionId(999L); a3.setKeySymbol("C"); a3.setContent("Hình số 3 (Góc 90 độ)"); a3.setImage("iq_ans_01_c.png"); a3.setCorrect(false);
-            Answer a4 = new Answer(); a4.setAnswerId(904L); a4.setQuestionId(999L); a4.setKeySymbol("D"); a4.setContent("Hình số 4 (Góc 135 độ)"); a4.setImage("iq_ans_01_d.png"); a4.setCorrect(false);
-            answers.add(a1); answers.add(a2); answers.add(a3); answers.add(a4);
-            fallback.setAnswers(answers);
-            return fallback;
+            return null;
         }
 
         int randomIndex = (int) (Math.random() * list.size());
         return list.get(randomIndex);
+    }
+
+    public Question getRandomIQQuestion() {
+        return getRandomIQQuestion(null);
+    }
+
+    /**
+     * Kiểm tra xem người dùng đã trả lời đúng tăng điểm IQ câu hỏi này chưa (Yêu cầu 11)
+     */
+    public boolean hasUserPassedIQQuestion(long userId, long questionId) {
+        ensureIQTableExists();
+        String sql = "SELECT COUNT(*) FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND MaCauHoi = ? AND DaTangIQ = TRUE";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setLong(2, questionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Lưu trạng thái người dùng đã trả lời tăng điểm IQ câu hỏi này (Yêu cầu 11)
+     */
+    public void recordPassedIQQuestion(long userId, long questionId) {
+        ensureIQTableExists();
+        String checkSql = "SELECT COUNT(*) FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND MaCauHoi = ?";
+        String updateSql = "UPDATE LICHSU_TEST_IQ SET DaTangIQ = TRUE, ThoiGianLam = CURRENT_TIMESTAMP WHERE MaNguoiDung = ? AND MaCauHoi = ?";
+        String insertSql = "INSERT INTO LICHSU_TEST_IQ (MaNguoiDung, MaCauHoi, DaTangIQ, ThoiGianLam) VALUES (?, ?, TRUE, CURRENT_TIMESTAMP)";
+        try (Connection conn = DatabaseManager.getConnection()) {
+            boolean exists = false;
+            try (PreparedStatement psCheck = conn.prepareStatement(checkSql)) {
+                psCheck.setLong(1, userId);
+                psCheck.setLong(2, questionId);
+                try (ResultSet rsCheck = psCheck.executeQuery()) {
+                    if (rsCheck.next()) exists = rsCheck.getInt(1) > 0;
+                }
+            }
+            if (exists) {
+                try (PreparedStatement psUp = conn.prepareStatement(updateSql)) {
+                    psUp.setLong(1, userId);
+                    psUp.setLong(2, questionId);
+                    psUp.executeUpdate();
+                }
+            } else {
+                try (PreparedStatement psIn = conn.prepareStatement(insertSql)) {
+                    psIn.setLong(1, userId);
+                    psIn.setLong(2, questionId);
+                    psIn.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

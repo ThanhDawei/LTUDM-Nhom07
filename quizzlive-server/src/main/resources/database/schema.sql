@@ -309,6 +309,17 @@ CREATE TABLE IF NOT EXISTS `XEP_HANG_GIAI` (
     CONSTRAINT `fk_xephanggiai_nguoidung` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 26. BẢNG LICHSU_TEST_IQ (Lưu các câu hỏi IQ người chơi đã trả lời tăng điểm - Yêu cầu 11)
+CREATE TABLE IF NOT EXISTS `LICHSU_TEST_IQ` (
+    `MaNguoiDung` BIGINT NOT NULL,
+    `MaCauHoi` BIGINT NOT NULL,
+    `DaTangIQ` BOOLEAN NOT NULL DEFAULT TRUE,
+    `ThoiGianLam` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`MaNguoiDung`, `MaCauHoi`),
+    CONSTRAINT `fk_iq_user` FOREIGN KEY (`MaNguoiDung`) REFERENCES `NGUOI_DUNG`(`MaNguoiDung`) ON DELETE CASCADE,
+    CONSTRAINT `fk_iq_cauhoi` FOREIGN KEY (`MaCauHoi`) REFERENCES `CAU_HOI`(`MaCauHoi`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =========================================================================
 -- INDEXES FOR PERFORMANCE OPTIMIZATION
 -- =========================================================================

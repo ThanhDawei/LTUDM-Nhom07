@@ -2,6 +2,7 @@ package com.quizzlive.client.ui;
 
 import com.quizzlive.client.service.ClientIQService;
 import com.quizzlive.client.service.ClientMatchmakingService;
+import com.quizzlive.client.util.IQImageUtil;
 import com.quizzlive.shared.dto.BattleDTO;
 import com.quizzlive.shared.dto.IQTestDTO;
 
@@ -279,9 +280,27 @@ public class MatchmakingWaitingPanel extends JPanel {
     public void renderIQQuestion(IQTestDTO.IQQuestionNotify question) {
         if (question == null) return;
         this.currentIqQuestionId = question.questionId;
+
+        if (question.questionId == -1L) {
+            // Đã hoàn thành tất cả câu đố IQ trong ngân hàng câu hỏi
+            lblIqTitle.setText("🧠 " + question.content);
+            lblIqResult.setText("Bạn đã xuất sắc hoàn thành tất cả câu đố IQ!");
+            lblIqResult.setForeground(new Color(39, 174, 96));
+            btnSubmitIQ.setEnabled(false);
+            btnNextIQ.setEnabled(false);
+            rbOptA.setVisible(false);
+            rbOptB.setVisible(false);
+            rbOptC.setVisible(false);
+            rbOptD.setVisible(false);
+            renderImagePuzzle(question.imageUrl, question.content);
+            return;
+        }
+
         lblIqTitle.setText("🧠 " + (question.content != null ? question.content : "Quan sát hình ảnh và chọn đáp án đúng:"));
         lblIqResult.setText("");
         btnSubmitIQ.setEnabled(true);
+        btnNextIQ.setText("Đổi câu khác");
+        btnNextIQ.setEnabled(true);
         bgIqOptions.clearSelection();
 
         // Gán đáp án vào các radio button
@@ -299,29 +318,19 @@ public class MatchmakingWaitingPanel extends JPanel {
             }
         }
 
-        // Cập nhật khung hình ảnh mô phỏng trực quan
+        // Cập nhật khung hình ảnh trực quan sắc nét
         renderImagePuzzle(question.imageUrl, question.content);
     }
 
     /**
-     * Hiển thị hình ảnh hoặc bản vẽ đồ họa mô phỏng quy luật logic của câu hỏi IQ
+     * Hiển thị hình ảnh hoặc bản vẽ đồ họa mô phỏng quy luật logic của câu hỏi IQ (Yêu cầu 11)
      */
     private void renderImagePuzzle(String imageUrl, String content) {
-        // Kiểm tra xem có file ảnh thực tế trên ổ đĩa không
-        if (imageUrl != null && new File(imageUrl).exists()) {
-            ImageIcon icon = new ImageIcon(imageUrl);
-            Image img = icon.getImage().getScaledInstance(320, 140, Image.SCALE_SMOOTH);
-            lblIqImage.setIcon(new ImageIcon(img));
-            lblIqImage.setText("");
-        } else {
-            lblIqImage.setIcon(null);
-            String desc = (imageUrl != null ? "[" + imageUrl + "] " : "") + (content != null ? content : "Quy luật logic");
-            lblIqImage.setText("<html><center style='color:#2c3e50; font-family: Segoe UI;'>"
-                    + "<div style='font-size:14px; margin-bottom:8px;'><b>🧩 HÌNH MINH HỌA QUY LUẬT LOGIC</b></div>"
-                    + "<div style='font-size:12px; color:#7f8c8d;'>" + desc + "</div>"
-                    + "<div style='font-size:18px; color:#e67e22; margin-top:10px;'><b>[ Bước 1: 0° ] ➜ [ Bước 2: 45° ] ➜ [ Bước 3: 90° ] ➜ [ ? ]</b></div>"
-                    + "</center></html>");
-        }
+        int w = pnlIqImageContainer.getWidth() > 300 ? pnlIqImageContainer.getWidth() : 520;
+        int h = pnlIqImageContainer.getHeight() > 100 ? pnlIqImageContainer.getHeight() : 155;
+        ImageIcon icon = IQImageUtil.getIQImage(imageUrl, content, w, h);
+        lblIqImage.setIcon(icon);
+        lblIqImage.setText("");
     }
 
     /**
@@ -329,14 +338,21 @@ public class MatchmakingWaitingPanel extends JPanel {
      */
     public void renderIQResult(IQTestDTO.IQResultNotify result) {
         if (result == null) return;
-        btnSubmitIQ.setEnabled(true);
 
         if (result.isCorrect) {
             lblIqResult.setForeground(new Color(39, 174, 96));
             lblIqResult.setText("✅ " + result.message + " (Điểm IQ: " + result.currentIqScore + ")");
+            btnSubmitIQ.setEnabled(false);
+            btnNextIQ.setText("Câu tiếp theo ➡️");
+            // Khóa lựa chọn sau khi đã đúng
+            rbOptA.setEnabled(false);
+            rbOptB.setEnabled(false);
+            rbOptC.setEnabled(false);
+            rbOptD.setEnabled(false);
         } else {
             lblIqResult.setForeground(new Color(231, 76, 60));
             lblIqResult.setText("❌ " + result.message + " (Điểm IQ: " + result.currentIqScore + ")");
+            btnSubmitIQ.setEnabled(true);
         }
 
         // Tự động đồng bộ điểm IQ hiển thị tại Sảnh (Lobby)
