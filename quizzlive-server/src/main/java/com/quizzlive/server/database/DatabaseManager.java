@@ -52,14 +52,19 @@ public class DatabaseManager {
                 dataSource.close();
             }
 
+            java.io.File dataDir = new java.io.File("data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+            }
+
             HikariConfig h2Config = new HikariConfig();
             h2Config.setDriverClassName("org.h2.Driver");
-            h2Config.setJdbcUrl("jdbc:h2:mem:quizzlive_db;DB_CLOSE_DELAY=-1;MODE=MySQL");
+            h2Config.setJdbcUrl("jdbc:h2:file:./data/quizzlive_db;DB_CLOSE_DELAY=-1;MODE=MySQL;AUTO_SERVER=TRUE");
             h2Config.setUsername("sa");
             h2Config.setPassword("");
             h2Config.setMaximumPoolSize(10);
             dataSource = new HikariDataSource(h2Config);
-            System.out.println("[DatabaseManager] Connected to in-memory H2 Database (MySQL mode).");
+            System.out.println("[DatabaseManager] Connected to persistent file-based H2 Database at ./data/quizzlive_db (MySQL mode).");
         }
 
         if (ServerConfig.isDbAutoInit() || !useMysql) {

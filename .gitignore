@@ -14,3 +14,8 @@ bin/
 # OS temporary files
 .DS_Store
 Thumbs.db
+
+# Embedded local database storage
+data/
+*.mv.db
+*.trace.db

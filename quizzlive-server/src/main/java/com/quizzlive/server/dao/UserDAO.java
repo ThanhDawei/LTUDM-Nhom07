@@ -264,7 +264,8 @@ public class UserDAO {
 
     public List<User> getAllUsers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT * FROM NGUOI_DUNG ORDER BY NgayTao DESC";
+        // Sắp xếp theo MaNguoiDung ASC để tài khoản mới tạo luôn nằm ở cuối bảng
+        String sql = "SELECT * FROM NGUOI_DUNG ORDER BY MaNguoiDung ASC, NgayTao ASC";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

@@ -52,6 +52,10 @@ public class ServerMainFrame extends JFrame {
 
         initComponents();
         loadAllData();
+
+        // Tự động làm mới danh sách người dùng mỗi 3 giây để cập nhật tài khoản mới theo thời gian thực
+        Timer autoRefreshTimer = new Timer(3000, e -> loadUsersData());
+        autoRefreshTimer.start();
     }
 
     private void initComponents() {
@@ -234,6 +238,7 @@ public class ServerMainFrame extends JFrame {
         lblOnlineUsers.setText("Đang online: " + statisticDAO.getOnlineUserCount());
         lblTotalUsers.setText("Tổng người dùng: " + statisticDAO.getTotalUserCount());
 
+        int selectedRow = tblUsers.getSelectedRow();
         userTableModel.setRowCount(0);
         List<User> users = userDAO.getAllUsers();
         for (User u : users) {
@@ -245,6 +250,9 @@ public class ServerMainFrame extends JFrame {
                     u.isOnline() ? "Online" : "Offline",
                     u.getCreatedAt()
             });
+        }
+        if (selectedRow >= 0 && selectedRow < userTableModel.getRowCount()) {
+            tblUsers.setRowSelectionInterval(selectedRow, selectedRow);
         }
     }
 
