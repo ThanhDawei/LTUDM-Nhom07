@@ -3,6 +3,7 @@ package com.quizzlive.client.ui;
 import com.quizzlive.client.service.ClientAuthService;
 import com.quizzlive.client.service.ClientChallengeService;
 import com.quizzlive.client.service.ClientMatchmakingService;
+import com.quizzlive.client.util.AvatarUtil;
 import com.quizzlive.shared.dto.AuthDTO;
 import com.quizzlive.shared.dto.ChallengeDTO;
 import com.quizzlive.shared.dto.TopicDTO;
@@ -76,6 +77,19 @@ public class LobbyPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 18, 12, 18)
         ));
 
+        JPanel profileHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        profileHeader.setOpaque(false);
+
+        lblAvatarBadge = new JLabel(AvatarUtil.getAvatarIcon("avatar1.png", 64));
+        lblAvatarBadge.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblAvatarBadge.setToolTipText("Bấm vào đây để cập nhật hồ sơ & ảnh đại diện");
+        lblAvatarBadge.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                showUpdateProfileDialog();
+            }
+        });
+
         JPanel userBox = new JPanel(new GridLayout(3, 1, 2, 2));
         userBox.setOpaque(false);
 
@@ -94,7 +108,10 @@ public class LobbyPanel extends JPanel {
         userBox.add(lblWelcome);
         userBox.add(lblBio);
         userBox.add(lblUserStats);
-        topPanel.add(userBox, BorderLayout.WEST);
+
+        profileHeader.add(lblAvatarBadge);
+        profileHeader.add(userBox);
+        topPanel.add(profileHeader, BorderLayout.WEST);
 
         JPanel navActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         navActions.setOpaque(false);
@@ -334,10 +351,33 @@ public class LobbyPanel extends JPanel {
         JTextField txtName = new JTextField(20);
         txtName.setText(lblWelcome.getText().replace("Xin chào, ", "").replace("!", "").trim());
 
-        JComboBox<String> cbAvatar = new JComboBox<>(new String[]{"avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"});
+        JComboBox<String> cbAvatar = new JComboBox<>(AvatarUtil.AVAILABLE_AVATARS);
+        cbAvatar.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value != null) {
+                    String av = value.toString();
+                    lbl.setIcon(AvatarUtil.getAvatarIcon(av, 28));
+                    lbl.setText(" " + av);
+                }
+                return lbl;
+            }
+        });
         if (currentAvatar != null) {
             cbAvatar.setSelectedItem(currentAvatar);
         }
+
+        JLabel lblAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(currentAvatar, 44));
+        cbAvatar.addActionListener(e -> {
+            String sel = (String) cbAvatar.getSelectedItem();
+            lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(sel, 44));
+        });
+
+        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        avatarRow.setOpaque(false);
+        avatarRow.add(cbAvatar);
+        avatarRow.add(lblAvatarPreview);
 
         JTextField txtBio = new JTextField(20);
         txtBio.setText(currentBio != null ? currentBio : "");
@@ -349,12 +389,12 @@ public class LobbyPanel extends JPanel {
         panel.add(new JLabel("Họ tên mới:"));
         panel.add(txtName);
         panel.add(new JLabel("Ảnh đại diện (avatar):"));
-        panel.add(cbAvatar);
+        panel.add(avatarRow);
         panel.add(new JLabel("Giới thiệu bản thân:"));
         panel.add(txtBio);
-        panel.add(new JLabel("Mật khẩu hiện tại (nếu đổi):"));
+        panel.add(new JLabel("Mật khẩu hiện tại:"));
         panel.add(txtCurPass);
-        panel.add(new JLabel("Mật khẩu mới (nếu đổi):"));
+        panel.add(new JLabel("Mật khẩu mới:"));
         panel.add(txtNewPass);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Cập Nhật Hồ Sơ Cá Nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
@@ -374,12 +414,16 @@ public class LobbyPanel extends JPanel {
     public void updateUserInfo(AuthDTO.AuthResponse auth) {
         this.currentUserId = auth.userId;
         this.currentUsername = auth.username;
-        this.currentAvatar = auth.avatarUrl != null ? auth.avatarUrl : "avatar1.png";
-        this.currentBio = auth.bio != null ? auth.bio : "Thành viên Quizzlive";
+        this.currentAvatar = (auth.avatarUrl != null && !auth.avatarUrl.trim().isEmpty()) ? auth.avatarUrl.trim() : "avatar1.png";
+        this.currentBio = (auth.bio != null && !auth.bio.trim().isEmpty()) ? auth.bio.trim() : "Thành viên Quizzlive";
+
+        if (lblAvatarBadge != null) {
+            lblAvatarBadge.setIcon(AvatarUtil.getAvatarIcon(this.currentAvatar, 64));
+        }
 
         lblWelcome.setText("Xin chào, " + (auth.fullName != null ? auth.fullName : auth.username) + "!");
         lblBio.setText("“" + this.currentBio + "”");
-        lblUserStats.setText("Ảnh: " + this.currentAvatar + " | Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
+        lblUserStats.setText("Điểm IQ: " + (auth.iqScore != null ? auth.iqScore : "Chưa test"));
 
         authService.requestOnlineUsers();
         matchmakingService.requestTopicList();

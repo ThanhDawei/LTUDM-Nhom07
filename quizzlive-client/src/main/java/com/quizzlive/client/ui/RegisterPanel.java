@@ -2,6 +2,7 @@ package com.quizzlive.client.ui;
 
 import com.quizzlive.client.network.SocketClient;
 import com.quizzlive.client.service.ClientAuthService;
+import com.quizzlive.client.util.AvatarUtil;
 
 import javax.swing.*;
 import java.awt.*;
@@ -93,8 +94,29 @@ public class RegisterPanel extends JPanel {
         gbc.gridx = 0;
         card.add(new JLabel("Ảnh đại diện:"), gbc);
         gbc.gridx = 1;
-        cbAvatar = new JComboBox<>(new String[]{"avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"});
-        card.add(cbAvatar, gbc);
+        cbAvatar = new JComboBox<>(AvatarUtil.AVAILABLE_AVATARS);
+        cbAvatar.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value != null) {
+                    String av = value.toString();
+                    lbl.setIcon(AvatarUtil.getAvatarIcon(av, 24));
+                    lbl.setText(" " + av);
+                }
+                return lbl;
+            }
+        });
+        JLabel lblRegAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon("avatar1.png", 32));
+        cbAvatar.addActionListener(e -> {
+            String sel = (String) cbAvatar.getSelectedItem();
+            lblRegAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(sel, 32));
+        });
+        JPanel regAvatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        regAvatarRow.setOpaque(false);
+        regAvatarRow.add(cbAvatar);
+        regAvatarRow.add(lblRegAvatarPreview);
+        card.add(regAvatarRow, gbc);
 
         gbc.gridy++;
         gbc.gridx = 0;
