@@ -52,10 +52,6 @@ public class ServerMainFrame extends JFrame {
 
         initComponents();
         loadAllData();
-
-        // Tự động làm mới danh sách người dùng mỗi 3 giây để cập nhật tài khoản mới theo thời gian thực
-        Timer autoRefreshTimer = new Timer(3000, e -> loadUsersData());
-        autoRefreshTimer.start();
     }
 
     private void initComponents() {
@@ -86,10 +82,9 @@ public class ServerMainFrame extends JFrame {
         lblTotalUsers.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         JButton btnRefreshUsers = new JButton("Làm mới danh sách");
-        btnRefreshUsers.addActionListener(e -> {
-            loadUsersData();
-            JOptionPane.showMessageDialog(this, "Đã cập nhật danh sách người dùng mới nhất!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-        });
+        btnRefreshUsers.setFocusPainted(false);
+        btnRefreshUsers.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnRefreshUsers.addActionListener(e -> loadUsersData());
 
         JButton btnBlock = new JButton("Khóa / Mở khóa người dùng");
         btnBlock.setForeground(Color.RED);
