@@ -137,7 +137,16 @@ public class PacketRouter {
 
             // --- 7. BẢNG XẾP HẠNG & LỊCH SỬ (Yêu cầu 10) ---
             case LEADERBOARD_REQ: {
-                LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(20);
+                Long currentUserId = session.getUserId();
+                try {
+                    if (json != null && json.contains("userId")) {
+                        com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                        if (obj != null && obj.has("userId") && !obj.get("userId").isJsonNull()) {
+                            currentUserId = obj.get("userId").getAsLong();
+                        }
+                    }
+                } catch (Exception ignored) {}
+                LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(currentUserId, 20);
                 session.sendPacket(new Packet(OpCode.LEADERBOARD_RESP, JsonUtil.toJson(resp)));
                 break;
             }

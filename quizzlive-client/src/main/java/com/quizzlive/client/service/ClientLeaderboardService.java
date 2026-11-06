@@ -12,11 +12,18 @@ public class ClientLeaderboardService {
     private final SocketClient socketClient = SocketClient.getInstance();
 
     /**
-     * TODO: Dev Client gọi hàm này khi mở màn hình Bảng xếp hạng
-     * Server sẽ trả về top người thắng nhiều nhất, chuỗi thắng dài nhất, v.v.
+     * Mở màn hình Bảng xếp hạng: Gửi yêu cầu lấy Top BXH và thông số cá nhân của người chơi
      */
     public void requestLeaderboard() {
-        socketClient.sendPacket(new Packet(OpCode.LEADERBOARD_REQ, "{}"));
+        requestLeaderboard(null);
+    }
+
+    public void requestLeaderboard(Long userId) {
+        if (userId != null && userId > 0) {
+            socketClient.sendPacket(new Packet(OpCode.LEADERBOARD_REQ, "{\"userId\":" + userId + "}"));
+        } else {
+            socketClient.sendPacket(new Packet(OpCode.LEADERBOARD_REQ, "{}"));
+        }
     }
 
     /**

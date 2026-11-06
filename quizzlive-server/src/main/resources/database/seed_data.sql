@@ -1,4 +1,4 @@
-﻿-- =========================================================================
+-- =========================================================================
 -- QUIZZLIVE SEED DATA - DỮ LIỆU KHỞI TẠO MẪU CHO NHÓM 07
 -- =========================================================================
 USE `quizzlive_db`;
@@ -553,3 +553,26 @@ INSERT INTO `DAP_AN` (`MaDapAn`, `MaCauHoi`, `KyHieu`, `NoiDung`, `LaDapAnDung`)
 (248, 62, 'D', 'Để sói và dê ở bờ cũ', FALSE)
 ON DUPLICATE KEY UPDATE `NoiDung` = VALUES(`NoiDung`);
 
+
+
+-- 6. Lịch sử trận đấu mẫu (Yêu cầu 10)
+INSERT INTO `TRAN_DAU` (`MaTran`, `MaTranCode`, `LoaiTran`, `MaChuDe`, `DoKho`, `TrangThai`, `ThoiGianBatDau`, `ThoiGianKetThuc`, `NguoiThang`) VALUES
+(1, 'MATCH_1001', 'RANKED', 1, 'EASY', 'FINISHED', '2026-11-06 14:00:00', '2026-11-06 14:02:15', 2),
+(2, 'MATCH_1002', 'RANKED', 2, 'MEDIUM', 'FINISHED', '2026-11-06 15:30:00', '2026-11-06 15:32:10', 1),
+(3, 'MATCH_1003', 'RANKED', 3, 'MEDIUM', 'FINISHED', '2026-11-06 16:45:00', '2026-11-06 16:47:05', 1),
+(4, 'MATCH_1004', 'CHALLENGE', 4, 'HARD', 'FINISHED', '2026-11-06 18:10:00', '2026-11-06 18:12:30', 2),
+(5, 'MATCH_1005', 'RANKED', 3, 'HARD', 'FINISHED', '2026-11-06 20:00:00', '2026-11-06 20:02:40', 3)
+ON DUPLICATE KEY UPDATE `TrangThai` = VALUES(`TrangThai`);
+
+INSERT INTO `NGUOI_CHOI_TRAN` (`MaTran`, `MaNguoiDung`, `ViTri`, `Diem`, `SoCauDung`, `SoCauSai`, `SoCauKhongTraLoi`, `XepHang`, `ThoiGianThamGia`, `ThoiGianHoanThanh`) VALUES
+(1, 1, 1, 320, 3, 2, 0, 2, '2026-11-06 14:00:00', '2026-11-06 14:02:15'),
+(1, 2, 2, 480, 5, 0, 0, 1, '2026-11-06 14:00:00', '2026-11-06 14:02:15'),
+(2, 1, 1, 450, 4, 1, 0, 1, '2026-11-06 15:30:00', '2026-11-06 15:32:10'),
+(2, 3, 2, 250, 2, 3, 0, 2, '2026-11-06 15:30:00', '2026-11-06 15:32:10'),
+(3, 1, 1, 500, 5, 0, 0, 1, '2026-11-06 16:45:00', '2026-11-06 16:47:05'),
+(3, 4, 2, 180, 2, 3, 0, 2, '2026-11-06 16:45:00', '2026-11-06 16:47:05'),
+(4, 2, 1, 420, 4, 1, 0, 1, '2026-11-06 18:10:00', '2026-11-06 18:12:30'),
+(4, 4, 2, 200, 2, 3, 0, 2, '2026-11-06 18:10:00', '2026-11-06 18:12:30'),
+(5, 3, 1, 380, 4, 1, 0, 1, '2026-11-06 20:00:00', '2026-11-06 20:02:40'),
+(5, 4, 2, 290, 3, 2, 0, 2, '2026-11-06 20:00:00', '2026-11-06 20:02:40')
+ON DUPLICATE KEY UPDATE `Diem` = VALUES(`Diem`);

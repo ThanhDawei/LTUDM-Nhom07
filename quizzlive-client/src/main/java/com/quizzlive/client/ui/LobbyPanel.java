@@ -119,6 +119,7 @@ public class LobbyPanel extends JPanel {
         JButton btnLeaderboard = new JButton("🏆 Bảng Xếp Hạng");
         btnLeaderboard.setFocusPainted(false);
         btnLeaderboard.addActionListener(e -> {
+            mainFrame.getLeaderboardPanel().updateAvatar(currentAvatar);
             mainFrame.getLeaderboardPanel().refreshData(currentUserId);
             mainFrame.showPanel(MainClientFrame.CARD_LEADERBOARD);
         });
