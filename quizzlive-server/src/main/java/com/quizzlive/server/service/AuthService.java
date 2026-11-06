@@ -13,7 +13,9 @@ import java.util.regex.Pattern;
 /**
  * Service xử lý Xác thực & Quản lý Tài khoản người dùng
  * Phụ trách Yêu cầu 1: Đăng ký, đăng nhập, cập nhật thông tin cá nhân, xác thực email bằng OTP (thời hạn 10 phút)
- * Cấu hình: Không dùng băm BCrypt (lưu và đối chiếu mật khẩu trực tiếp).
+ * - Mật khẩu: KHÔNG DÙNG MÃ HÓA, HÀM BĂM (lưu và đối chiếu chuỗi thô trực tiếp).
+ * - Mã OTP: Bắt buộc gửi và lưu trữ trong CSDL bảng OTP (thời hạn 10 phút).
+ * - Email: Sử dụng giao thức IMAP qua Socket thuần, KHÔNG DÙNG SMTP.
  */
 public class AuthService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})$");
@@ -24,10 +26,10 @@ public class AuthService {
      * Xử lý Đăng ký tài khoản (Yêu cầu 1):
      * 1. Kiểm tra tính hợp lệ dữ liệu (username, password, email, họ tên)
      * 2. Kiểm tra trùng lặp username, email
-     * 3. Băm mật khẩu có Salt (PBKDF2)
+     * 3. Mật khẩu không dùng mã hóa, hàm băm (lưu dạng chuỗi thô)
      * 4. Tạo tài khoản với trạng thái PENDING
-     * 5. Sinh mã OTP 6 số, lưu CSDL với thời hạn 10 phút
-     * 6. Gửi OTP qua Email / Server Console
+     * 5. Sinh mã OTP 6 số, bắt buộc lưu vào CSDL (bảng OTP) với thời hạn 10 phút
+     * 6. Gửi OTP qua giao thức IMAP / Server Console (không dùng SMTP)
      */
     public AuthDTO.AuthResponse register(AuthDTO.RegisterRequest req) {
         AuthDTO.AuthResponse resp = new AuthDTO.AuthResponse();
@@ -101,11 +103,11 @@ public class AuthService {
             }
         }
 
-        // Băm mật khẩu có Salt (PBKDF2)
-        String passwordHash = PasswordUtil.hashPassword(password);
+        // Mật khẩu không dùng mã hóa, hàm băm (lưu dạng chuỗi thô)
+        String passwordRaw = PasswordUtil.hashPassword(password);
 
         // Tạo tài khoản trạng thái PENDING
-        Long userId = userDAO.createUser(username, passwordHash, email, fullName);
+        Long userId = userDAO.createUser(username, passwordRaw, email, fullName);
         if (userId == null) {
             resp.success = false;
             resp.message = "Đăng ký thất bại do lỗi hệ thống CSDL!";
@@ -177,9 +179,9 @@ public class AuthService {
     /**
      * Xử lý Đăng nhập (Yêu cầu 1):
      * 1. Hỗ trợ đăng nhập bằng tên tài khoản hoặc email
-     * 2. Kiểm tra mật khẩu (đối chiếu hash PBKDF2 có salt)
+     * 2. Kiểm tra mật khẩu (đối chiếu trực tiếp dạng thô, không dùng mã hóa, hàm băm)
      * 3. Kiểm tra tài khoản có bị khóa không (Yêu cầu 15)
-     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa
+     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa (nếu chưa, sinh OTP mới lưu CSDL 10 phút & gửi qua IMAP)
      * 5. Cập nhật trạng thái Online
      */
     public AuthDTO.AuthResponse login(AuthDTO.LoginRequest req) {

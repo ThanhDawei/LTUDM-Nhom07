@@ -2,14 +2,14 @@ package com.quizzlive.server.util;
 
 /**
  * Tiện ích xử lý và đối chiếu mật khẩu người dùng.
- * Cấu hình: KHÔNG DÙNG BĂM BCRYPT theo yêu cầu của đồ án (lưu và so sánh mật khẩu trực tiếp).
- * Vẫn hỗ trợ đối chiếu với các tài khoản đã tạo trước đó nếu có.
+ * Yêu cầu: KHÔNG DÙNG MÃ HÓA, HÀM BĂM.
+ * Mật khẩu được lưu trữ và đối chiếu trực tiếp dưới dạng chuỗi thô (plain text).
  */
 public class PasswordUtil {
 
     /**
-     * Xử lý mật khẩu trước khi lưu CSDL:
-     * Không dùng băm BCrypt, lưu mật khẩu trực tiếp.
+     * Không sử dụng mã hóa hay hàm băm.
+     * Lưu trữ mật khẩu dạng chuỗi thô trực tiếp vào CSDL.
      */
     public static String hashPassword(String password) {
         if (password == null || password.isEmpty()) {
@@ -19,39 +19,13 @@ public class PasswordUtil {
     }
 
     /**
-     * Xác thực mật khẩu đăng nhập với mật khẩu lưu trong CSDL.
-     * Đối chiếu trực tiếp chuỗi mật khẩu (không dùng BCrypt).
+     * Xác thực mật khẩu:
+     * Đối chiếu trực tiếp chuỗi mật khẩu người dùng nhập với mật khẩu lưu trong CSDL (không dùng hàm băm hay mã hóa).
      */
     public static boolean verifyPassword(String password, String storedPassword) {
         if (password == null || storedPassword == null || storedPassword.isEmpty()) {
             return false;
         }
-
-        // Đối chiếu trực tiếp (Không dùng băm BCrypt)
-        if (password.equals(storedPassword)) {
-            return true;
-        }
-
-        // Tương thích ngược nếu trong DB từng lưu chuỗi băm PBKDF2
-        if (storedPassword.startsWith("PBKDF2$")) {
-            try {
-                String[] parts = storedPassword.split("\\$");
-                if (parts.length == 4) {
-                    int iterations = Integer.parseInt(parts[1]);
-                    byte[] salt = java.util.HexFormat.of().parseHex(parts[2]);
-                    byte[] expectedHash = java.util.HexFormat.of().parseHex(parts[3]);
-
-                    javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(
-                            password.toCharArray(), salt, iterations, expectedHash.length * 8
-                    );
-                    javax.crypto.SecretKeyFactory skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-                    byte[] actualHash = skf.generateSecret(spec).getEncoded();
-                    return java.security.MessageDigest.isEqual(expectedHash, actualHash);
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
-        return false;
+        return password.equals(storedPassword);
     }
 }
