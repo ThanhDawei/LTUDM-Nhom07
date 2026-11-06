@@ -243,6 +243,9 @@ public class ChallengeService {
         UserProfile senderProfile = userDAO.getUserProfile(senderSession.getUserId());
         UserProfile responderProfile = userDAO.getUserProfile(responder.getUserId());
 
+        com.quizzlive.server.dao.QuestionDAO qDAO = new com.quizzlive.server.dao.QuestionDAO();
+        String topicName = qDAO.getTopicNameById(invitation.topicId);
+
         // Gửi cho người thách đấu (Sender)
         MatchmakingDTO.MatchFoundNotify notifySender = new MatchmakingDTO.MatchFoundNotify();
         notifySender.matchId = room.getMatchId();
@@ -254,6 +257,9 @@ public class ChallengeService {
         notifySender.opponentAvatar = (responderProfile != null) ? responderProfile.getAvatar() : null;
         notifySender.totalQuestions = BattleRoom.TOTAL_QUESTIONS;
         notifySender.timeLimitSeconds = BattleRoom.TIME_LIMIT_SECONDS;
+        notifySender.topicId = invitation.topicId;
+        notifySender.topicName = topicName;
+        notifySender.difficulty = invitation.difficulty;
         senderSession.sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifySender)));
 
         // Gửi cho người nhận thách đấu (Responder)
@@ -267,6 +273,9 @@ public class ChallengeService {
         notifyResponder.opponentAvatar = (senderProfile != null) ? senderProfile.getAvatar() : null;
         notifyResponder.totalQuestions = BattleRoom.TOTAL_QUESTIONS;
         notifyResponder.timeLimitSeconds = BattleRoom.TIME_LIMIT_SECONDS;
+        notifyResponder.topicId = invitation.topicId;
+        notifyResponder.topicName = topicName;
+        notifyResponder.difficulty = invitation.difficulty;
         responder.sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifyResponder)));
     }
 

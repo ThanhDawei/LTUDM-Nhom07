@@ -108,6 +108,8 @@ public class BattleRoom {
         questionNotify.timeLimitSeconds = TIME_LIMIT_SECONDS;
         questionNotify.questionContent = currentQ.getContent();
         questionNotify.questionImage = currentQ.getImage();
+        questionNotify.topicName = currentQ.getTopicName() != null ? currentQ.getTopicName() : (this.topicId != null ? "Chủ đề #" + this.topicId : "Tất cả chủ đề");
+        questionNotify.difficulty = currentQ.getDifficulty() != null ? currentQ.getDifficulty() : this.difficulty;
         questionNotify.options = new ArrayList<>();
 
         String[] keys = { "A", "B", "C", "D" };

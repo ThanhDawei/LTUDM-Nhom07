@@ -24,6 +24,7 @@ public class MatchmakingWaitingPanel extends JPanel {
 
     // Components cho Yêu cầu 2 (Đếm ngược 60s)
     private JLabel lblCountdown;
+    private JLabel lblQueueCriteria;
     private JProgressBar progressBar;
     private JButton btnCancelQueue;
     private Timer queueTimer;
@@ -58,17 +59,22 @@ public class MatchmakingWaitingPanel extends JPanel {
                 BorderFactory.createEmptyBorder(15, 20, 15, 20)
         ));
 
-        JPanel queueInfo = new JPanel(new GridLayout(2, 1, 5, 5));
+        JPanel queueInfo = new JPanel(new GridLayout(3, 1, 3, 3));
         queueInfo.setOpaque(false);
         JLabel lblQueueHeader = new JLabel("ĐANG TÌM KIẾM ĐỐI THỦ THÍCH HỢP...", SwingConstants.CENTER);
         lblQueueHeader.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblQueueHeader.setForeground(new Color(41, 128, 185));
 
+        lblQueueCriteria = new JLabel("🎯 Mục tiêu: Tất cả chủ đề  |  Mọi cấp độ", SwingConstants.CENTER);
+        lblQueueCriteria.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblQueueCriteria.setForeground(new Color(127, 140, 141));
+
         lblCountdown = new JLabel("Thời gian chờ: 60s", SwingConstants.CENTER);
-        lblCountdown.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblCountdown.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblCountdown.setForeground(new Color(231, 76, 60));
 
         queueInfo.add(lblQueueHeader);
+        queueInfo.add(lblQueueCriteria);
         queueInfo.add(lblCountdown);
         topQueuePanel.add(queueInfo, BorderLayout.CENTER);
 
@@ -185,13 +191,21 @@ public class MatchmakingWaitingPanel extends JPanel {
     }
 
     /**
-     * Bắt đầu đếm ngược 60 giây khi người dùng bấm Tìm trận
+     * Bắt đầu đếm ngược 60 giây khi người dùng bấm Tìm trận (Yêu cầu 2, 4)
      */
     public void startCountdown(int seconds) {
+        startCountdown(seconds, "Tất cả chủ đề", "Mọi cấp độ");
+    }
+
+    public void startCountdown(int seconds, String topicName, String diffName) {
         this.remainingSeconds = seconds;
         progressBar.setMaximum(seconds);
         progressBar.setValue(seconds);
         lblCountdown.setText("Thời gian chờ: " + remainingSeconds + "s");
+
+        String t = (topicName != null && !topicName.trim().isEmpty()) ? topicName : "Tất cả chủ đề";
+        String d = (diffName != null && !diffName.trim().isEmpty()) ? diffName : "Mọi cấp độ";
+        lblQueueCriteria.setText("🎯 Mục tiêu: " + t + "   |   ⚡ Độ khó: " + d);
 
         if (queueTimer != null && queueTimer.isRunning()) {
             queueTimer.stop();

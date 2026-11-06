@@ -30,6 +30,7 @@ public class BattlePanel extends JPanel {
     private JLabel lblRoundIndicator;
     private JLabel lblPlayer1Score;
     private JLabel lblPlayer2Score;
+    private JLabel lblTopicDifficulty;
     private JProgressBar timerProgressBar;
     private JLabel lblTimerText;
 
@@ -85,6 +86,13 @@ public class BattlePanel extends JPanel {
         scoreBox.add(lblRoundIndicator);
         scoreBox.add(lblPlayer2Score);
         topPanel.add(scoreBox, BorderLayout.NORTH);
+
+        // Hiển thị Chủ đề & Độ khó của câu hỏi đang thi đấu (Yêu cầu 4)
+        lblTopicDifficulty = new JLabel("📚 Chủ đề: Đang tải...   |   ⚡ Độ khó: Đang tải...", SwingConstants.CENTER);
+        lblTopicDifficulty.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTopicDifficulty.setForeground(new Color(44, 62, 80));
+        lblTopicDifficulty.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+        topPanel.add(lblTopicDifficulty, BorderLayout.CENTER);
 
         // Thanh đếm ngược 10 giây
         JPanel timerBox = new JPanel(new BorderLayout(10, 0));
@@ -204,6 +212,12 @@ public class BattlePanel extends JPanel {
 
         lblRoundIndicator.setText("CÂU " + question.questionIndex + " / " + question.totalQuestions);
         txtQuestion.setText(question.questionContent);
+
+        // Cập nhật Chủ đề & Độ khó (Yêu cầu 4)
+        String topicStr = (question.topicName != null && !question.topicName.trim().isEmpty())
+                ? question.topicName : "Tất cả chủ đề";
+        String diffStr = formatDifficultyDisplay(question.difficulty);
+        lblTopicDifficulty.setText("📚 Chủ đề: " + topicStr + "   |   ⚡ Độ khó: " + diffStr);
 
         if (question.questionImage != null && !question.questionImage.isEmpty()) {
             lblQuestionImage.setText("[ Ảnh: " + question.questionImage + " ]");
@@ -384,5 +398,14 @@ public class BattlePanel extends JPanel {
         if (currentOptions.size() > 2 && currentOptions.get(2).answerId == answerId) return btnAnswerC;
         if (currentOptions.size() > 3 && currentOptions.get(3).answerId == answerId) return btnAnswerD;
         return null;
+    }
+
+    private String formatDifficultyDisplay(String diff) {
+        if (diff == null) return "Trung bình (MEDIUM)";
+        String u = diff.toUpperCase();
+        if (u.contains("EASY") || u.contains("DỄ")) return "Dễ (EASY)";
+        if (u.contains("HARD") || u.contains("KHÓ")) return "Khó (HARD)";
+        if (u.contains("MEDIUM") || u.contains("TRUNG BÌNH")) return "Trung bình (MEDIUM)";
+        return diff;
     }
 }

@@ -194,8 +194,10 @@ public class MatchmakingService {
 
     // Kiểm tra độ tương thích giữa 2 người chơi (Cùng chủ đề và độ khó)
     private boolean isCompatible(QueueTicket t1, QueueTicket t2) {
-        // Cùng độ khó
-        boolean diffMatch = Objects.equals(t1.getDifficulty(), t2.getDifficulty());
+        // Cùng độ khó hoặc một trong hai người chọn Mọi cấp độ (ALL / null)
+        boolean diffMatch = t1.getDifficulty() == null || "ALL".equalsIgnoreCase(t1.getDifficulty()) ||
+                t2.getDifficulty() == null || "ALL".equalsIgnoreCase(t2.getDifficulty()) ||
+                Objects.equals(t1.getDifficulty(), t2.getDifficulty());
 
         // Cùng chủ đề (hoặc một trong 2 người chọn ngẫu nhiên: topicId == null hoặc 0)
         boolean topicMatch = (t1.getTopicId() == null || t1.getTopicId() == 0 ||
@@ -207,8 +209,16 @@ public class MatchmakingService {
 
     // Tạo trận đấu và gửi thông báo MATCH_FOUND_NOTIFY cho cả 2 client
     private void handleMatchFound(QueueTicket t1, QueueTicket t2) {
-        Integer topicId = t1.getTopicId() != null && t1.getTopicId() > 0 ? t1.getTopicId() : t2.getTopicId();
-        String difficulty = t1.getDifficulty();
+        Integer topicId = (t1.getTopicId() != null && t1.getTopicId() > 0)
+                ? t1.getTopicId()
+                : ((t2.getTopicId() != null && t2.getTopicId() > 0) ? t2.getTopicId() : null);
+
+        String difficulty = (!"ALL".equalsIgnoreCase(t1.getDifficulty()) && t1.getDifficulty() != null)
+                ? t1.getDifficulty()
+                : ((!"ALL".equalsIgnoreCase(t2.getDifficulty()) && t2.getDifficulty() != null) ? t2.getDifficulty() : "MEDIUM");
+
+        com.quizzlive.server.dao.QuestionDAO qDAO = new com.quizzlive.server.dao.QuestionDAO();
+        String topicName = qDAO.getTopicNameById(topicId);
 
         // 1. Tạo phòng đấu trong BattleManager
         BattleRoom room = BattleManager.getInstance().createBattle(t1.getSession(), t2.getSession(), topicId,
@@ -229,6 +239,9 @@ public class MatchmakingService {
         notifyP1.opponentAvatar = (p2Profile != null) ? p2Profile.getAvatar() : null;
         notifyP1.totalQuestions = 5;
         notifyP1.timeLimitSeconds = 10;
+        notifyP1.topicId = topicId;
+        notifyP1.topicName = topicName;
+        notifyP1.difficulty = difficulty;
         t1.getSession().sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifyP1)));
 
         // Gửi MATCH_FOUND_NOTIFY cho Player 2 (thông tin đối thủ là Player 1)
@@ -242,6 +255,9 @@ public class MatchmakingService {
         notifyP2.opponentAvatar = (p1Profile != null) ? p1Profile.getAvatar() : null;
         notifyP2.totalQuestions = 5;
         notifyP2.timeLimitSeconds = 10;
+        notifyP2.topicId = topicId;
+        notifyP2.topicName = topicName;
+        notifyP2.difficulty = difficulty;
         t2.getSession().sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notifyP2)));
     }
 }

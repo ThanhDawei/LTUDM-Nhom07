@@ -17,5 +17,8 @@ public class MatchmakingDTO {
         public String opponentAvatar;
         public int totalQuestions;
         public int timeLimitSeconds;
+        public Integer topicId;
+        public String topicName;
+        public String difficulty;
     }
 }

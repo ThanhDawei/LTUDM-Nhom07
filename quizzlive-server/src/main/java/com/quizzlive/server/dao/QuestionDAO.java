@@ -13,7 +13,7 @@ public class QuestionDAO {
 
     public List<Topic> getAllTopics() {
         List<Topic> topics = new ArrayList<>();
-        String sql = "SELECT * FROM CHU_DE WHERE TrangThai = TRUE";
+        String sql = "SELECT * FROM CHU_DE WHERE TrangThai = TRUE ORDER BY MaChuDe ASC";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -32,31 +32,95 @@ public class QuestionDAO {
         return topics;
     }
 
+    public String getTopicNameById(Integer topicId) {
+        if (topicId == null || topicId == 0) return "Tất cả chủ đề";
+        String sql = "SELECT TenChuDe FROM CHU_DE WHERE MaChuDe = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, topicId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString("TenChuDe");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "Chủ đề #" + topicId;
+    }
+
+    /**
+     * Lấy danh sách câu hỏi ngẫu nhiên theo Chủ đề và Độ khó (Yêu cầu 4, 7).
+     * Có cơ chế bù đắp thông minh: nếu số câu hỏi khớp chính xác chưa đủ count,
+     * tự động bổ sung câu hỏi cùng chủ đề/cùng độ khó mà không làm gián đoạn trận đấu.
+     */
     public List<Question> getRandomQuestions(Integer topicId, String difficulty, int count) {
         List<Question> questions = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT * FROM CAU_HOI WHERE TrangThai = 'ACTIVE' AND LoaiCauHoi = 'STANDARD' ");
-        if (topicId != null && topicId > 0) {
-            sql.append("AND MaChuDe = ").append(topicId).append(" ");
-        }
-        if (difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
-            sql.append("AND DoKho = '").append(difficulty).append("' ");
-        }
-        sql.append("ORDER BY RAND() LIMIT ?");
+        java.util.Set<Long> chosenIds = new java.util.HashSet<>();
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            ps.setInt(1, count);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Question q = mapQuestion(rs);
-                    q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
-                    questions.add(q);
-                }
+        try (Connection conn = DatabaseManager.getConnection()) {
+            // Lần 1: Lấy câu hỏi thỏa mãn đúng cả topicId và difficulty
+            fetchQuestions(conn, topicId, difficulty, count, chosenIds, questions);
+
+            // Lần 2 (nếu chưa đủ và có chọn topicId): Bổ sung thêm câu hỏi cùng chủ đề (khác độ khó)
+            if (questions.size() < count && topicId != null && topicId > 0) {
+                fetchQuestions(conn, topicId, null, count - questions.size(), chosenIds, questions);
+            }
+
+            // Lần 3 (nếu vẫn chưa đủ và có chọn difficulty): Bổ sung câu hỏi cùng độ khó (khác chủ đề)
+            if (questions.size() < count && difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
+                fetchQuestions(conn, null, difficulty, count - questions.size(), chosenIds, questions);
+            }
+
+            // Lần 4 (dự phòng cuối): Lấy câu hỏi trắc nghiệm bất kỳ còn lại trong ngân hàng
+            if (questions.size() < count) {
+                fetchQuestions(conn, null, null, count - questions.size(), chosenIds, questions);
+            }
+
+            // Nạp đáp án cho từng câu hỏi
+            for (Question q : questions) {
+                q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return questions;
+    }
+
+    private void fetchQuestions(Connection conn, Integer topicId, String difficulty, int limit,
+                                java.util.Set<Long> chosenIds, List<Question> resultList) throws SQLException {
+        if (limit <= 0) return;
+        StringBuilder sql = new StringBuilder(
+                "SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
+                "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
+                "WHERE c.TrangThai = 'ACTIVE' AND c.LoaiCauHoi = 'STANDARD' "
+        );
+        if (topicId != null && topicId > 0) {
+            sql.append("AND c.MaChuDe = ").append(topicId).append(" ");
+        }
+        if (difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
+            sql.append("AND c.DoKho = '").append(difficulty.toUpperCase()).append("' ");
+        }
+        if (!chosenIds.isEmpty()) {
+            sql.append("AND c.MaCauHoi NOT IN (");
+            int i = 0;
+            for (Long id : chosenIds) {
+                if (i++ > 0) sql.append(",");
+                sql.append(id);
+            }
+            sql.append(") ");
+        }
+        sql.append("ORDER BY RAND() LIMIT ?");
+
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            ps.setInt(1, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Question q = mapQuestion(rs);
+                    q.setTopicName(rs.getString("TenChuDe"));
+                    chosenIds.add(q.getQuestionId());
+                    resultList.add(q);
+                }
+            }
+        }
     }
 
     /**

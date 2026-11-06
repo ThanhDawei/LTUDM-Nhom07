@@ -179,10 +179,10 @@ public class LobbyPanel extends JPanel {
         gbc.gridx = 1;
         cbTopics = new JComboBox<>(new TopicItem[]{
                 new TopicItem(0, "-- Tất cả chủ đề --"),
-                new TopicItem(1, "Toán học & Logic"),
+                new TopicItem(1, "Khoa học Tự nhiên"),
                 new TopicItem(2, "Lịch sử & Địa lý"),
-                new TopicItem(3, "Khoa học Tự nhiên"),
-                new TopicItem(4, "Tin học & Công nghệ")
+                new TopicItem(3, "Công nghệ & Máy tính"),
+                new TopicItem(4, "Tư duy IQ & Logic")
         });
         matchCard.add(cbTopics, gbc);
 
@@ -190,7 +190,12 @@ public class LobbyPanel extends JPanel {
         gbc.gridx = 0;
         matchCard.add(new JLabel("Độ khó (YC 4):"), gbc);
         gbc.gridx = 1;
-        cbDifficulty = new JComboBox<>(new String[]{"Mọi cấp độ", "Dễ", "Trung bình", "Khó"});
+        cbDifficulty = new JComboBox<>(new String[]{
+                "-- Mọi cấp độ (ALL) --",
+                "Dễ (EASY)",
+                "Trung bình (MEDIUM)",
+                "Khó (HARD)"
+        });
         matchCard.add(cbDifficulty, gbc);
 
         gbc.gridy++;
@@ -271,11 +276,13 @@ public class LobbyPanel extends JPanel {
      * Bắt đầu ghép cặp tự động (Yêu cầu 2, 4)
      */
     private String mapDifficulty(String raw) {
-        if (raw == null) return "MEDIUM";
-        if (raw.equalsIgnoreCase("Dễ") || raw.equalsIgnoreCase("EASY")) return "EASY";
-        if (raw.equalsIgnoreCase("Khó") || raw.equalsIgnoreCase("HARD")) return "HARD";
-        if (raw.equalsIgnoreCase("Mọi cấp độ") || raw.equalsIgnoreCase("ALL")) return "ALL";
-        return "MEDIUM";
+        if (raw == null) return "ALL";
+        String upper = raw.toUpperCase();
+        if (upper.contains("EASY") || upper.contains("DỄ")) return "EASY";
+        if (upper.contains("HARD") || upper.contains("KHÓ")) return "HARD";
+        if (upper.contains("MEDIUM") || upper.contains("TRUNG BÌNH")) return "MEDIUM";
+        if (upper.contains("ALL") || upper.contains("MỌI")) return "ALL";
+        return "ALL";
     }
 
     private void startFindingMatch() {
@@ -286,8 +293,11 @@ public class LobbyPanel extends JPanel {
         // Gửi gói tin QUEUE_JOIN_REQ lên server
         matchmakingService.joinQueue(topicId, difficulty);
 
+        String topicName = selectedTopic != null ? selectedTopic.name : "Tất cả chủ đề";
+        String diffName = cbDifficulty != null ? (String) cbDifficulty.getSelectedItem() : "Mọi cấp độ";
+
         // Chuyển sang màn hình chờ ghép cặp 60s
-        mainFrame.getWaitingPanel().startCountdown(60);
+        mainFrame.getWaitingPanel().startCountdown(60, topicName, diffName);
         mainFrame.showPanel(MainClientFrame.CARD_WAITING);
     }
 
@@ -497,11 +507,21 @@ public class LobbyPanel extends JPanel {
 
     public void updateTopicList(List<com.quizzlive.shared.dto.TopicDTO> topics) {
         if (topics == null || topics.isEmpty()) return;
+        TopicItem prevSelected = (TopicItem) cbTopics.getSelectedItem();
+        Integer prevId = prevSelected != null ? prevSelected.id : null;
+
         cbTopics.removeAllItems();
         cbTopics.addItem(new TopicItem(0, "-- Tất cả chủ đề --"));
+        int selectIdx = 0;
+        int idx = 1;
         for (com.quizzlive.shared.dto.TopicDTO t : topics) {
             cbTopics.addItem(new TopicItem(t.topicId, t.topicName));
+            if (prevId != null && prevId == t.topicId) {
+                selectIdx = idx;
+            }
+            idx++;
         }
+        cbTopics.setSelectedIndex(selectIdx);
     }
 
     public void updateOnlineUsersList(List<AuthDTO.AuthResponse> users) {
