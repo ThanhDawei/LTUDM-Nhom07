@@ -67,6 +67,7 @@ public class ClientPacketHandler implements NetworkListener {
             case LOGIN_RESP: {
                 AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
                 if (resp != null && resp.success) {
+                    mainFrame.setCurrentUser(resp.userId, resp.username);
                     mainFrame.getLobbyPanel().updateUserInfo(resp);
                     mainFrame.getLoginPanel().onLoginResponse(true, resp.message);
                 } else {

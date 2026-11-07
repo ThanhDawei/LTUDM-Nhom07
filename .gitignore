@@ -15,3 +15,5 @@ bin/
 .DS_Store
 Thumbs.db
 master_gui_showcase.html
+run_server.bat
+run_client.bat

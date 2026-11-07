@@ -92,4 +92,21 @@ public class MainClientFrame extends JFrame {
     public BattlePanel getBattlePanel() { return battlePanel; }
     public LeaderboardPanel getLeaderboardPanel() { return leaderboardPanel; }
     public TournamentPanel getTournamentPanel() { return tournamentPanel; }
+
+    // Quản lý thông tin phiên người dùng đăng nhập hiện tại
+    private Long currentUserId;
+    private String currentUsername;
+
+    public void setCurrentUser(Long userId, String username) {
+        this.currentUserId = userId;
+        this.currentUsername = username;
+    }
+
+    public Long getCurrentUserId() {
+        return currentUserId != null ? currentUserId : (lobbyPanel != null ? lobbyPanel.getCurrentUserId() : null);
+    }
+
+    public String getCurrentUsername() {
+        return currentUsername;
+    }
 }

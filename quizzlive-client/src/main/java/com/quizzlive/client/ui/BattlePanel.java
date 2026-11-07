@@ -202,6 +202,11 @@ public class BattlePanel extends JPanel {
         this.answerSubmitted = false;
         this.selectedAnswerId = null;
 
+        if (question.questionIndex == 1) {
+            lblPlayer1Score.setText("Bạn: 0 điểm");
+            lblPlayer2Score.setText("Đối thủ: 0 điểm");
+        }
+
         lblRoundIndicator.setText("CÂU " + question.questionIndex + " / " + question.totalQuestions);
         txtQuestion.setText(question.questionContent);
 
@@ -283,9 +288,16 @@ public class BattlePanel extends JPanel {
     public void renderRoundResult(BattleDTO.RoundResultNotify result) {
         if (questionTimer != null) questionTimer.stop();
 
-        // 1. Cập nhật điểm số
-        lblPlayer1Score.setText("Bạn: " + result.player1.totalScore + " điểm");
-        lblPlayer2Score.setText("Đối thủ: " + result.player2.totalScore + " điểm");
+        Long myUserId = mainFrame.getCurrentUserId();
+        boolean isMePlayer1 = (myUserId != null && result.player1 != null && myUserId.equals(result.player1.userId));
+        BattleDTO.PlayerRoundInfo me = isMePlayer1 ? result.player1 : result.player2;
+        BattleDTO.PlayerRoundInfo opponent = isMePlayer1 ? result.player2 : result.player1;
+
+        // 1. Cập nhật điểm số chính xác của bản thân và đối thủ
+        int myScore = (me != null) ? me.totalScore : 0;
+        int oppScore = (opponent != null) ? opponent.totalScore : 0;
+        lblPlayer1Score.setText("Bạn: " + myScore + " điểm");
+        lblPlayer2Score.setText("Đối thủ: " + oppScore + " điểm");
 
         // 2. Tô xanh đáp án đúng
         highlightCorrectAnswer(result.correctAnswerId);
@@ -296,10 +308,12 @@ public class BattlePanel extends JPanel {
         }
 
         // 4. Hiển thị lựa chọn của đối thủ (Yêu cầu 6)
-        String oppText = result.player2.selectedAnswerId != null ?
-                "Đối thủ chọn đáp án: " + getAnswerKey(result.player2.selectedAnswerId) + (result.player2.isCorrect ? " (Đúng ✅)" : " (Sai ❌)")
-                : "Đối thủ không kịp trả lời!";
-        lblOpponentStatus.setText(oppText);
+        if (opponent != null) {
+            String oppText = opponent.selectedAnswerId != null ?
+                    "Đối thủ chọn đáp án: " + getAnswerKey(opponent.selectedAnswerId) + (opponent.isCorrect ? " (Đúng ✅)" : " (Sai ❌)")
+                    : "Đối thủ không kịp trả lời!";
+            lblOpponentStatus.setText(oppText);
+        }
         lblStatus.setText("Đáp án đúng là: " + getAnswerKey(result.correctAnswerId) + " | Chuẩn bị sang câu tiếp theo...");
     }
 
@@ -309,17 +323,25 @@ public class BattlePanel extends JPanel {
     public void renderFinalResult(BattleDTO.FinalResultNotify result) {
         if (questionTimer != null) questionTimer.stop();
 
+        Long myUserId = mainFrame.getCurrentUserId();
+        boolean isMePlayer1 = (myUserId != null && result.player1 != null && myUserId.equals(result.player1.userId));
+        BattleDTO.PlayerRoundInfo me = isMePlayer1 ? result.player1 : result.player2;
+        BattleDTO.PlayerRoundInfo opponent = isMePlayer1 ? result.player2 : result.player1;
+
+        int myScore = (me != null) ? me.totalScore : 0;
+        int oppScore = (opponent != null) ? opponent.totalScore : 0;
+
         String title;
         String message;
         if (result.isDraw) {
             title = "KẾT QUẢ: HÒA!";
-            message = "Trận đấu kết thúc với tỉ số hòa!\nĐiểm của bạn: " + result.player1.totalScore + "\nĐiểm đối thủ: " + result.player2.totalScore;
-        } else if (result.winnerUserId != null && result.winnerUserId == result.player1.userId) {
+            message = "Trận đấu kết thúc với tỉ số hòa!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+        } else if (result.winnerUserId != null && myUserId != null && result.winnerUserId.equals(myUserId)) {
             title = "🏆 CHIẾN THẮNG!";
-            message = "Chúc mừng! Bạn đã giành chiến thắng!\nĐiểm của bạn: " + result.player1.totalScore + "\nĐiểm đối thủ: " + result.player2.totalScore;
+            message = "Chúc mừng! Bạn đã giành chiến thắng!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
         } else {
             title = "💔 THẤT BẠI!";
-            message = "Bạn đã thua trận đấu này!\nĐiểm của bạn: " + result.player1.totalScore + "\nĐiểm đối thủ: " + result.player2.totalScore;
+            message = "Bạn đã thua trận đấu này!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
         }
 
         JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
