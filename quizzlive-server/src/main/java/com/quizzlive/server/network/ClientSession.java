@@ -37,7 +37,15 @@ public class ClientSession implements Runnable {
 
             while (running) {
                 Packet packet = (Packet) input.readObject();
-                router.route(this, packet);
+                if (packet != null) {
+                    try {
+                        router.route(this, packet);
+                    } catch (Throwable t) {
+                        System.err.println("[Server] Ngoại lệ khi xử lý gói tin OpCode " 
+                                + packet.getOpCode() + " từ client " + getRemoteAddress() + ": " + t.getMessage());
+                        t.printStackTrace();
+                    }
+                }
             }
         } catch (Exception e) {
             System.out.println("[Server] Session ended for: " + getRemoteAddress());

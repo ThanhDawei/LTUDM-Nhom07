@@ -108,7 +108,11 @@ public class QuestionDAO {
             }
             sql.append(") ");
         }
-        sql.append("ORDER BY RAND() LIMIT ?");
+        boolean isPg = false;
+        try {
+            isPg = conn.getMetaData().getDatabaseProductName().toLowerCase().contains("postgresql");
+        } catch (Exception ignored) {}
+        sql.append(isPg ? "ORDER BY RANDOM() LIMIT ?" : "ORDER BY RAND() LIMIT ?");
 
         try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             ps.setInt(1, limit);
@@ -164,7 +168,6 @@ public class QuestionDAO {
                 while (rs.next()) {
                     Question q = mapQuestion(rs);
                     q.setTopicName(rs.getString("TenChuDe"));
-                    q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
                     list.add(q);
                 }
             }
@@ -183,7 +186,6 @@ public class QuestionDAO {
                 while (rs.next()) {
                     Question q = mapQuestion(rs);
                     q.setTopicName(rs.getString("TenChuDe"));
-                    q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
                     list.add(q);
                 }
             } catch (SQLException e) {
@@ -202,13 +204,25 @@ public class QuestionDAO {
                 iqPreferred.add(q);
             }
         }
+        Question selected;
         if (!iqPreferred.isEmpty() && Math.random() < 0.75) {
             int randomIndex = (int) (Math.random() * iqPreferred.size());
-            return iqPreferred.get(randomIndex);
+            selected = iqPreferred.get(randomIndex);
+        } else {
+            int randomIndex = (int) (Math.random() * list.size());
+            selected = list.get(randomIndex);
         }
 
-        int randomIndex = (int) (Math.random() * list.size());
-        return list.get(randomIndex);
+        // Nạp đáp án độc lập và an toàn cho riêng câu hỏi được chọn
+        if (selected != null) {
+            try (Connection conn = DatabaseManager.getConnection()) {
+                selected.setAnswers(getAnswersForQuestion(conn, selected.getQuestionId()));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return selected;
     }
 
     public Question getRandomIQQuestion() {
