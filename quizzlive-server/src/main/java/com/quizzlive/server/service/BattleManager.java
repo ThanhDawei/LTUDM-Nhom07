@@ -33,12 +33,23 @@ public class BattleManager {
     }
 
     /**
-     * TODO: Điều hướng câu trả lời từ người chơi vào đúng phòng đấu
+     * Điều hướng câu trả lời từ người chơi vào đúng phòng đấu
      */
     public void handleAnswerSubmit(long userId, long matchId, Long selectedAnswerId, int responseTime) {
         BattleRoom room = activeRooms.get(matchId);
         if (room != null) {
             room.submitAnswer(userId, selectedAnswerId, responseTime);
+        }
+    }
+
+    /**
+     * Xử lý khi người chơi bấm nút Đầu Hàng
+     */
+    public void handleSurrender(long userId, long matchId) {
+        BattleRoom room = activeRooms.get(matchId);
+        if (room != null) {
+            room.handleSurrender(userId);
+            activeRooms.remove(matchId);
         }
     }
 

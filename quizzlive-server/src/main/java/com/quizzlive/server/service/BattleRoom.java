@@ -324,6 +324,25 @@ public class BattleRoom {
         scheduler.shutdown();
     }
 
+    // Xử lý khi người chơi bấm nút "Đầu Hàng"
+    public synchronized void handleSurrender(long surrenderUserId) {
+        if (matchFinished)
+            return;
+        matchFinished = true;
+
+        ClientSession winner = (surrenderUserId == player1.getUserId()) ? player2 : player1;
+        ClientSession loser = (surrenderUserId == player1.getUserId()) ? player1 : player2;
+
+        winner.sendPacket(new Packet(
+                OpCode.BATTLE_OPPONENT_DISCONNECTED,
+                "{\"message\":\"Đối thủ đã đầu hàng! Bạn giành chiến thắng trận đấu này!\"}"));
+
+        userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
+        userDAO.updateMatchResult(loser.getUserId(), false, false, 0);
+
+        scheduler.shutdown();
+    }
+
     public long getMatchId() {
         return matchId;
     }

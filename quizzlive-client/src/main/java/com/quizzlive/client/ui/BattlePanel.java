@@ -1,6 +1,7 @@
 package com.quizzlive.client.ui;
 
 import com.quizzlive.client.service.ClientBattleService;
+import com.quizzlive.client.util.BrutalUI;
 import com.quizzlive.shared.dto.BattleDTO;
 
 import javax.swing.*;
@@ -8,9 +9,11 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Giao diện Trận đấu Realtime 1v1
+ * Giao diện Trận đấu Realtime 1v1 - Chuẩn phong cách NEO-BRUTALIST (Nền trắng viền đen)
+ * Theo thiết kế SCREEN 5, 6, 7 trong master_gui_showcase.html
+ * 
  * Phụ trách:
- * - Yêu cầu 5: Mỗi trận 5 câu, mỗi câu 4 đáp án, đếm ngược 10 giây, tính điểm theo thời gian
+ * - Yêu cầu 5: Mỗi trận 5 câu, đếm ngược 10 giây, tính điểm theo tốc độ phản hồi
  * - Yêu cầu 6: Hiển thị lựa chọn của đối thủ và đáp án đúng khi kết thúc lượt
  * - Yêu cầu 7: Hiển thị câu hỏi và đáp án xáo trộn từ server
  * - Yêu cầu 8: Tổng kết kết quả trận (sau 5 câu ai điểm cao hơn thắng)
@@ -26,28 +29,35 @@ public class BattlePanel extends JPanel {
     private boolean answerSubmitted = false;
     private Long selectedAnswerId = null;
 
-    // UI Header
-    private JLabel lblRoundIndicator;
+    // --- UI HEADER COMPONENTS ---
+    private JLabel lblPlayer1Badge;
+    private JLabel lblPlayer1Name;
     private JLabel lblPlayer1Score;
-    private JLabel lblPlayer2Score;
-    private JProgressBar timerProgressBar;
-    private JLabel lblTimerText;
 
-    // UI Question & Image
+    private JLabel lblRoundBadge;
+    private JLabel lblTimerText;
+    private BrutalUI.BrutalProgressBar timerProgressBar;
+
+    private JLabel lblPlayer2Badge;
+    private JLabel lblPlayer2Name;
+    private JLabel lblPlayer2Score;
+
+    // --- UI QUESTION COMPONENTS ---
+    private JLabel lblTopicBadge;
     private JTextArea txtQuestion;
     private JLabel lblQuestionImage;
 
-    // UI Answers (4 đáp án)
-    private JButton btnAnswerA;
-    private JButton btnAnswerB;
-    private JButton btnAnswerC;
-    private JButton btnAnswerD;
+    // --- UI ANSWERS (4 đáp án Neo-Brutalist) ---
+    private BrutalUI.AnswerButton btnAnswerA;
+    private BrutalUI.AnswerButton btnAnswerB;
+    private BrutalUI.AnswerButton btnAnswerC;
+    private BrutalUI.AnswerButton btnAnswerD;
     private List<BattleDTO.QuestionAnswerOption> currentOptions;
 
-    // UI Status / Opponent feedback
+    // --- UI STATUS / FOOTER ---
     private JLabel lblStatus;
     private JLabel lblOpponentStatus;
-    private JButton btnSurrender;
+    private BrutalUI.BrutalButton btnSurrender;
 
     public BattlePanel(MainClientFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -55,141 +65,190 @@ public class BattlePanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout(15, 15));
-        setBackground(new Color(245, 247, 250));
-        setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
+        setLayout(new BorderLayout(16, 16));
+        setBackground(BrutalUI.COLOR_BG);
+        setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
 
-        // 1. TOP BAR: Match Header, Scores, Countdown 10s (Yêu cầu 5)
-        JPanel topPanel = new JPanel(new BorderLayout(10, 10));
-        topPanel.setBackground(Color.WHITE);
-        topPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(12, 18, 12, 18)
-        ));
+        // =========================================================================
+        // 1. TOP HEADER: Round Info, 2 Players Live Score, 10s Timer (Yêu cầu 5)
+        // =========================================================================
+        BrutalUI.CardPanel topCard = new BrutalUI.CardPanel(16, 3);
+        topCard.setLayout(new BorderLayout(15, 8));
 
-        JPanel scoreBox = new JPanel(new GridLayout(1, 3, 10, 0));
-        scoreBox.setOpaque(false);
-        lblPlayer1Score = new JLabel("Bạn: 0 điểm", SwingConstants.LEFT);
-        lblPlayer1Score.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblPlayer1Score.setForeground(new Color(41, 128, 185));
+        // Hàng 1: Player 1 (Trái) - Round & Timer (Giữa) - Player 2 (Phải)
+        JPanel headerRow = new JPanel(new BorderLayout(10, 0));
+        headerRow.setOpaque(false);
 
-        lblRoundIndicator = new JLabel("CÂU 1 / 5", SwingConstants.CENTER);
-        lblRoundIndicator.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblRoundIndicator.setForeground(new Color(52, 73, 94));
+        // Player 1 (Bạn)
+        JPanel p1Box = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        p1Box.setOpaque(false);
+        lblPlayer1Badge = BrutalUI.createBadge("BẠN", new Color(254, 243, 199), new Color(146, 64, 14));
+        lblPlayer1Badge.setPreferredSize(new Dimension(55, 32));
+        
+        JPanel p1Info = new JPanel(new GridLayout(2, 1, 0, 2));
+        p1Info.setOpaque(false);
+        lblPlayer1Name = new JLabel("Bạn");
+        lblPlayer1Name.setFont(BrutalUI.FONT_SMALL_BOLD);
+        lblPlayer1Name.setForeground(BrutalUI.COLOR_MUTED);
+        
+        lblPlayer1Score = new JLabel("0 điểm");
+        lblPlayer1Score.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblPlayer1Score.setForeground(BrutalUI.COLOR_BLACK);
+        p1Info.add(lblPlayer1Name);
+        p1Info.add(lblPlayer1Score);
 
-        lblPlayer2Score = new JLabel("Đối thủ: 0 điểm", SwingConstants.RIGHT);
-        lblPlayer2Score.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblPlayer2Score.setForeground(new Color(231, 76, 60));
+        p1Box.add(lblPlayer1Badge);
+        p1Box.add(p1Info);
+        headerRow.add(p1Box, BorderLayout.WEST);
 
-        scoreBox.add(lblPlayer1Score);
-        scoreBox.add(lblRoundIndicator);
-        scoreBox.add(lblPlayer2Score);
-        topPanel.add(scoreBox, BorderLayout.NORTH);
+        // Center: Round Pill Badge & Countdown Text
+        JPanel centerInfo = new JPanel(new GridLayout(2, 1, 0, 2));
+        centerInfo.setOpaque(false);
+        
+        JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        badgeWrapper.setOpaque(false);
+        lblRoundBadge = BrutalUI.createBadge("CÂU HỎI 1 / 5", new Color(244, 244, 245), BrutalUI.COLOR_BLACK);
+        badgeWrapper.add(lblRoundBadge);
 
-        // Thanh đếm ngược 10 giây
-        JPanel timerBox = new JPanel(new BorderLayout(10, 0));
-        timerBox.setOpaque(false);
         lblTimerText = new JLabel("10s", SwingConstants.CENTER);
-        lblTimerText.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTimerText.setForeground(new Color(230, 126, 34));
-        lblTimerText.setPreferredSize(new Dimension(40, 20));
+        lblTimerText.setFont(BrutalUI.FONT_TIMER);
+        lblTimerText.setForeground(BrutalUI.COLOR_BLACK);
 
-        timerProgressBar = new JProgressBar(0, 10);
+        centerInfo.add(badgeWrapper);
+        centerInfo.add(lblTimerText);
+        headerRow.add(centerInfo, BorderLayout.CENTER);
+
+        // Player 2 (Đối thủ)
+        JPanel p2Box = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        p2Box.setOpaque(false);
+        
+        JPanel p2Info = new JPanel(new GridLayout(2, 1, 0, 2));
+        p2Info.setOpaque(false);
+        lblPlayer2Name = new JLabel("Đối thủ", SwingConstants.RIGHT);
+        lblPlayer2Name.setFont(BrutalUI.FONT_SMALL_BOLD);
+        lblPlayer2Name.setForeground(BrutalUI.COLOR_MUTED);
+        
+        lblPlayer2Score = new JLabel("0 điểm", SwingConstants.RIGHT);
+        lblPlayer2Score.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblPlayer2Score.setForeground(BrutalUI.COLOR_BLACK);
+        p2Info.add(lblPlayer2Name);
+        p2Info.add(lblPlayer2Score);
+
+        lblPlayer2Badge = BrutalUI.createBadge("ĐỐI", new Color(239, 246, 255), new Color(29, 78, 216));
+        lblPlayer2Badge.setPreferredSize(new Dimension(55, 32));
+
+        p2Box.add(p2Info);
+        p2Box.add(lblPlayer2Badge);
+        headerRow.add(p2Box, BorderLayout.EAST);
+
+        topCard.add(headerRow, BorderLayout.CENTER);
+
+        // Hàng 2: Thanh đếm ngược thời gian phẳng Neo-Brutalist
+        timerProgressBar = new BrutalUI.BrutalProgressBar(0, 10);
         timerProgressBar.setValue(10);
-        timerProgressBar.setForeground(new Color(230, 126, 34));
-        timerProgressBar.setPreferredSize(new Dimension(300, 12));
+        topCard.add(timerProgressBar, BorderLayout.SOUTH);
 
-        timerBox.add(lblTimerText, BorderLayout.WEST);
-        timerBox.add(timerProgressBar, BorderLayout.CENTER);
-        topPanel.add(timerBox, BorderLayout.SOUTH);
+        add(topCard, BorderLayout.NORTH);
 
-        add(topPanel, BorderLayout.NORTH);
+        // =========================================================================
+        // 2. CENTER PANEL: Question Card & 4 Brutal Answer Buttons (Yêu cầu 5, 7)
+        // =========================================================================
+        JPanel centerContainer = new JPanel(new BorderLayout(14, 14));
+        centerContainer.setOpaque(false);
 
-        // 2. CENTER PANEL: Question Text, Image & 4 Answers (Yêu cầu 5, 7)
-        JPanel centerCard = new JPanel(new BorderLayout(10, 10));
-        centerCard.setBackground(Color.WHITE);
-        centerCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        ));
+        // Thẻ Câu hỏi Card viền đen bóng cứng
+        BrutalUI.CardPanel questionCard = new BrutalUI.CardPanel(16, 4);
+        questionCard.setLayout(new BorderLayout(10, 10));
 
-        JPanel questionBox = new JPanel(new BorderLayout(8, 8));
-        questionBox.setOpaque(false);
+        JPanel topicHeader = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        topicHeader.setOpaque(false);
+        lblTopicBadge = BrutalUI.createBadge("Chủ đề: Đa Lĩnh Vực · Độ khó: Trung Bình", BrutalUI.COLOR_LIGHT_GRAY, BrutalUI.COLOR_BLACK);
+        topicHeader.add(lblTopicBadge);
+        questionCard.add(topicHeader, BorderLayout.NORTH);
 
-        txtQuestion = new JTextArea("Nội dung câu hỏi đang được tải...");
-        txtQuestion.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        txtQuestion = new JTextArea("Đang tải nội dung câu hỏi...");
+        txtQuestion.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        txtQuestion.setForeground(BrutalUI.COLOR_BLACK);
         txtQuestion.setWrapStyleWord(true);
         txtQuestion.setLineWrap(true);
         txtQuestion.setEditable(false);
         txtQuestion.setOpaque(false);
-        txtQuestion.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        questionBox.add(txtQuestion, BorderLayout.NORTH);
+        txtQuestion.setFocusable(false);
+        txtQuestion.setAlignmentX(Component.CENTER_ALIGNMENT);
+        txtQuestion.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        questionCard.add(txtQuestion, BorderLayout.CENTER);
 
         lblQuestionImage = new JLabel("", SwingConstants.CENTER);
-        lblQuestionImage.setPreferredSize(new Dimension(250, 120));
+        lblQuestionImage.setPreferredSize(new Dimension(280, 120));
         lblQuestionImage.setVisible(false);
-        questionBox.add(lblQuestionImage, BorderLayout.CENTER);
+        questionCard.add(lblQuestionImage, BorderLayout.SOUTH);
 
-        centerCard.add(questionBox, BorderLayout.NORTH);
+        centerContainer.add(questionCard, BorderLayout.NORTH);
 
-        // 4 nút đáp án A, B, C, D
-        JPanel answersGrid = new JPanel(new GridLayout(2, 2, 12, 12));
+        // Lưới 4 Đáp Án A, B, C, D (2x2 Grid)
+        JPanel answersGrid = new JPanel(new GridLayout(2, 2, 14, 14));
         answersGrid.setOpaque(false);
 
-        btnAnswerA = createAnswerButton("A");
-        btnAnswerB = createAnswerButton("B");
-        btnAnswerC = createAnswerButton("C");
-        btnAnswerD = createAnswerButton("D");
+        btnAnswerA = new BrutalUI.AnswerButton("A", "Đang tải...");
+        btnAnswerB = new BrutalUI.AnswerButton("B", "Đang tải...");
+        btnAnswerC = new BrutalUI.AnswerButton("C", "Đang tải...");
+        btnAnswerD = new BrutalUI.AnswerButton("D", "Đang tải...");
+
+        btnAnswerA.addActionListener(e -> handleAnswerClick(btnAnswerA));
+        btnAnswerB.addActionListener(e -> handleAnswerClick(btnAnswerB));
+        btnAnswerC.addActionListener(e -> handleAnswerClick(btnAnswerC));
+        btnAnswerD.addActionListener(e -> handleAnswerClick(btnAnswerD));
 
         answersGrid.add(btnAnswerA);
         answersGrid.add(btnAnswerB);
         answersGrid.add(btnAnswerC);
         answersGrid.add(btnAnswerD);
-        centerCard.add(answersGrid, BorderLayout.CENTER);
+        centerContainer.add(answersGrid, BorderLayout.CENTER);
 
-        add(centerCard, BorderLayout.CENTER);
+        add(centerContainer, BorderLayout.CENTER);
 
-        // 3. BOTTOM STATUS PANEL: Opponent selection indicator & Surrender button (Yêu cầu 6)
-        JPanel bottomPanel = new JPanel(new BorderLayout(10, 10));
+        // =========================================================================
+        // 3. BOTTOM PANEL: Realtime Status & Surrender Button (Yêu cầu 6)
+        // =========================================================================
+        JPanel bottomPanel = new JPanel(new BorderLayout(15, 0));
         bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
-        JPanel statusBox = new JPanel(new GridLayout(2, 1));
+        JPanel statusBox = new JPanel(new GridLayout(2, 1, 0, 4));
         statusBox.setOpaque(false);
-        lblStatus = new JLabel("Hãy chọn 1 đáp án nhanh nhất có thể để nhận điểm tối đa!");
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        lblStatus = new JLabel("⚡ Hãy chọn 1 đáp án nhanh nhất để nhận thưởng thời gian!");
+        lblStatus.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblStatus.setForeground(BrutalUI.COLOR_BLACK);
 
         lblOpponentStatus = new JLabel("Đối thủ đang suy nghĩ...");
-        lblOpponentStatus.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        lblOpponentStatus.setForeground(Color.GRAY);
+        lblOpponentStatus.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        lblOpponentStatus.setForeground(BrutalUI.COLOR_MUTED);
 
         statusBox.add(lblStatus);
         statusBox.add(lblOpponentStatus);
         bottomPanel.add(statusBox, BorderLayout.CENTER);
 
-        btnSurrender = new JButton("Đầu Hàng");
-        btnSurrender.setBackground(new Color(231, 76, 60));
-        btnSurrender.setForeground(Color.WHITE);
-        btnSurrender.setFocusPainted(false);
+        btnSurrender = new BrutalUI.BrutalButton("🏳️ Đầu Hàng", BrutalUI.BrutalButton.Style.DANGER, 12);
+        btnSurrender.setPreferredSize(new Dimension(130, 42));
         btnSurrender.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc muốn đầu hàng trận đấu này?", "Xác nhận đầu hàng", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Bạn có chắc chắn muốn đầu hàng và xử thua trận đấu này?",
+                    "Xác nhận đầu hàng",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
             if (confirm == JOptionPane.YES_OPTION) {
+                if (questionTimer != null) questionTimer.stop();
                 battleService.surrender(currentMatchId);
+                JOptionPane.showMessageDialog(this, "Bạn đã đầu hàng và bị xử thua trận đấu này!", "Đầu Hàng", JOptionPane.INFORMATION_MESSAGE);
+                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
             }
         });
         bottomPanel.add(btnSurrender, BorderLayout.EAST);
 
         add(bottomPanel, BorderLayout.SOUTH);
-    }
-
-    private JButton createAnswerButton(String prefix) {
-        JButton btn = new JButton(prefix + ". Đang tải...");
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setBackground(new Color(240, 243, 246));
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.addActionListener(e -> handleAnswerClick(btn));
-        return btn;
     }
 
     /**
@@ -203,15 +262,18 @@ public class BattlePanel extends JPanel {
         this.selectedAnswerId = null;
 
         if (question.questionIndex == 1) {
-            lblPlayer1Score.setText("Bạn: 0 điểm");
-            lblPlayer2Score.setText("Đối thủ: 0 điểm");
+            lblPlayer1Score.setText("0 điểm");
+            lblPlayer2Score.setText("0 điểm");
         }
 
-        lblRoundIndicator.setText("CÂU " + question.questionIndex + " / " + question.totalQuestions);
+        lblRoundBadge.setText("CÂU HỎI " + question.questionIndex + " / " + question.totalQuestions);
         txtQuestion.setText(question.questionContent);
 
+        // Hiển thị badge phong cách Neo-Brutalist
+        lblTopicBadge.setText("⚡ Đấu Trường Tri Thức 1v1 · Thời Gian Thực (10s/câu)");
+
         if (question.questionImage != null && !question.questionImage.isEmpty()) {
-            lblQuestionImage.setText("[ Ảnh: " + question.questionImage + " ]");
+            lblQuestionImage.setText("[ Ảnh minh họa: " + question.questionImage + " ]");
             lblQuestionImage.setVisible(true);
         } else {
             lblQuestionImage.setVisible(false);
@@ -221,14 +283,14 @@ public class BattlePanel extends JPanel {
 
         // Gán nội dung 4 đáp án
         if (question.options != null && question.options.size() >= 4) {
-            btnAnswerA.setText("A. " + question.options.get(0).content);
-            btnAnswerB.setText("B. " + question.options.get(1).content);
-            btnAnswerC.setText("C. " + question.options.get(2).content);
-            btnAnswerD.setText("D. " + question.options.get(3).content);
+            btnAnswerA.setAnswerContent(question.options.get(0).content);
+            btnAnswerB.setAnswerContent(question.options.get(1).content);
+            btnAnswerC.setAnswerContent(question.options.get(2).content);
+            btnAnswerD.setAnswerContent(question.options.get(3).content);
         }
 
-        lblStatus.setText("Hãy chọn 1 đáp án nhanh nhất có thể!");
-        lblStatus.setForeground(Color.BLACK);
+        lblStatus.setText("⚡ Hãy chọn 1 đáp án nhanh nhất để nhận tối đa 200 điểm!");
+        lblStatus.setForeground(BrutalUI.COLOR_BLACK);
         lblOpponentStatus.setText("Đối thủ đang suy nghĩ...");
 
         // Khởi động đếm ngược 10 giây
@@ -244,17 +306,16 @@ public class BattlePanel extends JPanel {
 
         questionTimer = new Timer(1000, e -> {
             timeRemaining--;
-            lblTimerText.setText(timeRemaining + "s");
+            lblTimerText.setText((timeRemaining < 10 ? "0" : "") + timeRemaining + "s");
             timerProgressBar.setValue(timeRemaining);
 
             if (timeRemaining <= 0) {
                 questionTimer.stop();
                 if (!answerSubmitted) {
-                    // Hết 10s tự động nộp đáp án null (0 điểm)
                     answerSubmitted = true;
                     battleService.submitAnswer(currentMatchId, currentQuestionIndex, null, 10);
-                    lblStatus.setText("Hết thời gian 10 giây!");
-                    lblStatus.setForeground(Color.RED);
+                    lblStatus.setText("⏰ Hết thời gian 10 giây!");
+                    lblStatus.setForeground(BrutalUI.COLOR_WRONG_BORDER);
                     disableAnswerButtons();
                 }
             }
@@ -262,14 +323,14 @@ public class BattlePanel extends JPanel {
         questionTimer.start();
     }
 
-    private void handleAnswerClick(JButton clickedBtn) {
+    private void handleAnswerClick(BrutalUI.AnswerButton clickedBtn) {
         if (answerSubmitted) return;
         answerSubmitted = true;
 
         if (questionTimer != null) questionTimer.stop();
 
-        // Đổi màu nút người dùng chọn (màu vàng chờ kết quả)
-        clickedBtn.setBackground(new Color(254, 211, 48));
+        // Đổi trạng thái nút người dùng chọn (màu vàng chờ kết quả)
+        clickedBtn.setState(BrutalUI.AnswerButton.State.SELECTED);
 
         int responseTime = 10 - timeRemaining;
         Long ansId = getAnswerIdFromButton(clickedBtn);
@@ -278,7 +339,8 @@ public class BattlePanel extends JPanel {
         // Gửi đáp án lên server
         battleService.submitAnswer(currentMatchId, currentQuestionIndex, ansId, responseTime);
 
-        lblStatus.setText("Đã nộp đáp án (" + responseTime + "s). Đang đợi đối thủ...");
+        lblStatus.setText("✓ Đã nộp đáp án (" + responseTime + "s). Đang đợi kết quả từ đối thủ...");
+        lblStatus.setForeground(new Color(146, 64, 14));
         disableAnswerButtons();
     }
 
@@ -293,11 +355,15 @@ public class BattlePanel extends JPanel {
         BattleDTO.PlayerRoundInfo me = isMePlayer1 ? result.player1 : result.player2;
         BattleDTO.PlayerRoundInfo opponent = isMePlayer1 ? result.player2 : result.player1;
 
-        // 1. Cập nhật điểm số chính xác của bản thân và đối thủ
-        int myScore = (me != null) ? me.totalScore : 0;
-        int oppScore = (opponent != null) ? opponent.totalScore : 0;
-        lblPlayer1Score.setText("Bạn: " + myScore + " điểm");
-        lblPlayer2Score.setText("Đối thủ: " + oppScore + " điểm");
+        // 1. Cập nhật tên và điểm số chính xác của từng người
+        if (me != null) {
+            lblPlayer1Name.setText(me.username != null ? me.username + " (Bạn)" : "Bạn");
+            lblPlayer1Score.setText(me.totalScore + " điểm");
+        }
+        if (opponent != null) {
+            lblPlayer2Name.setText(opponent.username != null ? opponent.username + " (Đối thủ)" : "Đối thủ");
+            lblPlayer2Score.setText(opponent.totalScore + " điểm");
+        }
 
         // 2. Tô xanh đáp án đúng
         highlightCorrectAnswer(result.correctAnswerId);
@@ -310,11 +376,12 @@ public class BattlePanel extends JPanel {
         // 4. Hiển thị lựa chọn của đối thủ (Yêu cầu 6)
         if (opponent != null) {
             String oppText = opponent.selectedAnswerId != null ?
-                    "Đối thủ chọn đáp án: " + getAnswerKey(opponent.selectedAnswerId) + (opponent.isCorrect ? " (Đúng ✅)" : " (Sai ❌)")
+                    "Đối thủ chọn: " + getAnswerKey(opponent.selectedAnswerId) + (opponent.isCorrect ? " (Đúng ✅)" : " (Sai ❌)")
                     : "Đối thủ không kịp trả lời!";
             lblOpponentStatus.setText(oppText);
         }
         lblStatus.setText("Đáp án đúng là: " + getAnswerKey(result.correctAnswerId) + " | Chuẩn bị sang câu tiếp theo...");
+        lblStatus.setForeground(BrutalUI.COLOR_CORRECT_BORDER);
     }
 
     /**
@@ -333,28 +400,32 @@ public class BattlePanel extends JPanel {
 
         String title;
         String message;
+        int messageType;
+
         if (result.isDraw) {
             title = "KẾT QUẢ: HÒA!";
-            message = "Trận đấu kết thúc với tỉ số hòa!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            message = "Trận đấu kết thúc với tỉ số hòa!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            messageType = JOptionPane.INFORMATION_MESSAGE;
         } else if (result.winnerUserId != null && myUserId != null && result.winnerUserId.equals(myUserId)) {
             title = "🏆 CHIẾN THẮNG!";
-            message = "Chúc mừng! Bạn đã giành chiến thắng!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            message = "Chúc mừng! Bạn đã giành chiến thắng xuất sắc!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            messageType = JOptionPane.INFORMATION_MESSAGE;
         } else {
             title = "💔 THẤT BẠI!";
-            message = "Bạn đã thua trận đấu này!\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            message = "Bạn đã thua trận đấu này!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
+            messageType = JOptionPane.WARNING_MESSAGE;
         }
 
-        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, message, title, messageType);
         // Quay về phòng chờ
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
     }
 
     private void resetAnswerButtonStyles() {
-        JButton[] buttons = {btnAnswerA, btnAnswerB, btnAnswerC, btnAnswerD};
-        for (JButton b : buttons) {
+        BrutalUI.AnswerButton[] buttons = {btnAnswerA, btnAnswerB, btnAnswerC, btnAnswerD};
+        for (BrutalUI.AnswerButton b : buttons) {
             b.setEnabled(true);
-            b.setBackground(new Color(240, 243, 246));
-            b.setForeground(Color.BLACK);
+            b.setState(BrutalUI.AnswerButton.State.NORMAL);
         }
     }
 
@@ -365,7 +436,7 @@ public class BattlePanel extends JPanel {
         btnAnswerD.setEnabled(false);
     }
 
-    private Long getAnswerIdFromButton(JButton btn) {
+    private Long getAnswerIdFromButton(BrutalUI.AnswerButton btn) {
         if (currentOptions == null) return null;
         if (btn == btnAnswerA && currentOptions.size() > 0) return currentOptions.get(0).answerId;
         if (btn == btnAnswerB && currentOptions.size() > 1) return currentOptions.get(1).answerId;
@@ -384,22 +455,20 @@ public class BattlePanel extends JPanel {
     }
 
     private void highlightCorrectAnswer(long correctAnswerId) {
-        JButton btn = findButtonByAnswerId(correctAnswerId);
+        BrutalUI.AnswerButton btn = findButtonByAnswerId(correctAnswerId);
         if (btn != null) {
-            btn.setBackground(new Color(46, 204, 113)); // Xanh lá
-            btn.setForeground(Color.WHITE);
+            btn.setState(BrutalUI.AnswerButton.State.CORRECT);
         }
     }
 
     private void highlightWrongAnswer(long wrongAnswerId) {
-        JButton btn = findButtonByAnswerId(wrongAnswerId);
+        BrutalUI.AnswerButton btn = findButtonByAnswerId(wrongAnswerId);
         if (btn != null) {
-            btn.setBackground(new Color(231, 76, 60)); // Đỏ
-            btn.setForeground(Color.WHITE);
+            btn.setState(BrutalUI.AnswerButton.State.WRONG);
         }
     }
 
-    private JButton findButtonByAnswerId(long answerId) {
+    private BrutalUI.AnswerButton findButtonByAnswerId(long answerId) {
         if (currentOptions == null) return null;
         if (currentOptions.size() > 0 && currentOptions.get(0).answerId == answerId) return btnAnswerA;
         if (currentOptions.size() > 1 && currentOptions.get(1).answerId == answerId) return btnAnswerB;

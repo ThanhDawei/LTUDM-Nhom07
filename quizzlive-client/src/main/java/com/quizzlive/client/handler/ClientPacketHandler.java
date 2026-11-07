@@ -174,6 +174,15 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
+            case BATTLE_OPPONENT_DISCONNECTED: {
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                String msg = (obj != null && obj.has("message")) ? obj.get("message").getAsString()
+                        : "Đối thủ đã rời khỏi trận đấu hoặc đầu hàng. Bạn được xử thắng!";
+                JOptionPane.showMessageDialog(mainFrame, msg, "🏆 Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
+                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+                break;
+            }
+
             // --- 5. TEST IQ TRONG LÚC CHỜ (Yêu cầu 11) ---
             case IQ_QUESTION_NOTIFY: {
                 IQTestDTO.IQQuestionNotify iqQ = JsonUtil.fromJson(json, IQTestDTO.IQQuestionNotify.class);

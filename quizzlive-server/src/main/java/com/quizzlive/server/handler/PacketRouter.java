@@ -116,6 +116,12 @@ public class PacketRouter {
                         session.getUserId(), req.matchId, req.selectedAnswerId, req.responseTimeSeconds);
                 break;
             }
+            case BATTLE_SURRENDER_REQ: {
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                long matchId = (obj != null && obj.has("matchId")) ? obj.get("matchId").getAsLong() : 0L;
+                BattleManager.getInstance().handleSurrender(session.getUserId(), matchId);
+                break;
+            }
 
             // --- 5. TEST IQ TRONG LÚC CHỜ (Yêu cầu 11) ---
             case IQ_TEST_START_REQ: {
