@@ -86,6 +86,11 @@ public class TournamentPanel extends JPanel {
         };
         tblTournaments = new JTable(modelTournaments);
         tblTournaments.setRowHeight(24);
+        tblTournaments.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tblTournaments.getSelectedRow() >= 0) {
+                handleViewStandings();
+            }
+        });
         leftPanel.add(new JScrollPane(tblTournaments), BorderLayout.CENTER);
 
         JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));

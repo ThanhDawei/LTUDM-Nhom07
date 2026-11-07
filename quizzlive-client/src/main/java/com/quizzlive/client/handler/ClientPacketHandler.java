@@ -198,6 +198,20 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
+            case TOURNAMENT_JOIN_RESP: {
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                boolean success = obj != null && obj.has("success") && obj.get("success").getAsBoolean();
+                String message = (obj != null && obj.has("message")) ? obj.get("message").getAsString() : "Thông báo từ giải đấu";
+                if (success) {
+                    JOptionPane.showMessageDialog(mainFrame, message, "Đăng Ký Giải Đấu", JOptionPane.INFORMATION_MESSAGE);
+                    // Tự động tải lại danh sách giải đấu để cập nhật số lượng thí sinh
+                    new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
+                } else {
+                    JOptionPane.showMessageDialog(mainFrame, message, "Thông Báo Giải Đấu", JOptionPane.WARNING_MESSAGE);
+                }
+                break;
+            }
+
             case TOURNAMENT_STANDINGS_RESP: {
                 TournamentDTO.TournamentDetailResponse detail = JsonUtil.fromJson(json, TournamentDTO.TournamentDetailResponse.class);
                 if (detail != null && detail.standings != null) {

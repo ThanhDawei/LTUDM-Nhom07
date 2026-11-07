@@ -343,8 +343,8 @@ ON DUPLICATE KEY UPDATE `NoiDung` = VALUES(`NoiDung`);
 
 -- 6. Dữ liệu mẫu Giải Đấu & Xếp Hạng Giải (Requirement 9)
 INSERT INTO `GIAI_DAU` (`MaGiai`, `TenGiai`, `MoTa`, `TrangThai`, `SoNguoiToiDa`, `ThoiGianBatDau`) VALUES
-(1, 'Đại Chiến Tri Thức SGU 2026', 'Giải đấu trắc nghiệm kiến thức đa lĩnh vực toàn trường', 'UPCOMING', 16, NOW() + INTERVAL 1 DAY),
-(2, 'Cúp QuizzLive Mùa Xuân 2026', 'Giải đấu 8 thí sinh tranh tài gay cấn', 'IN_PROGRESS', 8, NOW() - INTERVAL 2 HOUR)
+(1, 'Đại Chiến Tri Thức SGU 2026', 'Giải đấu trắc nghiệm kiến thức đa lĩnh vực toàn trường', 'UPCOMING', 16, '2026-12-01 09:00:00'),
+(2, 'Cúp QuizzLive Mùa Xuân 2026', 'Giải đấu 8 thí sinh tranh tài gay cấn', 'IN_PROGRESS', 8, '2026-11-07 08:00:00')
 ON DUPLICATE KEY UPDATE `TenGiai` = VALUES(`TenGiai`);
 
 -- Bảng xếp hạng / Thí sinh tham gia giải đấu số 2 (Đã chia Bảng A và Bảng B)

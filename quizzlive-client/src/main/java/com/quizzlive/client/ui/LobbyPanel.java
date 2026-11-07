@@ -98,7 +98,10 @@ public class LobbyPanel extends JPanel {
 
         JButton btnTournament = new JButton("🎖️ Giải Đấu");
         btnTournament.setFocusPainted(false);
-        btnTournament.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_TOURNAMENT));
+        btnTournament.addActionListener(e -> {
+            new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
+            mainFrame.showPanel(MainClientFrame.CARD_TOURNAMENT);
+        });
 
         JButton btnProfile = new JButton("👤 Cập Nhật Hồ Sơ");
         btnProfile.setFocusPainted(false);
