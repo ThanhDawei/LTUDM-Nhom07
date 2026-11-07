@@ -136,7 +136,7 @@ public class IQTestService {
         result.isCorrect = isCorrect;
         result.message = isCorrect
                 ? "Chính xác! Bạn được cộng " + delta + " điểm IQ."
-                : "Chưa chính xác! Bạn hãy suy nghĩ và chọn lại đáp án khác nhé (không bị trừ điểm IQ).";
+                : "Chưa chính xác! Hãy chọn lại đáp án khác (không bị trừ IQ).";
 
         session.sendPacket(new Packet(OpCode.IQ_RESULT_NOTIFY, JsonUtil.toJson(result)));
     }

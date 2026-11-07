@@ -165,13 +165,16 @@ public class MatchmakingWaitingPanel extends JPanel {
         optionsPanel.add(rbOptD);
         iqBottom.add(optionsPanel, BorderLayout.CENTER);
 
-        JPanel iqActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        iqActions.setOpaque(false);
+        JPanel iqFooter = new JPanel(new BorderLayout(10, 0));
+        iqFooter.setOpaque(false);
 
         lblIqResult = new JLabel(" ");
-        lblIqResult.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblIqResult.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        iqFooter.add(lblIqResult, BorderLayout.CENTER);
 
         btnNextIQ = new JButton("Đổi câu khác");
+        btnNextIQ.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnNextIQ.setPreferredSize(new Dimension(130, 32));
         btnNextIQ.setFocusPainted(false);
         btnNextIQ.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNextIQ.addActionListener(e -> {
@@ -181,16 +184,20 @@ public class MatchmakingWaitingPanel extends JPanel {
 
         btnSubmitIQ = new JButton("Nộp Đáp Án IQ");
         btnSubmitIQ.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnSubmitIQ.setPreferredSize(new Dimension(150, 32));
         btnSubmitIQ.setBackground(new Color(142, 68, 173));
         btnSubmitIQ.setForeground(Color.WHITE);
         btnSubmitIQ.setFocusPainted(false);
         btnSubmitIQ.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnSubmitIQ.addActionListener(e -> handleSubmitIQ());
 
-        iqActions.add(lblIqResult);
-        iqActions.add(btnNextIQ);
-        iqActions.add(btnSubmitIQ);
-        iqBottom.add(iqActions, BorderLayout.SOUTH);
+        JPanel btnGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btnGroup.setOpaque(false);
+        btnGroup.add(btnNextIQ);
+        btnGroup.add(btnSubmitIQ);
+        iqFooter.add(btnGroup, BorderLayout.EAST);
+
+        iqBottom.add(iqFooter, BorderLayout.SOUTH);
 
         iqCard.add(iqBottom, BorderLayout.SOUTH);
         add(iqCard, BorderLayout.CENTER);
