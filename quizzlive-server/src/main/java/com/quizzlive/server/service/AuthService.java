@@ -98,7 +98,8 @@ public class AuthService {
                 resp.success = true;
                 resp.userId = existingEmail.getUserId();
                 resp.username = existingEmail.getUsername();
-                resp.message = "Mã OTP mới đã được gửi tới email '" + email + "' (hiệu lực 10 phút). Vui lòng nhập để kích hoạt!";
+                resp.otpCode = otpCode;
+                resp.message = "Mã OTP mới đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng nhập để kích hoạt!";
                 return resp;
             }
         }
@@ -120,13 +121,14 @@ public class AuthService {
         String otpCode = EmailService.generateOtp();
         otpDAO.saveOtp(userId, otpCode, "REGISTER", 10);
 
-        // Gửi email OTP (hoặc log ra Server Console)
+        // Ghi nhận và gửi OTP (lưu CSDL và in Console Server)
         EmailService.sendOtpEmail(email, otpCode, "Kích hoạt tài khoản");
 
         resp.success = true;
         resp.userId = userId;
         resp.username = username;
-        resp.message = "Đăng ký thành công! Mã OTP đã gửi tới email '" + email + "' (hiệu lực 10 phút).";
+        resp.otpCode = otpCode;
+        resp.message = "Đăng ký thành công! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút).";
         return resp;
     }
 
@@ -246,13 +248,14 @@ public class AuthService {
 
         // Kiểm tra tài khoản chưa xác thực OTP
         if ("PENDING".equalsIgnoreCase(user.getStatus())) {
-            // Tự động phát sinh và gửi lại mã OTP mới để người dùng kích hoạt
+            // Tự động phát sinh và lưu lại mã OTP mới vào CSDL để người dùng kích hoạt
             String newOtp = EmailService.generateOtp();
             otpDAO.saveOtp(user.getUserId(), newOtp, "REGISTER", 10);
             EmailService.sendOtpEmail(user.getEmail(), newOtp, "Kích hoạt tài khoản");
 
             resp.success = false;
-            resp.message = "Tài khoản chưa được kích hoạt qua email! Chúng tôi đã gửi lại mã OTP mới tới: " + user.getEmail();
+            resp.otpCode = newOtp;
+            resp.message = "Tài khoản chưa được kích hoạt! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút).";
             return resp;
         }
 

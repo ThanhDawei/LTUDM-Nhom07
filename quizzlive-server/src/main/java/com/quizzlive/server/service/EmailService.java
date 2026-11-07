@@ -55,11 +55,12 @@ public class EmailService {
     private static void printConsoleOtp(String email, String otpCode, String purpose) {
         System.out.println();
         System.out.println("╔══════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║          📧 QUIZZLIVE - XÁC THỰC EMAIL (OTP - GIAO THỨC IMAP)        ║");
+        System.out.println("║       💾 QUIZZLIVE - MÃ XÁC THỰC OTP ĐÃ LƯU VÀO CƠ SỞ DỮ LIỆU        ║");
         System.out.println("╠══════════════════════════════════════════════════════════════════════╣");
         System.out.printf("║  Người nhận: %-55s ║%n", email);
         System.out.printf("║  Mục đích:   %-55s ║%n", purpose);
-        System.out.printf("║  MÃ OTP:     [%s]  (Lưu CSDL bảng OTP, hiệu lực: 10 phút)   ║%n", otpCode);
+        System.out.printf("║  MÃ OTP:     [%s]  (Đã lưu CSDL bảng OTP, hiệu lực: 10 phút) ║%n", otpCode);
+        System.out.println("║  Bảng CSDL:  Bảng OTP (MaNguoiDung, MaXacThuc, MucDich, ThoiGianHetHan) ║");
         System.out.println("║  Giao thức:  IMAP Socket thuần (KHÔNG DÙNG SMTP)                    ║");
         System.out.println("║  Mật khẩu:   Dạng thô / Plaintext (KHÔNG DÙNG MÃ HÓA, HÀM BĂM)       ║");
         System.out.println("╚══════════════════════════════════════════════════════════════════════╝");

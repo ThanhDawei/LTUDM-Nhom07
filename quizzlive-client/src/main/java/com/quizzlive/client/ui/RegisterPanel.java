@@ -26,6 +26,7 @@ public class RegisterPanel extends JPanel {
     private JLabel lblStatus;
 
     private String pendingEmail;
+    private String pendingOtpCode;
 
     public RegisterPanel(MainClientFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -213,8 +214,13 @@ public class RegisterPanel extends JPanel {
      * Callback được gọi bởi ClientPacketHandler khi server phản hồi REGISTER_RESP
      */
     public void onRegisterResponse(boolean success, String message) {
+        onRegisterResponse(success, message, null);
+    }
+
+    public void onRegisterResponse(boolean success, String message, String otpCode) {
         btnRegister.setEnabled(true);
         if (success) {
+            this.pendingOtpCode = otpCode;
             lblStatus.setText("");
             promptOtpDialog();
         } else {
@@ -227,16 +233,25 @@ public class RegisterPanel extends JPanel {
      * Hiển thị popup nhập OTP kích hoạt tài khoản
      */
     private void promptOtpDialog() {
-        String otp = JOptionPane.showInputDialog(
+        String msg = "Mã OTP xác thực đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP)!\n\n"
+                + "• Email đăng ký: " + pendingEmail + "\n"
+                + "• Mã OTP trong CSDL: " + (pendingOtpCode != null ? pendingOtpCode : "(Xem bảng OTP)") + "\n"
+                + "• Thời hạn hiệu lực: 10 phút kể từ lúc tạo\n\n"
+                + "Vui lòng nhập mã OTP để kích hoạt tài khoản:";
+
+        String otp = (String) JOptionPane.showInputDialog(
                 this,
-                "Mã OTP đã được gửi về email '" + pendingEmail + "'.\n(Xem log console Server nếu chạy cục bộ)\nVui lòng nhập mã OTP để kích hoạt:",
-                "Xác thực Email (OTP - 10 phút)",
-                JOptionPane.QUESTION_MESSAGE
+                msg,
+                "Xác thực mã OTP từ CSDL (Hiệu lực 10 phút)",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                null,
+                pendingOtpCode != null ? pendingOtpCode : ""
         );
 
         if (otp != null && !otp.trim().isEmpty()) {
             lblStatus.setForeground(new Color(41, 128, 185));
-            lblStatus.setText("Đang xác thực OTP...");
+            lblStatus.setText("Đang xác thực OTP từ CSDL...");
 
             new Thread(() -> {
                 try {

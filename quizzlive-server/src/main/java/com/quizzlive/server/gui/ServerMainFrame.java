@@ -1,6 +1,7 @@
 package com.quizzlive.server.gui;
 
 import com.quizzlive.server.dao.MatchConfigDAO;
+import com.quizzlive.server.dao.OtpDAO;
 import com.quizzlive.server.dao.QuestionDAO;
 import com.quizzlive.server.dao.StatisticDAO;
 import com.quizzlive.server.dao.UserDAO;
@@ -17,6 +18,7 @@ import java.util.List;
 public class ServerMainFrame extends JFrame {
     private final SocketServer server;
     private final UserDAO userDAO = new UserDAO();
+    private final OtpDAO otpDAO = new OtpDAO();
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final MatchConfigDAO configDAO = new MatchConfigDAO();
     private final StatisticDAO statisticDAO = new StatisticDAO();
@@ -86,6 +88,13 @@ public class ServerMainFrame extends JFrame {
         btnRefreshUsers.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefreshUsers.addActionListener(e -> loadUsersData());
 
+        JButton btnCheckOtp = new JButton("Xem mã OTP (CSDL)");
+        btnCheckOtp.setFocusPainted(false);
+        btnCheckOtp.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCheckOtp.setBackground(new Color(41, 128, 185));
+        btnCheckOtp.setForeground(Color.WHITE);
+        btnCheckOtp.addActionListener(e -> viewUserOtpFromDb());
+
         JButton btnBlock = new JButton("Khóa / Mở khóa người dùng");
         btnBlock.setForeground(Color.RED);
         btnBlock.addActionListener(e -> toggleBlockUser());
@@ -97,6 +106,7 @@ public class ServerMainFrame extends JFrame {
         topBar.add(lblOnlineUsers);
         topBar.add(lblTotalUsers);
         topBar.add(btnRefreshUsers);
+        topBar.add(btnCheckOtp);
         topBar.add(btnBlock);
         topBar.add(btnDeleteUser);
 
@@ -259,6 +269,50 @@ public class ServerMainFrame extends JFrame {
         }
         if (selectedRow >= 0 && selectedRow < userTableModel.getRowCount()) {
             tblUsers.setRowSelectionInterval(selectedRow, selectedRow);
+        }
+    }
+
+    /**
+     * Xem mã OTP của người dùng được lưu trữ trong bảng OTP của Cơ sở dữ liệu (Yêu cầu 1)
+     */
+    private void viewUserOtpFromDb() {
+        int row = tblUsers.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 người dùng trên bảng để xem mã OTP trong Cơ sở dữ liệu!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        Long userId = (Long) userTableModel.getValueAt(row, 0);
+        String username = (String) userTableModel.getValueAt(row, 1);
+        String status = (String) userTableModel.getValueAt(row, 6);
+
+        OtpDAO.OtpInfo info = otpDAO.getLatestOtpInfo(userId, "REGISTER");
+        if (info != null) {
+            String verifyStatus;
+            if (info.isVerified()) {
+                verifyStatus = "ĐÃ XÁC THỰC (Thành công lúc " + info.verifiedTime + ")";
+            } else if (info.isExpired()) {
+                verifyStatus = "ĐÃ HẾT HẠN (Quá 10 phút)";
+            } else {
+                verifyStatus = "ĐANG CHỜ XÁC THỰC (Hợp lệ trong 10 phút)";
+            }
+
+            String msg = "THÔNG TIN MÃ OTP TRONG CƠ SỞ DỮ LIỆU (BẢNG OTP):\n\n"
+                    + "• Mã ID người dùng: " + userId + "\n"
+                    + "• Tên đăng nhập: " + username + "\n"
+                    + "• Trạng thái tài khoản: " + status + "\n"
+                    + "• Mã OTP (MaXacThuc): " + info.otpCode + "\n"
+                    + "• Mục đích: " + info.purpose + "\n"
+                    + "• Thời gian tạo: " + info.createdAt + "\n"
+                    + "• Thời gian hết hạn: " + info.expireTime + " (10 phút)\n"
+                    + "• Trạng thái OTP: " + verifyStatus + "\n\n"
+                    + "(Dữ liệu được truy vấn trực tiếp từ bảng OTP trong Cơ sở dữ liệu)";
+
+            JOptionPane.showMessageDialog(this, msg, "Chi tiết OTP CSDL - " + username, JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Không tìm thấy bản ghi mã OTP nào trong bảng OTP của CSDL cho tài khoản '" + username + "' (ID: " + userId + ").",
+                    "Thông báo OTP", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 

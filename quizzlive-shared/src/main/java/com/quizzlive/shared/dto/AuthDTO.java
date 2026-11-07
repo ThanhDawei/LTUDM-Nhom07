@@ -39,5 +39,6 @@ public class AuthDTO {
         public String avatarUrl;
         public String bio;
         public Double iqScore;
+        public String otpCode;
     }
 }

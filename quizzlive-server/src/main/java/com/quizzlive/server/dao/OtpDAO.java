@@ -86,4 +86,77 @@ public class OtpDAO {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Thông tin chi tiết mã OTP truy xuất từ Cơ sở dữ liệu (Bảng OTP)
+     */
+    public static class OtpInfo {
+        public long otpId;
+        public long userId;
+        public String otpCode;
+        public String purpose;
+        public Timestamp expireTime;
+        public Timestamp verifiedTime;
+        public Timestamp createdAt;
+
+        public boolean isExpired() {
+            return expireTime != null && expireTime.before(new Timestamp(System.currentTimeMillis()));
+        }
+
+        public boolean isVerified() {
+            return verifiedTime != null;
+        }
+    }
+
+    /**
+     * Lấy bản ghi OTP mới nhất của người dùng từ CSDL theo mục đích
+     */
+    public OtpInfo getLatestOtpInfo(Long userId, String purpose) {
+        String sql = "SELECT MaOTP, MaNguoiDung, MaXacThuc, MucDich, ThoiGianHetHan, ThoiGianXacThuc, ThoiGianTao " +
+                "FROM OTP WHERE MaNguoiDung = ? AND MucDich = ? ORDER BY ThoiGianTao DESC LIMIT 1";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setString(2, purpose);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    OtpInfo info = new OtpInfo();
+                    info.otpId = rs.getLong("MaOTP");
+                    info.userId = rs.getLong("MaNguoiDung");
+                    info.otpCode = rs.getString("MaXacThuc");
+                    info.purpose = rs.getString("MucDich");
+                    info.expireTime = rs.getTimestamp("ThoiGianHetHan");
+                    info.verifiedTime = rs.getTimestamp("ThoiGianXacThuc");
+                    info.createdAt = rs.getTimestamp("ThoiGianTao");
+                    return info;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Lấy mã OTP còn hiệu lực (chưa xác thực và chưa hết hạn) từ bảng OTP
+     */
+    public String getLatestPendingOtp(Long userId, String purpose) {
+        String sql = "SELECT MaXacThuc FROM OTP WHERE MaNguoiDung = ? AND MucDich = ? " +
+                "AND ThoiGianHetHan > ? AND ThoiGianXacThuc IS NULL ORDER BY ThoiGianTao DESC LIMIT 1";
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setString(2, purpose);
+            ps.setTimestamp(3, now);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("MaXacThuc");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

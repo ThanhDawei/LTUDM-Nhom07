@@ -70,14 +70,14 @@ public class ClientPacketHandler implements NetworkListener {
                     mainFrame.getLobbyPanel().updateUserInfo(resp);
                     mainFrame.getLoginPanel().onLoginResponse(true, resp.message);
                 } else {
-                    mainFrame.getLoginPanel().onLoginResponse(false, resp != null ? resp.message : "Đăng nhập thất bại");
+                    mainFrame.getLoginPanel().onLoginResponse(false, resp != null ? resp.message : "Đăng nhập thất bại", resp != null ? resp.otpCode : null);
                 }
                 break;
             }
 
             case REGISTER_RESP: {
                 AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
-                mainFrame.getRegisterPanel().onRegisterResponse(resp != null && resp.success, resp != null ? resp.message : "");
+                mainFrame.getRegisterPanel().onRegisterResponse(resp != null && resp.success, resp != null ? resp.message : "", resp != null ? resp.otpCode : null);
                 break;
             }
 
