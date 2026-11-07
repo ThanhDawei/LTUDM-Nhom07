@@ -1,15 +1,20 @@
 package com.quizzlive.client.ui;
 
 import com.quizzlive.client.service.ClientTournamentService;
+import com.quizzlive.client.util.BrutalUI;
 import com.quizzlive.shared.dto.TournamentDTO;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.util.List;
 
 /**
- * Giao diện Giải Đấu (Tournament)
+ * Giao diện Giải Đấu (Tournament) - Chuẩn phong cách NEO-BRUTALIST (Nền trắng viền đen)
+ * Theo thiết kế SCREEN 8 & SCREEN 9 trong master_gui_showcase.html
+ * 
  * Phụ trách Yêu cầu 9: "Giải đấu: tổ chức giải nhiều người theo vòng/bảng, có bảng xếp hạng của giải"
  */
 public class TournamentPanel extends JPanel {
@@ -22,8 +27,9 @@ public class TournamentPanel extends JPanel {
     private DefaultTableModel modelStandings;
     private JTable tblStandings;
 
-    private JButton btnJoinTournament;
-    private JButton btnViewDetails;
+    private BrutalUI.BrutalButton btnJoinTournament;
+    private BrutalUI.BrutalButton btnViewDetails;
+    private JLabel lblTournamentCountBadge;
 
     public TournamentPanel(MainClientFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -31,121 +37,221 @@ public class TournamentPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(245, 247, 250));
-        setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        setLayout(new BorderLayout(16, 16));
+        setBackground(BrutalUI.COLOR_BG);
+        setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
 
-        // 1. TOP HEADER
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(Color.WHITE);
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(12, 18, 12, 18)
-        ));
+        // =========================================================================
+        // 1. TOP HEADER: Card viền đen, Title, Badge & Navigation Buttons
+        // =========================================================================
+        BrutalUI.CardPanel headerCard = new BrutalUI.CardPanel(16, 3);
+        headerCard.setLayout(new BorderLayout(15, 10));
 
-        JLabel lblTitle = new JLabel("🎖️ GIẢI ĐẤU TRỰC TUYẾN THEO VÒNG / BẢNG (Yêu cầu 9)");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(new Color(142, 68, 173));
-        header.add(lblTitle, BorderLayout.WEST);
+        JPanel headerLeft = new JPanel(new GridLayout(2, 1, 0, 4));
+        headerLeft.setOpaque(false);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        actions.setOpaque(false);
+        JPanel tagLine = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        tagLine.setOpaque(false);
+        JLabel badgeTag = BrutalUI.createBadge("🎖️ GIẢI ĐẤU TRANH TÀI THEO BẢNG / VÒNG (YÊU CẦU 9)", new Color(254, 243, 199), new Color(146, 64, 14));
+        tagLine.add(badgeTag);
 
-        JButton btnRefresh = new JButton("Làm Mới");
-        btnRefresh.setFocusPainted(false);
+        JLabel lblTitle = new JLabel("ĐẤU TRƯỜNG GIẢI ĐẤU TOÀN TRƯỜNG");
+        lblTitle.setFont(BrutalUI.FONT_TITLE_XL);
+        lblTitle.setForeground(BrutalUI.COLOR_BLACK);
+
+        headerLeft.add(tagLine);
+        headerLeft.add(lblTitle);
+        headerCard.add(headerLeft, BorderLayout.WEST);
+
+        JPanel headerActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
+        headerActions.setOpaque(false);
+
+        BrutalUI.BrutalButton btnRefresh = new BrutalUI.BrutalButton("🔄 Làm Mới", BrutalUI.BrutalButton.Style.OUTLINE, 10);
+        btnRefresh.setPreferredSize(new Dimension(115, 38));
         btnRefresh.addActionListener(e -> tournamentService.requestTournamentList());
 
-        JButton btnBack = new JButton("⬅️ Quay lại Phòng Chờ");
-        btnBack.setFocusPainted(false);
+        BrutalUI.BrutalButton btnBack = new BrutalUI.BrutalButton("⬅️ Về Phòng Chờ", BrutalUI.BrutalButton.Style.PRIMARY, 10);
+        btnBack.setPreferredSize(new Dimension(145, 38));
         btnBack.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LOBBY));
 
-        actions.add(btnRefresh);
-        actions.add(btnBack);
-        header.add(actions, BorderLayout.EAST);
-        add(header, BorderLayout.NORTH);
+        headerActions.add(btnRefresh);
+        headerActions.add(btnBack);
+        headerCard.add(headerActions, BorderLayout.EAST);
 
-        // 2. CENTER CONTENT (2 Panels: Tournament List & Bracket/Standings)
-        JPanel contentPanel = new JPanel(new GridLayout(1, 2, 15, 0));
-        contentPanel.setOpaque(false);
+        add(headerCard, BorderLayout.NORTH);
 
-        // Left Panel: Tournaments List
-        JPanel leftPanel = new JPanel(new BorderLayout(8, 8));
-        leftPanel.setBackground(Color.WHITE);
-        leftPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(12, 12, 12, 12)
-        ));
+        // =========================================================================
+        // 2. CENTER CONTENT: 2 Cột Card (Danh Sách Giải Đấu & Bảng Xếp Hạng Giải)
+        // =========================================================================
+        JPanel centerGrid = new JPanel(new GridLayout(1, 2, 16, 0));
+        centerGrid.setOpaque(false);
 
-        JLabel lblLeftTitle = new JLabel("Danh Sách Giải Đấu");
-        lblLeftTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        leftPanel.add(lblLeftTitle, BorderLayout.NORTH);
+        // --- CỘT TRÁI: DANH SÁCH GIẢI ĐẤU (SCREEN 8) ---
+        BrutalUI.CardPanel leftCard = new BrutalUI.CardPanel(16, 4);
+        leftCard.setLayout(new BorderLayout(10, 10));
 
-        modelTournaments = new DefaultTableModel(new String[]{"ID", "Tên giải đấu", "Trạng thái", "Số người", "Bắt đầu lúc"}, 0) {
+        JPanel leftHeader = new JPanel(new BorderLayout(8, 0));
+        leftHeader.setOpaque(false);
+        leftHeader.setBorder(BorderFactory.createEmptyBorder(2, 4, 8, 4));
+
+        JLabel lblLeftTitle = new JLabel("🏆 Danh Sách Giải Đấu Đang Mở");
+        lblLeftTitle.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblLeftTitle.setForeground(BrutalUI.COLOR_BLACK);
+
+        lblTournamentCountBadge = BrutalUI.createBadge("0 giải", BrutalUI.COLOR_LIGHT_GRAY, BrutalUI.COLOR_BLACK);
+        leftHeader.add(lblLeftTitle, BorderLayout.WEST);
+        leftHeader.add(lblTournamentCountBadge, BorderLayout.EAST);
+        leftCard.add(leftHeader, BorderLayout.NORTH);
+
+        modelTournaments = new DefaultTableModel(new String[]{"ID", "Tên giải đấu", "Trạng thái", "Thí sinh", "Bắt đầu lúc"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) { return false; }
         };
         tblTournaments = new JTable(modelTournaments);
-        tblTournaments.setRowHeight(24);
+        styleBrutalTable(tblTournaments);
+
+        // Tự động xem bảng đấu khi click chọn giải
         tblTournaments.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tblTournaments.getSelectedRow() >= 0) {
                 handleViewStandings();
             }
         });
-        leftPanel.add(new JScrollPane(tblTournaments), BorderLayout.CENTER);
 
-        JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JScrollPane scrollTournaments = new JScrollPane(tblTournaments);
+        scrollTournaments.setBorder(BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2));
+        scrollTournaments.getViewport().setBackground(Color.WHITE);
+        leftCard.add(scrollTournaments, BorderLayout.CENTER);
+
+        JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         leftActions.setOpaque(false);
 
-        btnJoinTournament = new JButton("Đăng Ký Tham Gia");
-        btnJoinTournament.setBackground(new Color(39, 174, 96));
-        btnJoinTournament.setForeground(Color.WHITE);
-        btnJoinTournament.setFocusPainted(false);
-        btnJoinTournament.addActionListener(e -> handleJoinTournament());
-
-        btnViewDetails = new JButton("Xem Bảng Đấu");
-        btnViewDetails.setFocusPainted(false);
+        btnViewDetails = new BrutalUI.BrutalButton("🔍 Xem Bảng Đấu", BrutalUI.BrutalButton.Style.OUTLINE, 12);
+        btnViewDetails.setPreferredSize(new Dimension(140, 40));
         btnViewDetails.addActionListener(e -> handleViewStandings());
+
+        btnJoinTournament = new BrutalUI.BrutalButton("✨ Đăng Ký Tham Gia", BrutalUI.BrutalButton.Style.SUCCESS, 12);
+        btnJoinTournament.setPreferredSize(new Dimension(170, 40));
+        btnJoinTournament.addActionListener(e -> handleJoinTournament());
 
         leftActions.add(btnViewDetails);
         leftActions.add(btnJoinTournament);
-        leftPanel.add(leftActions, BorderLayout.SOUTH);
-        contentPanel.add(leftPanel);
+        leftCard.add(leftActions, BorderLayout.SOUTH);
 
-        // Right Panel: Standings / Bracket
-        JPanel rightPanel = new JPanel(new BorderLayout(8, 8));
-        rightPanel.setBackground(Color.WHITE);
-        rightPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(12, 12, 12, 12)
-        ));
+        centerGrid.add(leftCard);
 
-        JLabel lblRightTitle = new JLabel("Bảng Xếp Hạng Vòng / Bảng Đấu");
-        lblRightTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        rightPanel.add(lblRightTitle, BorderLayout.NORTH);
+        // --- CỘT PHẢI: BẢNG XẾP HẠNG & VÒNG BẢNG (SCREEN 9) ---
+        BrutalUI.CardPanel rightCard = new BrutalUI.CardPanel(16, 4);
+        rightCard.setLayout(new BorderLayout(10, 10));
 
-        modelStandings = new DefaultTableModel(new String[]{"Thứ hạng", "Người chơi", "Bảng", "Số trận", "Số trận thắng", "Điểm"}, 0) {
+        JPanel rightHeader = new JPanel(new BorderLayout(8, 0));
+        rightHeader.setOpaque(false);
+        rightHeader.setBorder(BorderFactory.createEmptyBorder(2, 4, 8, 4));
+
+        JLabel lblRightTitle = new JLabel("📊 Bảng Xếp Hạng Vòng / Bảng Đấu");
+        lblRightTitle.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblRightTitle.setForeground(BrutalUI.COLOR_BLACK);
+
+        JLabel ruleBadge = BrutalUI.createBadge("Thắng +3đ · Hòa +1đ · Thua 0đ", new Color(239, 246, 255), new Color(29, 78, 216));
+        rightHeader.add(lblRightTitle, BorderLayout.WEST);
+        rightHeader.add(ruleBadge, BorderLayout.EAST);
+        rightCard.add(rightHeader, BorderLayout.NORTH);
+
+        modelStandings = new DefaultTableModel(new String[]{"Thứ hạng", "Thí sinh", "Bảng", "Số trận", "Thắng", "Điểm"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) { return false; }
         };
         tblStandings = new JTable(modelStandings);
-        tblStandings.setRowHeight(24);
-        rightPanel.add(new JScrollPane(tblStandings), BorderLayout.CENTER);
-        contentPanel.add(rightPanel);
+        styleBrutalTable(tblStandings);
 
-        add(contentPanel, BorderLayout.CENTER);
+        // Renderer đặc biệt cho thứ hạng (Huy hiệu 🥇 🥈 🥉)
+        tblStandings.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                lbl.setHorizontalAlignment(SwingConstants.CENTER);
+                lbl.setFont(BrutalUI.FONT_BODY_BOLD);
+                String valStr = value != null ? value.toString() : "";
+                if ("1".equals(valStr)) {
+                    lbl.setText("🥇 1");
+                    lbl.setForeground(new Color(180, 83, 9));
+                } else if ("2".equals(valStr)) {
+                    lbl.setText("🥈 2");
+                    lbl.setForeground(new Color(75, 85, 99));
+                } else if ("3".equals(valStr)) {
+                    lbl.setText("🥉 3");
+                    lbl.setForeground(new Color(180, 83, 9));
+                } else {
+                    lbl.setText("  " + valStr);
+                    lbl.setForeground(BrutalUI.COLOR_BLACK);
+                }
+                return lbl;
+            }
+        });
+
+        JScrollPane scrollStandings = new JScrollPane(tblStandings);
+        scrollStandings.setBorder(BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2));
+        scrollStandings.getViewport().setBackground(Color.WHITE);
+        rightCard.add(scrollStandings, BorderLayout.CENTER);
+
+        // Chú thích dưới cùng
+        JPanel rightFooter = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 8));
+        rightFooter.setOpaque(false);
+        JLabel lblNotice = new JLabel("🎯 Bảng đấu tự động cập nhật ngay khi mỗi trận đấu giải kết thúc.");
+        lblNotice.setFont(BrutalUI.FONT_SMALL);
+        lblNotice.setForeground(BrutalUI.COLOR_MUTED);
+        rightFooter.add(lblNotice);
+        rightCard.add(rightFooter, BorderLayout.SOUTH);
+
+        centerGrid.add(rightCard);
+
+        add(centerGrid, BorderLayout.CENTER);
+    }
+
+    /**
+     * Tùy biến bảng JTable chuẩn phong cách Neo-Brutalist (Viền đen, nền trắng, hàng cao, font rõ)
+     */
+    private void styleBrutalTable(JTable table) {
+        table.setRowHeight(36);
+        table.setFont(BrutalUI.FONT_BODY);
+        table.setSelectionBackground(new Color(254, 243, 199)); // Vàng pastel khi chọn
+        table.setSelectionForeground(BrutalUI.COLOR_BLACK);
+        table.setGridColor(new Color(228, 228, 231));
+        table.setShowVerticalLines(true);
+        table.setShowHorizontalLines(true);
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(BrutalUI.FONT_BODY_BOLD);
+        header.setBackground(new Color(244, 244, 245));
+        header.setForeground(BrutalUI.COLOR_BLACK);
+        header.setPreferredSize(new Dimension(100, 36));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, BrutalUI.COLOR_BLACK));
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            if (i != 1) { // Ngoại trừ cột tên
+                table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+            }
+        }
     }
 
     private void handleJoinTournament() {
         int row = tblTournaments.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 giải đấu để đăng ký!");
+            JOptionPane.showMessageDialog(this, "Vui lòng click chọn 1 giải đấu để đăng ký!", "Thông Báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         long tourId = Long.parseLong(modelTournaments.getValueAt(row, 0).toString());
         String title = modelTournaments.getValueAt(row, 1).toString();
 
-        int confirm = JOptionPane.showConfirmDialog(this, "Bạn có muốn đăng ký tham gia giải [" + title + "] không?", "Đăng ký giải đấu", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bạn có chắc chắn muốn đăng ký tham gia giải đấu:\n[" + title + "] không?",
+                "Xác nhận đăng ký giải",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
         if (confirm == JOptionPane.YES_OPTION) {
             tournamentService.joinTournament(tourId);
         }
@@ -154,7 +260,7 @@ public class TournamentPanel extends JPanel {
     private void handleViewStandings() {
         int row = tblTournaments.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 giải đấu để xem bảng đấu!");
+            JOptionPane.showMessageDialog(this, "Vui lòng click chọn 1 giải đấu để xem bảng đấu!", "Thông Báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -164,16 +270,24 @@ public class TournamentPanel extends JPanel {
 
     public void renderTournamentList(List<TournamentDTO.TournamentItem> list) {
         modelTournaments.setRowCount(0);
+        int count = 0;
         if (list != null) {
+            count = list.size();
             for (TournamentDTO.TournamentItem item : list) {
                 modelTournaments.addRow(new Object[]{
                         item.tournamentId,
                         item.title,
                         item.status,
-                        item.currentParticipants + "/" + item.maxParticipants,
+                        item.currentParticipants + " / " + item.maxParticipants,
                         item.startTime
                 });
             }
+        }
+        lblTournamentCountBadge.setText(count + " giải đấu");
+
+        // Nếu có giải đấu, tự động chọn dòng đầu tiên để load BXH
+        if (tblTournaments.getRowCount() > 0 && tblTournaments.getSelectedRow() < 0) {
+            tblTournaments.setRowSelectionInterval(0, 0);
         }
     }
 
