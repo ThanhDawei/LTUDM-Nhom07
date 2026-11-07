@@ -82,6 +82,10 @@ public class ClientSession implements Runnable {
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
+    public boolean isConnected() {
+        return running && socket != null && !socket.isClosed() && socket.isConnected();
+    }
+
     public String getRemoteAddress() {
         return socket != null ? socket.getRemoteSocketAddress().toString() : "Unknown";
     }

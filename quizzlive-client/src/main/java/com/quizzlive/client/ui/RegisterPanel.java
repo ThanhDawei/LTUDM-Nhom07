@@ -19,7 +19,10 @@ public class RegisterPanel extends JPanel {
     private JPasswordField txtPassword;
     private JTextField txtEmail;
     private JTextField txtFullName;
-    private JComboBox<String> cbAvatar;
+    private String selectedAvatar = "avatar1.png";
+    private JLabel lblRegAvatarPreview;
+    private JLabel lblAvatarFileName;
+    private JButton btnBrowseAvatar;
     private JTextField txtBio;
     private JButton btnRegister;
     private JButton btnBackToLogin;
@@ -94,28 +97,34 @@ public class RegisterPanel extends JPanel {
         gbc.gridx = 0;
         card.add(new JLabel("Ảnh đại diện:"), gbc);
         gbc.gridx = 1;
-        cbAvatar = new JComboBox<>(AvatarUtil.AVAILABLE_AVATARS);
-        cbAvatar.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value != null) {
-                    String av = value.toString();
-                    lbl.setIcon(AvatarUtil.getAvatarIcon(av, 24));
-                    lbl.setText(" " + av);
-                }
-                return lbl;
+        btnBrowseAvatar = new JButton("📁 Chọn ảnh...");
+        btnBrowseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnBrowseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        lblRegAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(selectedAvatar, 32));
+        lblAvatarFileName = new JLabel("Mặc định (avatar1.png)");
+        lblAvatarFileName.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblAvatarFileName.setForeground(Color.DARK_GRAY);
+
+        btnBrowseAvatar.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Chọn ảnh đại diện từ máy tính");
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Hình ảnh (*.png, *.jpg, *.jpeg, *.gif, *.bmp)", "png", "jpg", "jpeg", "gif", "bmp"));
+            int ret = chooser.showOpenDialog(RegisterPanel.this);
+            if (ret == JFileChooser.APPROVE_OPTION) {
+                java.io.File file = chooser.getSelectedFile();
+                selectedAvatar = AvatarUtil.saveCustomAvatar(file, "reg_avatar");
+                lblAvatarFileName.setText(file.getName());
+                lblRegAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar, 32));
             }
         });
-        JLabel lblRegAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon("avatar1.png", 32));
-        cbAvatar.addActionListener(e -> {
-            String sel = (String) cbAvatar.getSelectedItem();
-            lblRegAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(sel, 32));
-        });
+
         JPanel regAvatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         regAvatarRow.setOpaque(false);
-        regAvatarRow.add(cbAvatar);
+        regAvatarRow.add(btnBrowseAvatar);
         regAvatarRow.add(lblRegAvatarPreview);
+        regAvatarRow.add(lblAvatarFileName);
         card.add(regAvatarRow, gbc);
 
         gbc.gridy++;
@@ -161,7 +170,7 @@ public class RegisterPanel extends JPanel {
         String password = new String(txtPassword.getPassword());
         String email = txtEmail.getText().trim();
         String fullName = txtFullName.getText().trim();
-        String avatar = (String) cbAvatar.getSelectedItem();
+        String avatar = (selectedAvatar != null && !selectedAvatar.trim().isEmpty()) ? selectedAvatar.trim() : "avatar1.png";
         String bio = txtBio.getText().trim();
 
         if (username.isEmpty() || password.isEmpty() || email.isEmpty() || fullName.isEmpty()) {

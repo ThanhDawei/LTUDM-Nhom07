@@ -256,16 +256,21 @@ public class AuthService {
             return resp;
         }
 
-        // Kiểm tra 2 luồng / 2 thiết bị đăng nhập 1 tài khoản:
-        // Nếu máy này đăng nhập trước mà máy kia đăng nhập sau thì thông báo cho máy sau: "Tài khoản đã được đăng nhập!"
+        // Kiểm tra 2 luồng / 2 thiết bị đăng nhập 1 tài khoản (Chống đăng nhập đồng thời trên 2 máy):
+        // 1. Kiểm tra session bộ nhớ (trong cùng tiến trình Server)
         if (sessionManager != null) {
             com.quizzlive.server.network.ClientSession activeSession = sessionManager.getSessionByUserId(user.getUserId());
-            if (activeSession != null) {
+            if (activeSession != null && activeSession.isConnected()) {
                 resp.success = false;
                 resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
                 return resp;
+            } else if (activeSession != null) {
+                sessionManager.removeSession(activeSession);
             }
-        } else if (user.isOnline()) {
+        }
+
+        // 2. Kiểm tra trạng thái Online trong CSDL (dành cho đa máy / đa server trỏ cùng CSDL)
+        if (userDAO.isUserOnline(user.getUserId())) {
             resp.success = false;
             resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
             return resp;
@@ -335,7 +340,13 @@ public class AuthService {
         resp.avatarUrl = profile != null ? profile.getAvatar() : "avatar1.png";
         resp.bio = profile != null ? profile.getBio() : "";
         resp.iqScore = profile != null ? profile.getIqScore() : 0.0;
-        resp.message = "Cập nhật hồ sơ thành công!";
+        if (req.newPassword != null && !req.newPassword.trim().isEmpty()
+                && (req.fullName == null || req.fullName.trim().isEmpty())
+                && req.avatarUrl == null && req.bio == null) {
+            resp.message = "Đổi mật khẩu thành công!";
+        } else {
+            resp.message = "Cập nhật hồ sơ thành công!";
+        }
         return resp;
     }
 

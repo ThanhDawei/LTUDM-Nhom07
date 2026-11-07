@@ -31,6 +31,11 @@ public class ClientPacketHandler implements NetworkListener {
     }
 
     @Override
+    public void onDisconnected() {
+        onDisconnected("Mất kết nối tới máy chủ.");
+    }
+
+    @Override
     public void onDisconnected(String reason) {
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(mainFrame, "Mất kết nối tới máy chủ: " + reason, "Mất kết nối", JOptionPane.ERROR_MESSAGE);

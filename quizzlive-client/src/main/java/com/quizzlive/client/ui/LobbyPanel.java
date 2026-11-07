@@ -400,70 +400,121 @@ public class LobbyPanel extends JPanel {
     }
 
     /**
-     * Cập nhật thông tin cá nhân: Họ tên, Ảnh đại diện, Giới thiệu & Đổi mật khẩu (Yêu cầu 1)
+     * Cập nhật thông tin cá nhân: Họ tên, Ảnh đại diện từ thư mục, Giới thiệu & Nút Đổi mật khẩu (Yêu cầu 1)
      */
     private void showUpdateProfileDialog() {
         JTextField txtName = new JTextField(20);
         txtName.setText(lblWelcome.getText().replace("Xin chào, ", "").replace("!", "").trim());
 
-        JComboBox<String> cbAvatar = new JComboBox<>(AvatarUtil.AVAILABLE_AVATARS);
-        cbAvatar.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value != null) {
-                    String av = value.toString();
-                    lbl.setIcon(AvatarUtil.getAvatarIcon(av, 28));
-                    lbl.setText(" " + av);
-                }
-                return lbl;
+        final String[] selectedAvatar = new String[]{currentAvatar != null ? currentAvatar : "avatar1.png"};
+
+        JButton btnChooseAvatar = new JButton("📁 Chọn ảnh từ máy...");
+        btnChooseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnChooseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JLabel lblAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(selectedAvatar[0], 44));
+        JLabel lblAvatarName = new JLabel(getFileNameFromPath(selectedAvatar[0]));
+        lblAvatarName.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblAvatarName.setForeground(Color.DARK_GRAY);
+
+        btnChooseAvatar.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Chọn ảnh đại diện mới từ máy tính");
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Hình ảnh (*.png, *.jpg, *.jpeg, *.gif, *.bmp)", "png", "jpg", "jpeg", "gif", "bmp"));
+            int ret = chooser.showOpenDialog(this);
+            if (ret == JFileChooser.APPROVE_OPTION) {
+                java.io.File file = chooser.getSelectedFile();
+                selectedAvatar[0] = AvatarUtil.saveCustomAvatar(file, "avatar_user_" + (currentUserId != null ? currentUserId : "0"));
+                lblAvatarName.setText(file.getName());
+                lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar[0], 44));
             }
         });
-        if (currentAvatar != null) {
-            cbAvatar.setSelectedItem(currentAvatar);
-        }
 
-        JLabel lblAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(currentAvatar, 44));
-        cbAvatar.addActionListener(e -> {
-            String sel = (String) cbAvatar.getSelectedItem();
-            lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(sel, 44));
-        });
-
-        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         avatarRow.setOpaque(false);
-        avatarRow.add(cbAvatar);
+        avatarRow.add(btnChooseAvatar);
         avatarRow.add(lblAvatarPreview);
+        avatarRow.add(lblAvatarName);
 
         JTextField txtBio = new JTextField(20);
         txtBio.setText(currentBio != null ? currentBio : "");
 
-        JPasswordField txtCurPass = new JPasswordField(20);
-        JPasswordField txtNewPass = new JPasswordField(20);
+        JButton btnChangePass = new JButton("🔑 Đổi mật khẩu...");
+        btnChangePass.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnChangePass.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnChangePass.addActionListener(e -> showChangePasswordDialog());
 
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 8));
+        JPanel panel = new JPanel(new GridLayout(4, 2, 8, 10));
         panel.add(new JLabel("Họ tên mới:"));
         panel.add(txtName);
         panel.add(new JLabel("Ảnh đại diện (avatar):"));
         panel.add(avatarRow);
         panel.add(new JLabel("Giới thiệu bản thân:"));
         panel.add(txtBio);
+        panel.add(new JLabel("Bảo mật tài khoản:"));
+        panel.add(btnChangePass);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Cập Nhật Hồ Sơ Cá Nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
+        if (result == JOptionPane.OK_OPTION) {
+            String bioText = txtBio.getText().trim();
+            authService.sendUpdateProfile(
+                    txtName.getText().trim(),
+                    null,
+                    null,
+                    selectedAvatar[0],
+                    bioText
+            );
+        }
+    }
+
+    /**
+     * Hộp thoại đổi mật khẩu riêng biệt (Yêu cầu 1)
+     */
+    private void showChangePasswordDialog() {
+        JPasswordField txtCurPass = new JPasswordField(18);
+        JPasswordField txtNewPass = new JPasswordField(18);
+        JPasswordField txtConfirmPass = new JPasswordField(18);
+
+        JPanel panel = new JPanel(new GridLayout(3, 2, 8, 8));
         panel.add(new JLabel("Mật khẩu hiện tại:"));
         panel.add(txtCurPass);
         panel.add(new JLabel("Mật khẩu mới:"));
         panel.add(txtNewPass);
+        panel.add(new JLabel("Xác nhận mật khẩu mới:"));
+        panel.add(txtConfirmPass);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Cập Nhật Hồ Sơ Cá Nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
+        int result = JOptionPane.showConfirmDialog(this, panel, "🔑 Đổi Mật Khẩu", JOptionPane.OK_CANCEL_OPTION);
         if (result == JOptionPane.OK_OPTION) {
-            String selectedAvatar = (String) cbAvatar.getSelectedItem();
-            String bioText = txtBio.getText().trim();
-            authService.sendUpdateProfile(
-                    txtName.getText().trim(),
-                    new String(txtCurPass.getPassword()),
-                    new String(txtNewPass.getPassword()),
-                    selectedAvatar,
-                    bioText
-            );
+            String curPass = new String(txtCurPass.getPassword());
+            String newPass = new String(txtNewPass.getPassword());
+            String confirmPass = new String(txtConfirmPass.getPassword());
+
+            if (curPass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập mật khẩu hiện tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (newPass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập mật khẩu mới!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (newPass.length() < 6) {
+                JOptionPane.showMessageDialog(this, "Mật khẩu mới phải có tối thiểu 6 ký tự!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!newPass.equals(confirmPass)) {
+                JOptionPane.showMessageDialog(this, "Mật khẩu mới và xác nhận mật khẩu không trùng khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            authService.sendUpdateProfile(null, curPass, newPass, null, null);
         }
+    }
+
+    private String getFileNameFromPath(String path) {
+        if (path == null || path.isEmpty()) return "Mặc định (avatar1.png)";
+        int idx = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        return idx >= 0 ? path.substring(idx + 1) : path;
     }
 
     private Timer onlineRefreshTimer;

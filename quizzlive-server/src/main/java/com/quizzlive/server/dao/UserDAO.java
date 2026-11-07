@@ -168,6 +168,26 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Kiểm tra trạng thái Online tức thời trong CSDL (chống 2 máy đăng nhập đồng thời)
+     */
+    public boolean isUserOnline(Long userId) {
+        if (userId == null) return false;
+        String sql = "SELECT TrangThaiOnline FROM NGUOI_DUNG WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("TrangThaiOnline");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public void updatePassword(Long userId, String passwordHash) {
         String sql = "UPDATE NGUOI_DUNG SET MatKhau = ? WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection();

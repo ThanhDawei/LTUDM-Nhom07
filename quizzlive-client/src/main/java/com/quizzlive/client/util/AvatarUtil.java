@@ -26,15 +26,66 @@ public class AvatarUtil {
     };
 
     /**
+     * Thư mục lưu trữ ảnh đại diện người dùng tải lên
+     */
+    public static File getAvatarsDirectory() {
+        File dir = new File("data/avatars");
+        if (!dir.exists()) {
+            File parentDir = new File("../data/avatars");
+            if (parentDir.exists() || new File("../data").exists()) {
+                dir = parentDir;
+            }
+        }
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        return dir;
+    }
+
+    /**
+     * Sao chép file ảnh từ máy người dùng vào thư mục lưu trữ data/avatars
+     */
+    public static String saveCustomAvatar(File srcFile, String prefix) {
+        if (srcFile == null || !srcFile.exists()) {
+            return "avatar1.png";
+        }
+        try {
+            File avatarsDir = getAvatarsDirectory();
+            String origName = srcFile.getName();
+            String ext = "png";
+            int dotIdx = origName.lastIndexOf('.');
+            if (dotIdx > 0 && dotIdx < origName.length() - 1) {
+                ext = origName.substring(dotIdx + 1).toLowerCase();
+            }
+            String baseName = (dotIdx > 0 ? origName.substring(0, dotIdx) : origName)
+                    .replaceAll("[^a-zA-Z0-9_\\-]", "_");
+            if (baseName.length() > 25) {
+                baseName = baseName.substring(0, 25);
+            }
+            String destFileName = (prefix != null ? prefix + "_" : "") + System.currentTimeMillis() + "_" + baseName + "." + ext;
+            File destFile = new File(avatarsDir, destFileName);
+            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return "data/avatars/" + destFileName;
+        } catch (Exception e) {
+            System.err.println("[AvatarUtil] Lỗi lưu avatar tùy chọn: " + e.getMessage());
+            return srcFile.getAbsolutePath().replace('\\', '/');
+        }
+    }
+
+    /**
      * Lấy ImageIcon hình tròn theo kích thước mong muốn (size x size)
      */
     public static ImageIcon getAvatarIcon(String avatarName, int size) {
         if (avatarName == null || avatarName.trim().isEmpty()) {
             avatarName = "avatar1.png";
         }
-        avatarName = avatarName.trim().toLowerCase();
-        if (!avatarName.endsWith(".png")) {
-            avatarName = avatarName + ".png";
+        avatarName = avatarName.trim();
+        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) chưa có đuôi định dạng ảnh
+        String lower = avatarName.toLowerCase();
+        if (!avatarName.contains("/") && !avatarName.contains("\\")) {
+            if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
+                avatarName = avatarName + ".png";
+            }
         }
 
         String cacheKey = avatarName + "_" + size;
@@ -48,8 +99,42 @@ public class AvatarUtil {
     }
 
     private static BufferedImage loadOrGenerateAvatar(String name, int size) {
-        // 1. Thử nạp từ resources
-        try (InputStream is = AvatarUtil.class.getResourceAsStream("/avatars/" + name)) {
+        // 1. Thử nạp từ file hệ thống cục bộ (đường dẫn trực tiếp hoặc tuyệt đối)
+        try {
+            File directFile = new File(name);
+            if (directFile.exists() && directFile.isFile()) {
+                BufferedImage original = ImageIO.read(directFile);
+                if (original != null) {
+                    return makeCircularAvatar(original, size);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Thử nạp từ thư mục data/avatars
+        try {
+            File inData = new File("data/avatars", name);
+            if (inData.exists() && inData.isFile()) {
+                BufferedImage original = ImageIO.read(inData);
+                if (original != null) {
+                    return makeCircularAvatar(original, size);
+                }
+            }
+            File inParentData = new File("../data/avatars", name);
+            if (inParentData.exists() && inParentData.isFile()) {
+                BufferedImage original = ImageIO.read(inParentData);
+                if (original != null) {
+                    return makeCircularAvatar(original, size);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Thử nạp từ resources
+        String resName = name;
+        int lastSlash = Math.max(resName.lastIndexOf('/'), resName.lastIndexOf('\\'));
+        if (lastSlash >= 0) {
+            resName = resName.substring(lastSlash + 1);
+        }
+        try (InputStream is = AvatarUtil.class.getResourceAsStream("/avatars/" + resName)) {
             if (is != null) {
                 BufferedImage original = ImageIO.read(is);
                 if (original != null) {
@@ -58,9 +143,9 @@ public class AvatarUtil {
             }
         } catch (Exception ignored) {}
 
-        // 2. Thử nạp từ file hệ thống cục bộ
+        // 4. Thử nạp từ quizzlive-client/src/main/resources/avatars/
         try {
-            File localFile = new File("quizzlive-client/src/main/resources/avatars/" + name);
+            File localFile = new File("quizzlive-client/src/main/resources/avatars/" + resName);
             if (localFile.exists()) {
                 BufferedImage original = ImageIO.read(localFile);
                 if (original != null) {
@@ -69,22 +154,29 @@ public class AvatarUtil {
             }
         } catch (Exception ignored) {}
 
-        // 3. Nếu chưa có ảnh, tự động vẽ Avatar Vector 2D tuyệt đẹp
-        return createVectorAvatar(name, size);
+        // 5. Nếu chưa có ảnh, tự động vẽ Avatar Vector 2D tuyệt đẹp
+        return createVectorAvatar(resName, size);
     }
 
     /**
-     * Bo tròn ảnh thành hình tròn kèm viền thanh lịch
+     * Bo tròn ảnh thành hình tròn kèm viền thanh lịch và crop từ tâm
      */
     private static BufferedImage makeCircularAvatar(BufferedImage src, int size) {
         BufferedImage output = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = output.createGraphics();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+        int w = src.getWidth();
+        int h = src.getHeight();
+        int minDim = Math.min(w, h);
+        int sx = (w - minDim) / 2;
+        int sy = (h - minDim) / 2;
 
         // Tạo clip hình tròn
         g2.setClip(new Ellipse2D.Float(1, 1, size - 2, size - 2));
-        g2.drawImage(src, 0, 0, size, size, null);
+        g2.drawImage(src, 0, 0, size, size, sx, sy, sx + minDim, sy + minDim, null);
         g2.setClip(null);
 
         // Vẽ viền tròn mềm mại

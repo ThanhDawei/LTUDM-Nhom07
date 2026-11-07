@@ -77,6 +77,11 @@ public class DatabaseManager {
             }
         }
 
+        // Đặt lại toàn bộ trạng thái Online về FALSE khi Server khởi động
+        try {
+            new com.quizzlive.server.dao.UserDAO().resetAllOnlineStatus();
+        } catch (Exception ignored) {}
+
         isInitialized = true;
     }
 
