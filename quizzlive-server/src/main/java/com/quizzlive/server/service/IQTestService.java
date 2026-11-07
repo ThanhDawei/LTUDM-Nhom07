@@ -112,34 +112,31 @@ public class IQTestService {
             }
         }
 
-        double delta;
+        double delta = 0.0;
+        double newIqScore = currentIq;
+
         if (isCorrect) {
             if ("HARD".equalsIgnoreCase(difficulty)) delta = 5.0;
             else if ("EASY".equalsIgnoreCase(difficulty)) delta = 2.0;
             else delta = 3.0;
-        } else {
-            delta = -1.0;
-        }
 
-        double newIqScore = Math.round((currentIq + delta) * 10.0) / 10.0;
-        if (newIqScore < 70.0) newIqScore = 70.0;
-        if (newIqScore > 160.0) newIqScore = 160.0;
+            newIqScore = Math.round((currentIq + delta) * 10.0) / 10.0;
+            if (newIqScore > 160.0) newIqScore = 160.0;
 
-        // Lưu điểm IQ vào hồ sơ người dùng (Yêu cầu 11)
-        if (userId != null) {
-            userDAO.updateIQScore(userId, newIqScore);
-            if (isCorrect) {
-                // Đánh dấu câu hỏi này đã trả lời tăng IQ -> không làm lại câu hỏi này nữa (Yêu cầu 11)
+            // Lưu điểm IQ vào hồ sơ người dùng và đánh dấu đã tăng IQ (Yêu cầu 11)
+            if (userId != null) {
+                userDAO.updateIQScore(userId, newIqScore);
                 questionDAO.recordPassedIQQuestion(userId, req.questionId);
             }
         }
+        // Khi trả lời sai: KHÔNG TRỪ IQ, không lưu điểm giảm, cho phép trả lời lại mà không lo bị spam trừ IQ
 
         IQTestDTO.IQResultNotify result = new IQTestDTO.IQResultNotify();
         result.currentIqScore = newIqScore;
         result.isCorrect = isCorrect;
         result.message = isCorrect
                 ? "Chính xác! Bạn được cộng " + delta + " điểm IQ."
-                : "Chưa chính xác! Hãy thử lại câu đố tiếp theo.";
+                : "Chưa chính xác! Bạn hãy suy nghĩ và chọn lại đáp án khác nhé (không bị trừ điểm IQ).";
 
         session.sendPacket(new Packet(OpCode.IQ_RESULT_NOTIFY, JsonUtil.toJson(result)));
     }

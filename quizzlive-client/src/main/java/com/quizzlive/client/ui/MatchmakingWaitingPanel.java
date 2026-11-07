@@ -317,6 +317,7 @@ public class MatchmakingWaitingPanel extends JPanel {
                 + question.content + "</div></html>");
         lblIqResult.setText("");
         btnSubmitIQ.setEnabled(true);
+        btnSubmitIQ.setText("Nộp Đáp Án IQ");
         btnNextIQ.setText("Đổi câu khác");
         btnNextIQ.setEnabled(true);
         bgIqOptions.clearSelection();
@@ -361,6 +362,7 @@ public class MatchmakingWaitingPanel extends JPanel {
             lblIqResult.setForeground(new Color(39, 174, 96));
             lblIqResult.setText("✅ " + result.message + " (Điểm IQ: " + result.currentIqScore + ")");
             btnSubmitIQ.setEnabled(false);
+            btnSubmitIQ.setText("Đã hoàn thành");
             btnNextIQ.setText("Câu tiếp theo ➡️");
             // Khóa lựa chọn sau khi đã đúng
             rbOptA.setEnabled(false);
@@ -371,6 +373,7 @@ public class MatchmakingWaitingPanel extends JPanel {
             lblIqResult.setForeground(new Color(231, 76, 60));
             lblIqResult.setText("❌ " + result.message + " (Điểm IQ: " + result.currentIqScore + ")");
             btnSubmitIQ.setEnabled(true);
+            btnSubmitIQ.setText("Chọn lại & Nộp lại");
         }
 
         // Tự động đồng bộ điểm IQ hiển thị tại Sảnh (Lobby)
