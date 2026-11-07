@@ -142,10 +142,6 @@ public class LoginPanel extends JPanel {
      * Callback được gọi bởi ClientPacketHandler khi server phản hồi LOGIN_RESP
      */
     public void onLoginResponse(boolean success, String message) {
-        onLoginResponse(success, message, null);
-    }
-
-    public void onLoginResponse(boolean success, String message, String otpCode) {
         btnLogin.setEnabled(true);
         if (success) {
             lblStatus.setText("");
@@ -156,14 +152,13 @@ public class LoginPanel extends JPanel {
             lblStatus.setText(message != null ? message : "Đăng nhập thất bại!");
             if (message != null && message.contains("đã được đăng nhập")) {
                 JOptionPane.showMessageDialog(this, message, "Cảnh Báo Đăng Nhập", JOptionPane.WARNING_MESSAGE);
-            } else if (otpCode != null) {
+            } else if (message != null && message.contains("chưa được kích hoạt")) {
                 int opt = JOptionPane.showConfirmDialog(
                         this,
                         "Tài khoản chưa được kích hoạt!\n\n"
-                                + "Mã OTP xác thực đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP).\n"
-                                + "• Mã OTP trong CSDL: " + otpCode + "\n"
-                                + "• Thời hạn hiệu lực: 10 phút\n\n"
-                                + "Bạn có muốn mở hộp thoại kích hoạt OTP ngay không?",
+                                + "Mã OTP xác thực đã được gửi về Cơ sở dữ liệu (Bảng OTP, thời hạn 10 phút).\n"
+                                + "Vui lòng mở Cơ sở dữ liệu (bảng OTP) để lấy mã xác thực.\n\n"
+                                + "Bạn có muốn chuyển sang màn hình kích hoạt để nhập mã OTP ngay không?",
                         "Kích hoạt tài khoản (Mã OTP từ CSDL)",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE

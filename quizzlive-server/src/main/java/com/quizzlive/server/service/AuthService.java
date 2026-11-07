@@ -98,8 +98,7 @@ public class AuthService {
                 resp.success = true;
                 resp.userId = existingEmail.getUserId();
                 resp.username = existingEmail.getUsername();
-                resp.otpCode = otpCode;
-                resp.message = "Mã OTP mới đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng nhập để kích hoạt!";
+                resp.message = "Mã OTP mới đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt!";
                 return resp;
             }
         }
@@ -127,8 +126,7 @@ public class AuthService {
         resp.success = true;
         resp.userId = userId;
         resp.username = username;
-        resp.otpCode = otpCode;
-        resp.message = "Đăng ký thành công! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút).";
+        resp.message = "Đăng ký thành công! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt.";
         return resp;
     }
 
@@ -254,8 +252,7 @@ public class AuthService {
             EmailService.sendOtpEmail(user.getEmail(), newOtp, "Kích hoạt tài khoản");
 
             resp.success = false;
-            resp.otpCode = newOtp;
-            resp.message = "Tài khoản chưa được kích hoạt! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút).";
+            resp.message = "Tài khoản chưa được kích hoạt! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt.";
             return resp;
         }
 
