@@ -136,19 +136,24 @@ public class QuestionDAO {
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);
+            try { stmt.executeUpdate("ALTER TABLE LICHSU_TEST_IQ ADD COLUMN IF NOT EXISTS DaTangIQ BOOLEAN DEFAULT TRUE"); } catch (Exception ignored) {}
+            try { stmt.executeUpdate("ALTER TABLE LICHSU_TEST_IQ ADD COLUMN IF NOT EXISTS ThoiGianLam TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); } catch (Exception ignored) {}
         } catch (SQLException ignored) {}
     }
 
     /**
-     * Lấy ngẫu nhiên 1 câu hỏi IQ hình ảnh từ ngân hàng câu hỏi (Yêu cầu 11).
-     * Loại trừ các câu hỏi mà người chơi đã trả lời tăng IQ trước đó.
+     * Lấy ngẫu nhiên câu hỏi trực tiếp từ CSDL (bảng CAU_HOI) cho Task 11.
+     * Trích xuất câu hỏi từ bảng CAU_HOI trong CSDL, loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ.
      */
     public Question getRandomIQQuestion(Long userId) {
         ensureIQTableExists();
         List<Question> list = new ArrayList<>();
-        String sql = "SELECT * FROM CAU_HOI WHERE (LoaiCauHoi = 'IQ_IMAGE' OR MaChuDe = 4) AND TrangThai = 'ACTIVE'";
+        // Trích xuất toàn bộ câu hỏi đang hoạt động từ bảng CAU_HOI trong CSDL
+        String sql = "SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
+                "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
+                "WHERE c.TrangThai = 'ACTIVE' ";
         if (userId != null && userId > 0) {
-            sql += " AND MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE)";
+            sql += "AND c.MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE) ";
         }
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -158,6 +163,7 @@ public class QuestionDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Question q = mapQuestion(rs);
+                    q.setTopicName(rs.getString("TenChuDe"));
                     q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
                     list.add(q);
                 }
@@ -166,8 +172,39 @@ public class QuestionDAO {
             e.printStackTrace();
         }
 
+        // Nếu người dùng đã giải đúng tất cả câu hỏi tăng IQ, lấy lại từ ngân hàng câu hỏi CSDL để tiếp tục làm bài
+        if (list.isEmpty()) {
+            String fallbackSql = "SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
+                    "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
+                    "WHERE c.TrangThai = 'ACTIVE'";
+            try (Connection conn = DatabaseManager.getConnection();
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(fallbackSql)) {
+                while (rs.next()) {
+                    Question q = mapQuestion(rs);
+                    q.setTopicName(rs.getString("TenChuDe"));
+                    q.setAnswers(getAnswersForQuestion(conn, q.getQuestionId()));
+                    list.add(q);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
         if (list.isEmpty()) {
             return null;
+        }
+
+        // Ưu tiên câu hỏi có hình ảnh hoặc chủ đề tư duy IQ nếu có
+        List<Question> iqPreferred = new ArrayList<>();
+        for (Question q : list) {
+            if ("IQ_IMAGE".equalsIgnoreCase(q.getQuestionType()) || q.getImage() != null || (q.getTopicId() != null && q.getTopicId() == 4)) {
+                iqPreferred.add(q);
+            }
+        }
+        if (!iqPreferred.isEmpty() && Math.random() < 0.75) {
+            int randomIndex = (int) (Math.random() * iqPreferred.size());
+            return iqPreferred.get(randomIndex);
         }
 
         int randomIndex = (int) (Math.random() * list.size());
@@ -237,7 +274,6 @@ public class QuestionDAO {
      */
     public boolean checkAnswer(Long questionId, Long answerId) {
         if (questionId == null || answerId == null) return false;
-        if (questionId == 999L) return answerId == 902L;
 
         String sql = "SELECT LaDapAnDung FROM DAP_AN WHERE MaCauHoi = ? AND MaDapAn = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -259,7 +295,7 @@ public class QuestionDAO {
      * Lấy độ khó câu hỏi để cộng điểm IQ hợp lý
      */
     public String getQuestionDifficulty(Long questionId) {
-        if (questionId == null || questionId == 999L) return "MEDIUM";
+        if (questionId == null) return "MEDIUM";
         String sql = "SELECT DoKho FROM CAU_HOI WHERE MaCauHoi = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

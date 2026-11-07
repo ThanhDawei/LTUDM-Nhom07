@@ -8,6 +8,8 @@ public class IQTestDTO {
         public long questionId;
         public String content;
         public String imageUrl;
+        public String topicName;
+        public String difficulty;
         public List<BattleDTO.QuestionAnswerOption> options;
     }
 

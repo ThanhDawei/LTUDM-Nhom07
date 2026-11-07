@@ -15,13 +15,38 @@ import java.io.File;
 public class IQImageUtil {
 
     public static ImageIcon getIQImage(String imageName, String content, int width, int height) {
-        // 1. Nếu có file hình ảnh thực tế trên máy
+        // 1. Thử nạp từ file hình ảnh thực tế trên máy / thư mục data
         if (imageName != null && !imageName.trim().isEmpty()) {
-            File localFile = new File(imageName.trim());
-            if (localFile.exists()) {
-                Image img = new ImageIcon(localFile.getAbsolutePath()).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
+            String imgTrim = imageName.trim();
+            File[] candidates = new File[]{
+                    new File(imgTrim),
+                    new File("data/" + imgTrim),
+                    new File("data/images/" + imgTrim),
+                    new File("../data/" + imgTrim),
+                    new File("quizzlive-client/src/main/resources/images/" + imgTrim),
+                    new File("quizzlive-client/src/main/resources/" + imgTrim)
+            };
+            for (File f : candidates) {
+                if (f.exists() && f.isFile()) {
+                    try {
+                        BufferedImage orig = javax.imageio.ImageIO.read(f);
+                        if (orig != null) {
+                            Image scaled = orig.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                            return new ImageIcon(scaled);
+                        }
+                    } catch (Exception ignored) {}
+                }
             }
+
+            // Thử nạp từ classpath resources
+            try (java.io.InputStream is = IQImageUtil.class.getResourceAsStream("/images/" + imgTrim)) {
+                if (is != null) {
+                    BufferedImage orig = javax.imageio.ImageIO.read(is);
+                    if (orig != null) {
+                        return new ImageIcon(orig.getScaledInstance(width, height, Image.SCALE_SMOOTH));
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
         // 2. Tạo hình ảnh đồ họa thông minh dựa trên nội dung câu đố

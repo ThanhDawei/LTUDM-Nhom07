@@ -33,6 +33,8 @@ public class MatchmakingWaitingPanel extends JPanel {
 
     // Components cho Yêu cầu 11 (Test IQ bằng hình ảnh)
     private JLabel lblIqTitle;
+    private JLabel lblIqMeta;
+    private JLabel lblIqQuestionText;
     private JPanel pnlIqImageContainer;
     private JLabel lblIqImage;
     private JRadioButton rbOptA, rbOptB, rbOptC, rbOptD;
@@ -103,31 +105,42 @@ public class MatchmakingWaitingPanel extends JPanel {
                 BorderFactory.createEmptyBorder(20, 25, 20, 25)
         ));
 
-        JPanel iqHeader = new JPanel(new GridLayout(2, 1));
+        JPanel iqHeader = new JPanel(new GridLayout(2, 1, 2, 2));
         iqHeader.setOpaque(false);
-        lblIqTitle = new JLabel("🧠 THỬ TÀI IQ HÌNH ẢNH TRONG LÚC CHỜ GHÉP CẶP (Yêu cầu 11)");
+        lblIqTitle = new JLabel("🧠 THỬ TÀI IQ TRONG LÚC CHỜ GHÉP CẶP (YÊU CẦU 11)");
         lblIqTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblIqTitle.setForeground(new Color(142, 68, 173));
 
-        JLabel lblIqNote = new JLabel("Điểm IQ được lưu vào hồ sơ cá nhân và không ảnh hưởng đến điểm thi đấu.");
-        lblIqNote.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        lblIqNote.setForeground(Color.GRAY);
+        lblIqMeta = new JLabel("Câu hỏi trích xuất trực tiếp từ Cơ sở dữ liệu • Điểm IQ lưu vào hồ sơ cá nhân");
+        lblIqMeta.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblIqMeta.setForeground(Color.GRAY);
 
         iqHeader.add(lblIqTitle);
-        iqHeader.add(lblIqNote);
+        iqHeader.add(lblIqMeta);
         iqCard.add(iqHeader, BorderLayout.NORTH);
 
-        // Khung hiển thị ảnh IQ (Tự vẽ đồ họa quy luật hình học nếu không có ảnh tĩnh)
+        // Khung hiển thị nội dung câu hỏi và hình ảnh từ CSDL
+        JPanel centerQuestionPanel = new JPanel(new BorderLayout(8, 8));
+        centerQuestionPanel.setOpaque(false);
+
+        lblIqQuestionText = new JLabel("Đang nạp câu hỏi từ Cơ sở dữ liệu...", SwingConstants.LEFT);
+        lblIqQuestionText.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblIqQuestionText.setForeground(new Color(44, 62, 80));
+        lblIqQuestionText.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+        centerQuestionPanel.add(lblIqQuestionText, BorderLayout.NORTH);
+
         pnlIqImageContainer = new JPanel(new BorderLayout());
         pnlIqImageContainer.setBackground(new Color(250, 250, 252));
         pnlIqImageContainer.setBorder(BorderFactory.createLineBorder(new Color(225, 225, 230), 1));
-        pnlIqImageContainer.setPreferredSize(new Dimension(380, 160));
+        pnlIqImageContainer.setPreferredSize(new Dimension(380, 150));
 
-        lblIqImage = new JLabel("[ Đang nạp câu đố IQ hình ảnh... ]", SwingConstants.CENTER);
-        lblIqImage.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblIqImage = new JLabel("[ Đang nạp hình ảnh minh họa từ CSDL... ]", SwingConstants.CENTER);
+        lblIqImage.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblIqImage.setForeground(new Color(52, 73, 94));
         pnlIqImageContainer.add(lblIqImage, BorderLayout.CENTER);
-        iqCard.add(pnlIqImageContainer, BorderLayout.CENTER);
+        centerQuestionPanel.add(pnlIqImageContainer, BorderLayout.CENTER);
+
+        iqCard.add(centerQuestionPanel, BorderLayout.CENTER);
 
         // Các lựa chọn đáp án IQ
         JPanel iqBottom = new JPanel(new BorderLayout(10, 10));
@@ -283,7 +296,8 @@ public class MatchmakingWaitingPanel extends JPanel {
 
         if (question.questionId == -1L) {
             // Đã hoàn thành tất cả câu đố IQ trong ngân hàng câu hỏi
-            lblIqTitle.setText("🧠 " + question.content);
+            lblIqMeta.setText("Trạng thái: Đã hoàn thành toàn bộ câu hỏi trong CSDL");
+            lblIqQuestionText.setText("<html><div style='font-size: 14px; font-weight: bold; color: #27ae60;'>" + question.content + "</div></html>");
             lblIqResult.setText("Bạn đã xuất sắc hoàn thành tất cả câu đố IQ!");
             lblIqResult.setForeground(new Color(39, 174, 96));
             btnSubmitIQ.setEnabled(false);
@@ -296,7 +310,11 @@ public class MatchmakingWaitingPanel extends JPanel {
             return;
         }
 
-        lblIqTitle.setText("🧠 " + (question.content != null ? question.content : "Quan sát hình ảnh và chọn đáp án đúng:"));
+        String topicStr = question.topicName != null ? question.topicName : "Tư duy IQ & Kiến thức";
+        String diffStr = question.difficulty != null ? question.difficulty : "MEDIUM";
+        lblIqMeta.setText("📌 Câu hỏi từ Cơ sở dữ liệu • Mã #" + question.questionId + " | Chủ đề: " + topicStr + " | Cấp độ: " + diffStr);
+        lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 13px; font-weight: bold; color: #2c3e50; line-height: 1.4;'>"
+                + question.content + "</div></html>");
         lblIqResult.setText("");
         btnSubmitIQ.setEnabled(true);
         btnNextIQ.setText("Đổi câu khác");

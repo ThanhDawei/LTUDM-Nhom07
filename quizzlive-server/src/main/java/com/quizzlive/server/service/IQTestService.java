@@ -53,6 +53,8 @@ public class IQTestService {
         notify.questionId = q.getQuestionId();
         notify.content = q.getContent();
         notify.imageUrl = q.getImage();
+        notify.topicName = q.getTopicName() != null ? q.getTopicName() : "Tư duy IQ & Kiến thức";
+        notify.difficulty = q.getDifficulty() != null ? q.getDifficulty() : "MEDIUM";
         notify.options = new ArrayList<>();
 
         if (q.getAnswers() != null) {
