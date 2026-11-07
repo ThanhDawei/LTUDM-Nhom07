@@ -316,10 +316,14 @@ public class UserDAO {
      */
     public void resequenceUserIds() {
         try (Connection conn = DatabaseManager.getConnection()) {
-            boolean isH2 = conn.getMetaData().getDatabaseProductName().equalsIgnoreCase("H2");
+            String prodName = conn.getMetaData().getDatabaseProductName();
+            boolean isH2 = prodName.equalsIgnoreCase("H2");
+            boolean isPg = prodName.equalsIgnoreCase("PostgreSQL");
             try (Statement stmt = conn.createStatement()) {
                 if (isH2) {
                     stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+                } else if (isPg) {
+                    stmt.execute("SET session_replication_role = 'replica'");
                 } else {
                     stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
                 }
@@ -345,6 +349,11 @@ public class UserDAO {
                 if (isH2) {
                     stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
                     stmt.execute("ALTER TABLE NGUOI_DUNG ALTER COLUMN MaNguoiDung RESTART WITH " + seq);
+                } else if (isPg) {
+                    stmt.execute("SET session_replication_role = 'origin'");
+                    try {
+                        stmt.execute("SELECT setval(pg_get_serial_sequence('nguoi_dung', 'manguoidung'), " + (seq > 1 ? seq - 1 : 1) + ", true)");
+                    } catch (Exception ignored) {}
                 } else {
                     stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
                     stmt.execute("ALTER TABLE NGUOI_DUNG AUTO_INCREMENT = " + seq);
