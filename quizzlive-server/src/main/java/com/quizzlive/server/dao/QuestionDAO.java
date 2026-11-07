@@ -150,64 +150,56 @@ public class QuestionDAO {
      * Trích xuất câu hỏi từ bảng CAU_HOI trong CSDL, loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ.
      */
     public Question getRandomIQQuestion(Long userId) {
+        return getRandomIQQuestion(userId, null, null);
+    }
+
+    public Question getRandomIQQuestion() {
+        return getRandomIQQuestion(null, null, null);
+    }
+
+    /**
+     * Lấy ngẫu nhiên câu hỏi trực tiếp từ CSDL (bảng CAU_HOI) cho Task 11.
+     * Trích xuất câu hỏi từ bảng CAU_HOI trong CSDL, bám sát theo Chủ đề (topicId) và Độ khó (difficulty)
+     * mà người dùng đã lựa chọn khi ghép cặp.
+     * Loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ (DaTangIQ = TRUE).
+     */
+    public Question getRandomIQQuestion(Long userId, Integer topicId, String difficulty) {
         ensureIQTableExists();
-        List<Question> list = new ArrayList<>();
-        // Trích xuất toàn bộ câu hỏi đang hoạt động từ bảng CAU_HOI trong CSDL
-        String sql = "SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
-                "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
-                "WHERE c.TrangThai = 'ACTIVE' ";
-        if (userId != null && userId > 0) {
-            sql += "AND c.MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE) ";
-        }
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            if (userId != null && userId > 0) {
-                ps.setLong(1, userId);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Question q = mapQuestion(rs);
-                    q.setTopicName(rs.getString("TenChuDe"));
-                    list.add(q);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        List<Question> list;
+
+        // 1. Thử lần 1: Lấy đúng chủ đề (topicId) và độ khó (difficulty), loại trừ các câu đã trả lời tăng IQ
+        list = fetchCandidateIQQuestions(userId, topicId, difficulty, true);
+
+        // 2. Thử lần 2: Nếu chưa có câu hỏi và người dùng có chọn độ khó cụ thể -> nới lỏng độ khó (vẫn giữ đúng chủ đề người chơi chọn)
+        if (list.isEmpty() && difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
+            list = fetchCandidateIQQuestions(userId, topicId, null, true);
         }
 
-        // Nếu người dùng đã giải đúng tất cả câu hỏi tăng IQ, lấy lại từ ngân hàng câu hỏi CSDL để tiếp tục làm bài
+        // 3. Thử lần 3: Nếu người chơi đã trả lời tăng IQ hết tất cả câu hỏi của chủ đề này -> lấy lại câu hỏi của chủ đề này để luyện tập
+        if (list.isEmpty() && topicId != null && topicId > 0) {
+            list = fetchCandidateIQQuestions(userId, topicId, null, false);
+        }
+
+        // 4. Thử lần 4 (dự phòng tối hậu nếu CSDL chưa có câu hỏi nào thuộc chủ đề này): lấy từ các chủ đề khác
         if (list.isEmpty()) {
-            String fallbackSql = "SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
-                    "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
-                    "WHERE c.TrangThai = 'ACTIVE'";
-            try (Connection conn = DatabaseManager.getConnection();
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(fallbackSql)) {
-                while (rs.next()) {
-                    Question q = mapQuestion(rs);
-                    q.setTopicName(rs.getString("TenChuDe"));
-                    list.add(q);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            list = fetchCandidateIQQuestions(userId, null, null, false);
         }
 
         if (list.isEmpty()) {
             return null;
         }
 
-        // Ưu tiên câu hỏi có hình ảnh hoặc chủ đề tư duy IQ nếu có
-        List<Question> iqPreferred = new ArrayList<>();
+        // Ưu tiên câu hỏi có hình ảnh minh họa nếu có trong danh sách
+        List<Question> imagePreferred = new ArrayList<>();
         for (Question q : list) {
-            if ("IQ_IMAGE".equalsIgnoreCase(q.getQuestionType()) || q.getImage() != null || (q.getTopicId() != null && q.getTopicId() == 4)) {
-                iqPreferred.add(q);
+            if ("IQ_IMAGE".equalsIgnoreCase(q.getQuestionType()) || q.getImage() != null) {
+                imagePreferred.add(q);
             }
         }
         Question selected;
-        if (!iqPreferred.isEmpty() && Math.random() < 0.75) {
-            int randomIndex = (int) (Math.random() * iqPreferred.size());
-            selected = iqPreferred.get(randomIndex);
+        if (!imagePreferred.isEmpty() && Math.random() < 0.6) {
+            int randomIndex = (int) (Math.random() * imagePreferred.size());
+            selected = imagePreferred.get(randomIndex);
         } else {
             int randomIndex = (int) (Math.random() * list.size());
             selected = list.get(randomIndex);
@@ -225,8 +217,45 @@ public class QuestionDAO {
         return selected;
     }
 
-    public Question getRandomIQQuestion() {
-        return getRandomIQQuestion(null);
+    private List<Question> fetchCandidateIQQuestions(Long userId, Integer topicId, String difficulty, boolean excludePassed) {
+        List<Question> candidateList = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
+                "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
+                "WHERE c.TrangThai = 'ACTIVE' ");
+        List<Object> params = new ArrayList<>();
+
+        if (topicId != null && topicId > 0) {
+            sql.append("AND c.MaChuDe = ? ");
+            params.add(topicId);
+        }
+        if (difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
+            sql.append("AND c.DoKho = ? ");
+            params.add(difficulty.toUpperCase());
+        }
+        if (excludePassed && userId != null && userId > 0) {
+            sql.append("AND c.MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE) ");
+            params.add(userId);
+        }
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) ps.setInt(i + 1, (Integer) p);
+                else if (p instanceof Long) ps.setLong(i + 1, (Long) p);
+                else ps.setString(i + 1, p.toString());
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Question q = mapQuestion(rs);
+                    q.setTopicName(rs.getString("TenChuDe"));
+                    candidateList.add(q);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return candidateList;
     }
 
     /**

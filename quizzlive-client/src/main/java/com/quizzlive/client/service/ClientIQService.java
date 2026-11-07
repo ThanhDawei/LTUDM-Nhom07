@@ -17,7 +17,14 @@ public class ClientIQService {
      * TODO: Dev Client gọi hàm này khi người chơi bấm nút "Làm bài Test IQ" trong lúc chờ tìm trận
      */
     public void requestIQQuestion() {
-        socketClient.sendPacket(new Packet(OpCode.IQ_TEST_START_REQ, "{}"));
+        requestIQQuestion(null, null);
+    }
+
+    public void requestIQQuestion(Integer topicId, String difficulty) {
+        IQTestDTO.IQStartRequest req = new IQTestDTO.IQStartRequest();
+        req.topicId = topicId;
+        req.difficulty = difficulty;
+        socketClient.sendPacket(new Packet(OpCode.IQ_TEST_START_REQ, JsonUtil.toJson(req)));
     }
 
     /**

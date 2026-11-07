@@ -43,6 +43,8 @@ public class MatchmakingWaitingPanel extends JPanel {
     private JButton btnNextIQ;
     private JLabel lblIqResult;
     private Long currentIqQuestionId;
+    private Integer currentTopicId;
+    private String currentDifficulty;
 
     public MatchmakingWaitingPanel(MainClientFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -179,7 +181,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         btnNextIQ.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNextIQ.addActionListener(e -> {
             lblIqResult.setText("");
-            iqService.requestIQQuestion();
+            iqService.requestIQQuestion(currentTopicId, currentDifficulty);
         });
 
         btnSubmitIQ = new JButton("Nộp Đáp Án IQ");
@@ -215,10 +217,16 @@ public class MatchmakingWaitingPanel extends JPanel {
      * Bắt đầu đếm ngược 60 giây khi người dùng bấm Tìm trận (Yêu cầu 2, 4)
      */
     public void startCountdown(int seconds) {
-        startCountdown(seconds, "Tất cả chủ đề", "Mọi cấp độ");
+        startCountdown(seconds, "Tất cả chủ đề", "Mọi cấp độ", null, "ALL");
     }
 
     public void startCountdown(int seconds, String topicName, String diffName) {
+        startCountdown(seconds, topicName, diffName, null, "ALL");
+    }
+
+    public void startCountdown(int seconds, String topicName, String diffName, Integer topicId, String difficulty) {
+        this.currentTopicId = topicId;
+        this.currentDifficulty = difficulty;
         this.remainingSeconds = seconds;
         progressBar.setMaximum(seconds);
         progressBar.setValue(seconds);
@@ -244,9 +252,9 @@ public class MatchmakingWaitingPanel extends JPanel {
         });
         queueTimer.start();
 
-        // Gửi yêu cầu lấy 1 câu đố IQ hình ảnh để người chơi giải trí trong lúc chờ
+        // Gửi yêu cầu lấy 1 câu đố IQ trích xuất đúng theo chủ đề và độ khó người chơi đã chọn
         lblIqResult.setText("");
-        iqService.requestIQQuestion();
+        iqService.requestIQQuestion(currentTopicId, currentDifficulty);
     }
 
     public void stopCountdown() {

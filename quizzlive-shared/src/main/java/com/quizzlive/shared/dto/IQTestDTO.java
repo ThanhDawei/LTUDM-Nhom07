@@ -4,6 +4,11 @@ import java.io.Serializable;
 import java.util.List;
 
 public class IQTestDTO {
+    public static class IQStartRequest implements Serializable {
+        public Integer topicId;
+        public String difficulty;
+    }
+
     public static class IQQuestionNotify implements Serializable {
         public long questionId;
         public String content;

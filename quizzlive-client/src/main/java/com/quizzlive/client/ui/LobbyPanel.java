@@ -298,7 +298,7 @@ public class LobbyPanel extends JPanel {
         String diffName = cbDifficulty != null ? (String) cbDifficulty.getSelectedItem() : "Mọi cấp độ";
 
         // Chuyển sang màn hình chờ ghép cặp 60s
-        mainFrame.getWaitingPanel().startCountdown(60, topicName, diffName);
+        mainFrame.getWaitingPanel().startCountdown(60, topicName, diffName, topicId, difficulty);
         mainFrame.showPanel(MainClientFrame.CARD_WAITING);
     }
 

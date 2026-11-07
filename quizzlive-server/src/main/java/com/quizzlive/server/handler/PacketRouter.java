@@ -119,7 +119,18 @@ public class PacketRouter {
 
             // --- 5. TEST IQ TRONG LÚC CHỜ (Yêu cầu 11) ---
             case IQ_TEST_START_REQ: {
-                iqTestService.sendRandomIQQuestion(session);
+                Integer topicId = null;
+                String difficulty = null;
+                try {
+                    if (json != null && !json.trim().isEmpty() && !json.equals("{}")) {
+                        IQTestDTO.IQStartRequest req = JsonUtil.fromJson(json, IQTestDTO.IQStartRequest.class);
+                        if (req != null) {
+                            topicId = req.topicId;
+                            difficulty = req.difficulty;
+                        }
+                    }
+                } catch (Exception ignored) {}
+                iqTestService.sendRandomIQQuestion(session, topicId, difficulty);
                 break;
             }
             case IQ_SUBMIT_ANSWER_REQ: {
