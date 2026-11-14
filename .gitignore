@@ -2,6 +2,7 @@
 target/
 bin/
 *.class
+dependency-reduced-pom.xml
 
 # IDE files
 .idea/
