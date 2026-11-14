@@ -34,6 +34,7 @@ public class BattlePanel extends JPanel {
     private JLabel lblPlayer1Name;
     private JLabel lblPlayer1Score;
 
+
     private JLabel lblRoundBadge;
     private JLabel lblTimerText;
     private BrutalUI.BrutalProgressBar timerProgressBar;
@@ -109,6 +110,7 @@ public class BattlePanel extends JPanel {
         badgeWrapper.setOpaque(false);
         lblRoundBadge = BrutalUI.createBadge("CÂU HỎI 1 / 5", new Color(244, 244, 245), BrutalUI.COLOR_BLACK);
         badgeWrapper.add(lblRoundBadge);
+
 
         lblTimerText = new JLabel("10s", SwingConstants.CENTER);
         lblTimerText.setFont(BrutalUI.FONT_TIMER);
@@ -269,13 +271,30 @@ public class BattlePanel extends JPanel {
         lblRoundBadge.setText("CÂU HỎI " + question.questionIndex + " / " + question.totalQuestions);
         txtQuestion.setText(question.questionContent);
 
-        // Hiển thị badge phong cách Neo-Brutalist
-        lblTopicBadge.setText("⚡ Đấu Trường Tri Thức 1v1 · Thời Gian Thực (10s/câu)");
+        // Hiển thị badge phong cách Neo-Brutalist kết hợp Chủ đề & Độ khó (Yêu cầu 4)
+        String topicStr = (question.topicName != null && !question.topicName.trim().isEmpty())
+                ? question.topicName : "Đa lĩnh vực";
+        String diffStr = formatDifficultyDisplay(question.difficulty);
+        lblTopicBadge.setText("⚡ " + topicStr.toUpperCase() + " · " + diffStr.toUpperCase() + " · THỜI GIAN THỰC (10S/CÂU)");
 
         if (question.questionImage != null && !question.questionImage.isEmpty()) {
-            lblQuestionImage.setText("[ Ảnh minh họa: " + question.questionImage + " ]");
+            if (com.quizzlive.shared.util.ImageBase64Util.isBase64Image(question.questionImage)) {
+                java.awt.image.BufferedImage b64Img = com.quizzlive.shared.util.ImageBase64Util.base64ToImage(question.questionImage);
+                if (b64Img != null) {
+                    Image scaled = b64Img.getScaledInstance(280, 120, Image.SCALE_SMOOTH);
+                    lblQuestionImage.setIcon(new ImageIcon(scaled));
+                    lblQuestionImage.setText("");
+                } else {
+                    lblQuestionImage.setText("[ Ảnh minh họa ]");
+                }
+            } else {
+                lblQuestionImage.setIcon(null);
+                lblQuestionImage.setText("[ Ảnh minh họa: " + question.questionImage + " ]");
+            }
             lblQuestionImage.setVisible(true);
         } else {
+            lblQuestionImage.setIcon(null);
+            lblQuestionImage.setText("");
             lblQuestionImage.setVisible(false);
         }
 
@@ -475,5 +494,14 @@ public class BattlePanel extends JPanel {
         if (currentOptions.size() > 2 && currentOptions.get(2).answerId == answerId) return btnAnswerC;
         if (currentOptions.size() > 3 && currentOptions.get(3).answerId == answerId) return btnAnswerD;
         return null;
+    }
+
+    private String formatDifficultyDisplay(String diff) {
+        if (diff == null) return "Trung bình (MEDIUM)";
+        String u = diff.toUpperCase();
+        if (u.contains("EASY") || u.contains("DỄ")) return "Dễ (EASY)";
+        if (u.contains("HARD") || u.contains("KHÓ")) return "Khó (HARD)";
+        if (u.contains("MEDIUM") || u.contains("TRUNG BÌNH")) return "Trung bình (MEDIUM)";
+        return diff;
     }
 }

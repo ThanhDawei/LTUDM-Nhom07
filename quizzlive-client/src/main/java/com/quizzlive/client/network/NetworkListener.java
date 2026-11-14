@@ -9,7 +9,7 @@ import com.quizzlive.shared.protocol.Packet;
 public interface NetworkListener {
     void onPacketReceived(Packet packet);
     default void onConnected() {}
-    default void onDisconnected() {}
-    default void onDisconnected(String reason) { onDisconnected(); }
+    default void onDisconnected() { onDisconnected("Mất kết nối tới máy chủ."); }
+    default void onDisconnected(String reason) {}
     default void onError(Throwable cause) {}
 }

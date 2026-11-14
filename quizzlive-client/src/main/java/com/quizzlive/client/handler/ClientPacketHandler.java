@@ -31,8 +31,16 @@ public class ClientPacketHandler implements NetworkListener {
     }
 
     @Override
+    public void onDisconnected() {
+        onDisconnected("Mất kết nối tới máy chủ.");
+    }
+
+    @Override
     public void onDisconnected(String reason) {
         SwingUtilities.invokeLater(() -> {
+            try {
+                mainFrame.getWaitingPanel().stopCountdown();
+            } catch (Exception ignored) {}
             JOptionPane.showMessageDialog(mainFrame, "Mất kết nối tới máy chủ: " + reason, "Mất kết nối", JOptionPane.ERROR_MESSAGE);
             mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
         });
@@ -88,6 +96,16 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
+            case RESEND_OTP_RESP: {
+                AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
+                if (resp != null) {
+                    JOptionPane.showMessageDialog(mainFrame, resp.message,
+                            resp.success ? "Gửi lại OTP" : "Lỗi",
+                            resp.success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                }
+                break;
+            }
+
             case UPDATE_PROFILE_RESP: {
                 AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
                 if (resp != null) {
@@ -113,11 +131,11 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
-            // --- 2. MATCHMAKING (Yêu cầu 2) ---
+            // --- 2. MATCHMAKING & CHALLENGE BATTLE (Yêu cầu 2, 3) ---
             case MATCH_FOUND_NOTIFY: {
                 mainFrame.getWaitingPanel().stopCountdown();
-                JOptionPane.showMessageDialog(mainFrame, "Đã tìm thấy đối thủ! Trận đấu bắt đầu ngay bây giờ.", "Vào Trận!", JOptionPane.INFORMATION_MESSAGE);
                 mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
+                JOptionPane.showMessageDialog(mainFrame, "Đã kết nối trận đấu 1v1 thành công! Trận đấu bắt đầu ngay bây giờ.", "Vào Trận!", JOptionPane.INFORMATION_MESSAGE);
                 break;
             }
 
@@ -183,11 +201,14 @@ public class ClientPacketHandler implements NetworkListener {
                 break;
             }
 
-            // --- 5. TEST IQ TRONG LÚC CHỜ (Yêu cầu 11) ---
+            // --- 5. TEST IQ TRONG NGÀY (5 CÂU/NGÀY - KẾT TOÁN SAU 5 CÂU) ---
             case IQ_QUESTION_NOTIFY: {
                 IQTestDTO.IQQuestionNotify iqQ = JsonUtil.fromJson(json, IQTestDTO.IQQuestionNotify.class);
                 if (iqQ != null) {
                     mainFrame.getWaitingPanel().renderIQQuestion(iqQ);
+                    if (mainFrame.getActiveIQDialog() != null) {
+                        mainFrame.getActiveIQDialog().renderIQQuestion(iqQ);
+                    }
                 }
                 break;
             }
@@ -196,6 +217,9 @@ public class ClientPacketHandler implements NetworkListener {
                 IQTestDTO.IQResultNotify iqRes = JsonUtil.fromJson(json, IQTestDTO.IQResultNotify.class);
                 if (iqRes != null) {
                     mainFrame.getWaitingPanel().renderIQResult(iqRes);
+                    if (mainFrame.getActiveIQDialog() != null) {
+                        mainFrame.getActiveIQDialog().renderIQResult(iqRes);
+                    }
                 }
                 break;
             }

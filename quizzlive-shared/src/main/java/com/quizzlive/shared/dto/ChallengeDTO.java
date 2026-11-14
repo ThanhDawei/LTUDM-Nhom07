@@ -14,6 +14,8 @@ public class ChallengeDTO {
         public long fromUserId;
         public String fromUsername;
         public String fromFullName;
+        public String fromAvatar;
+        public Double fromIqScore;
         public Integer topicId;
         public String difficulty;
     }

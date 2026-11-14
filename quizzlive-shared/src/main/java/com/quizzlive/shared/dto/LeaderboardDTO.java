@@ -11,6 +11,8 @@ public class LeaderboardDTO {
         public String fullName;
         public int totalMatches;
         public int winMatches;
+        public int loseMatches;
+        public int drawMatches;
         public double winRate;
         public int currentStreak;
         public int maxStreak;
@@ -22,15 +24,19 @@ public class LeaderboardDTO {
         public List<LeaderboardItem> topPlayers;
         public List<LeaderboardItem> topStreaks;
         public List<LeaderboardItem> mostPlayed;
+        public LeaderboardItem myStats;
     }
 
     public static class MatchHistoryItem implements Serializable {
         public long matchId;
         public String matchCode;
         public String opponentUsername;
+        public String opponentFullName;
         public String result; // WIN, LOSS, DRAW
         public int myScore;
         public int opponentScore;
+        public String topicName;
+        public String difficulty;
         public String playedAt;
     }
 }

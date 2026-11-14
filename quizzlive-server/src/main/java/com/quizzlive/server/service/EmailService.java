@@ -1,6 +1,7 @@
 package com.quizzlive.server.service;
 
 import com.quizzlive.server.config.ServerConfig;
+import com.quizzlive.shared.dto.EmailPayload;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -8,14 +9,17 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
+import java.util.Date;
+import java.util.Locale;
 
 /**
- * Dịch vụ phát sinh và gửi mã OTP qua Email.
- * Phụ trách Yêu cầu 1: "Xác thực email bằng mã OTP (thời hạn 10 phút) trước khi kích hoạt tài khoản."
- * Hỗ trợ:
- * 1. Log OTP ra console Server cực kỳ rõ ràng để chấm điểm / demo offline không phụ thuộc internet.
- * 2. Gửi thư thực tế qua giao thức SMTP thuần (Socket) nếu được cấu hình trong application.properties.
+ * Dịch vụ phát sinh và gửi mã OTP qua Email sử dụng cơ chế kết nối trực tiếp qua SMTP (Socket RFC 5321).
+ * Đáp ứng yêu cầu:
+ * - Khởi tạo payload cho việc gửi OTP (EmailPayload).
+ * - Các thông tin về email trong payload được để trống theo yêu cầu.
+ * - Cơ chế kết nối trực tiếp qua giao thức SMTP Socket thuần (hỗ trợ STARTTLS cổng 587 và SSL cổng 465).
  */
 public class EmailService {
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -29,105 +33,199 @@ public class EmailService {
     }
 
     /**
-     * Gửi mã OTP xác thực tới email người dùng
+     * Gửi mã OTP xác thực tới email người dùng:
+     * 1. Khởi tạo EmailPayload với các thông tin về email được để trống theo yêu cầu.
+     * 2. In mã OTP ra Console Server hỗ trợ kiểm thử / demo.
+     * 3. Thực hiện kết nối trực tiếp qua giao thức SMTP Socket (RFC 5321).
      */
     public static void sendOtpEmail(String recipientEmail, String otpCode, String purpose) {
-        // 1. Luôn in mã OTP ra Server Console để hỗ trợ kiểm thử và demo tức thì
-        printConsoleOtp(recipientEmail, otpCode, purpose);
+        // 1. Khởi tạo payload với các thông tin về email máy chủ & người gửi để trống ("")
+        EmailPayload payload = new EmailPayload(recipientEmail, otpCode, purpose);
 
-        // 2. Nếu có cấu hình SMTP thật thì chạy luồng gửi ngầm không làm chậm Client
-        if (ServerConfig.getSmtpHost() != null && !ServerConfig.getSmtpHost().trim().isEmpty()) {
-            new Thread(() -> {
-                try {
-                    sendViaSmtpSocket(recipientEmail, otpCode, purpose);
-                } catch (Exception e) {
-                    System.err.println("[EmailService] Không thể gửi email qua SMTP (" + e.getMessage() + "), đã fallback dùng console.");
-                }
-            }, "SMTP-Sender-Thread").start();
+        // Nạp cấu hình từ ServerConfig nếu người dùng có thiết lập trong application.properties
+        String cfgHost = ServerConfig.getSmtpHost();
+        if (cfgHost != null && !cfgHost.trim().isEmpty()) {
+            payload.smtpHost = cfgHost.trim();
+            payload.smtpPort = ServerConfig.getSmtpPort();
+            payload.useSsl = ServerConfig.isSmtpSsl();
+            payload.useStartTls = ServerConfig.isSmtpStartTls();
+            payload.senderEmail = ServerConfig.getSmtpUsername();
+            payload.senderPassword = ServerConfig.getSmtpPassword();
+            payload.fromName = ServerConfig.getSmtpFrom();
         }
+
+        // 2. In mã OTP ra Console Server cực kỳ rõ ràng
+        printConsoleOtp(payload);
+
+        // 3. Thực thi kết nối trực tiếp qua giao thức SMTP trên luồng nền
+        new Thread(() -> {
+            try {
+                sendViaDirectSmtp(payload);
+            } catch (Exception e) {
+                System.err.println("[EmailService - SMTP] Kết nối SMTP trực tiếp: " + e.getMessage()
+                        + " (Mã OTP đã được tạo và lưu trữ an toàn trong CSDL bảng OTP).");
+            }
+        }, "SMTP-Direct-Worker").start();
     }
 
-    private static void printConsoleOtp(String email, String otpCode, String purpose) {
-        System.out.println();
-        System.out.println("╔══════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║                📧 QUIZZLIVE - XÁC THỰC EMAIL (OTP)                  ║");
-        System.out.println("╠══════════════════════════════════════════════════════════════════════╣");
-        System.out.printf("║  Người nhận: %-55s ║%n", email);
-        System.out.printf("║  Mục đích:   %-55s ║%n", purpose);
-        System.out.printf("║  MÃ OTP:     [%s]  (Thời hạn hiệu lực: 10 phút)       ║%n", otpCode);
-        System.out.println("╚══════════════════════════════════════════════════════════════════════╝");
-        System.out.println();
-    }
+    /**
+     * Cơ chế kết nối trực tiếp tới máy chủ thư qua giao thức SMTP (RFC 5321) bằng Java Socket thuần:
+     * - Cổng 587 (STARTTLS) hoặc cổng 465 (SMTPS SSL) hoặc cổng 25 (Standard SMTP)
+     * - Trình tự giao thức:
+     *   1. Kết nối Socket & đọc mã chào 220
+     *   2. Gửi EHLO localhost
+     *   3. Nâng cấp bảo mật STARTTLS nếu kích hoạt
+     *   4. Xác thực tài khoản AUTH LOGIN (nếu có thông tin đăng nhập)
+     *   5. MAIL FROM:<sender>
+     *   6. RCPT TO:<recipient>
+     *   7. DATA (Gửi MIME message header + body chứa mã OTP)
+     *   8. QUIT
+     */
+    public static void sendViaDirectSmtp(EmailPayload payload) throws IOException {
+        if (payload == null) return;
 
-    private static void sendViaSmtpSocket(String toEmail, String otpCode, String purpose) throws IOException {
-        String host = ServerConfig.getSmtpHost();
-        int port = ServerConfig.getSmtpPort();
-        String user = ServerConfig.getSmtpUsername();
-        String pass = ServerConfig.getSmtpPassword();
+        // Nếu thông tin cấu hình email trong payload để trống:
+        if (payload.isEmailConfigEmpty()) {
+            System.out.println("[EmailService - SMTP] Payload kết nối trực tiếp qua SMTP được khởi tạo (các thông tin email trong payload để trống).");
+            System.out.println("[EmailService - SMTP] Mã OTP [" + payload.otpCode + "] đã được lưu vào CSDL (bảng OTP) cho email: " + payload.recipientEmail);
+            return;
+        }
 
-        if (host == null || host.isEmpty() || user == null || pass == null) return;
-
-        try (Socket socket = (port == 465)
-                ? SSLSocketFactory.getDefault().createSocket(host, port)
-                : new Socket(host, port)) {
+        Socket socket = null;
+        try {
+            if (payload.useSsl || payload.smtpPort == 465) {
+                socket = SSLSocketFactory.getDefault().createSocket(payload.smtpHost, payload.smtpPort);
+            } else {
+                socket = new Socket(payload.smtpHost, payload.smtpPort);
+            }
+            socket.setSoTimeout(15000);
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
 
-            readResponse(reader);
-            sendCommand(writer, reader, "EHLO " + host);
+            // 1. Đọc server greeting (220)
+            readSmtpResponse(reader, 220);
 
-            if (port != 465) {
-                // STARTTLS nếu dùng cổng 587
-                sendCommand(writer, reader, "STARTTLS");
+            // 2. Gửi EHLO localhost
+            sendSmtpCommand(writer, "EHLO localhost");
+            readSmtpResponse(reader, 250);
+
+            // 3. STARTTLS nếu cấu hình yêu cầu
+            if (payload.useStartTls && !payload.useSsl && payload.smtpPort != 465) {
+                sendSmtpCommand(writer, "STARTTLS");
+                readSmtpResponse(reader, 220);
+
                 SSLSocket sslSocket = (SSLSocket) ((SSLSocketFactory) SSLSocketFactory.getDefault())
-                        .createSocket(socket, host, port, true);
+                        .createSocket(socket, payload.smtpHost, payload.smtpPort, true);
                 sslSocket.startHandshake();
+
                 reader = new BufferedReader(new InputStreamReader(sslSocket.getInputStream(), StandardCharsets.UTF_8));
                 writer = new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream(), StandardCharsets.UTF_8));
-                sendCommand(writer, reader, "EHLO " + host);
+
+                sendSmtpCommand(writer, "EHLO localhost");
+                readSmtpResponse(reader, 250);
             }
 
-            // AUTH LOGIN
-            sendCommand(writer, reader, "AUTH LOGIN");
-            sendCommand(writer, reader, Base64.getEncoder().encodeToString(user.getBytes(StandardCharsets.UTF_8)));
-            sendCommand(writer, reader, Base64.getEncoder().encodeToString(pass.getBytes(StandardCharsets.UTF_8)));
+            // 4. AUTH LOGIN (nếu có mật khẩu tài khoản gửi)
+            if (payload.senderPassword != null && !payload.senderPassword.trim().isEmpty()) {
+                sendSmtpCommand(writer, "AUTH LOGIN");
+                readSmtpResponse(reader, 334);
 
-            // MAIL FROM & RCPT TO
-            sendCommand(writer, reader, "MAIL FROM:<" + user + ">");
-            sendCommand(writer, reader, "RCPT TO:<" + toEmail + ">");
-            sendCommand(writer, reader, "DATA");
+                String encodedUser = Base64.getEncoder().encodeToString(payload.senderEmail.getBytes(StandardCharsets.UTF_8));
+                sendSmtpCommand(writer, encodedUser);
+                readSmtpResponse(reader, 334);
 
-            // Email Header & Body
-            writer.write("From: Quizzlive System <" + user + ">\r\n");
-            writer.write("To: " + toEmail + "\r\n");
-            writer.write("Subject: =?UTF-8?B?" + Base64.getEncoder().encodeToString("Mã OTP xác thực Quizzlive".getBytes(StandardCharsets.UTF_8)) + "?=\r\n");
-            writer.write("Content-Type: text/plain; charset=UTF-8\r\n\r\n");
-            writer.write("Chào bạn,\r\n\r\n");
-            writer.write("Mã xác thực OTP của bạn cho thao tác [" + purpose + "] là: " + otpCode + "\r\n");
-            writer.write("Mã có hiệu lực trong vòng 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\r\n\r\n");
-            writer.write("Trân trọng,\r\nĐội ngũ Quizzlive - Nhóm 07.\r\n");
-            writer.write(".\r\n");
+                String encodedPass = Base64.getEncoder().encodeToString(payload.senderPassword.getBytes(StandardCharsets.UTF_8));
+                sendSmtpCommand(writer, encodedPass);
+                readSmtpResponse(reader, 235);
+            }
+
+            // 5. MAIL FROM
+            sendSmtpCommand(writer, "MAIL FROM:<" + payload.senderEmail + ">");
+            readSmtpResponse(reader, 250);
+
+            // 6. RCPT TO
+            sendSmtpCommand(writer, "RCPT TO:<" + payload.recipientEmail + ">");
+            readSmtpResponse(reader, 250);
+
+            // 7. DATA
+            sendSmtpCommand(writer, "DATA");
+            readSmtpResponse(reader, 354);
+
+            // 8. Gửi MIME Message Body RFC 822
+            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.US);
+            String dateStr = dateFormat.format(new Date());
+            String fromDisplay = (payload.fromName != null && !payload.fromName.trim().isEmpty())
+                    ? payload.fromName + " <" + payload.senderEmail + ">"
+                    : payload.senderEmail;
+
+            String headers = "From: " + fromDisplay + "\r\n"
+                    + "To: " + payload.recipientEmail + "\r\n"
+                    + "Subject: =?UTF-8?B?" + Base64.getEncoder().encodeToString(payload.subject.getBytes(StandardCharsets.UTF_8)) + "?=\r\n"
+                    + "Date: " + dateStr + "\r\n"
+                    + "Content-Type: text/plain; charset=UTF-8\r\n"
+                    + "MIME-Version: 1.0\r\n\r\n";
+
+            writer.write(headers);
+            writer.write(payload.bodyText != null ? payload.bodyText : ("Mã OTP của bạn là: " + payload.otpCode));
+            writer.write("\r\n.\r\n");
             writer.flush();
-            readResponse(reader);
+            readSmtpResponse(reader, 250);
 
-            sendCommand(writer, reader, "QUIT");
-            System.out.println("[EmailService] Đã gửi mã OTP thực tế qua SMTP tới " + toEmail);
+            // 9. QUIT
+            sendSmtpCommand(writer, "QUIT");
+            readSmtpResponse(reader, 221);
+
+            System.out.println("[EmailService - SMTP] Đã gửi mã OTP trực tiếp qua giao thức SMTP thành công tới " + payload.recipientEmail);
+        } finally {
+            if (socket != null) {
+                try { socket.close(); } catch (Exception ignored) {}
+            }
         }
     }
 
-    private static void sendCommand(BufferedWriter writer, BufferedReader reader, String command) throws IOException {
-        writer.write(command + "\r\n");
+    private static void sendSmtpCommand(BufferedWriter writer, String cmd) throws IOException {
+        writer.write(cmd + "\r\n");
         writer.flush();
-        readResponse(reader);
     }
 
-    private static String readResponse(BufferedReader reader) throws IOException {
-        String line = reader.readLine();
-        while (line != null && line.length() >= 4 && line.charAt(3) == '-') {
-            line = reader.readLine();
+    private static String readSmtpResponse(BufferedReader reader, int expectedCode) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        int code = -1;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+            if (line.length() >= 3) {
+                try {
+                    code = Integer.parseInt(line.substring(0, 3));
+                } catch (NumberFormatException ignored) {}
+                if (line.length() == 3 || line.charAt(3) == ' ') {
+                    break;
+                }
+            }
         }
-        return line;
+        if (expectedCode > 0 && code != expectedCode) {
+            throw new IOException("SMTP Response Error - Expected " + expectedCode + ", but got: " + sb.toString().trim());
+        }
+        return sb.toString();
+    }
+
+    private static void printConsoleOtp(EmailPayload payload) {
+        String infoHost = (payload.smtpHost == null || payload.smtpHost.isEmpty()) ? "(Để trống trong Payload)" : payload.smtpHost + ":" + payload.smtpPort;
+        String infoSender = (payload.senderEmail == null || payload.senderEmail.isEmpty()) ? "(Để trống trong Payload)" : payload.senderEmail;
+
+        System.out.println();
+        System.out.println("╔══════════════════════════════════════════════════════════════════════╗");
+        System.out.println("║       💾 QUIZZLIVE - MÃ XÁC THỰC OTP ĐÃ LƯU VÀO CƠ SỞ DỮ LIỆU        ║");
+        System.out.println("╠══════════════════════════════════════════════════════════════════════╣");
+        System.out.printf("║  Người nhận: %-55s ║%n", payload.recipientEmail);
+        System.out.printf("║  Mục đích:   %-55s ║%n", payload.purpose);
+        System.out.printf("║  MÃ OTP:     [%s]  (Đã lưu CSDL bảng OTP, hiệu lực: 10 phút) ║%n", payload.otpCode);
+        System.out.println("║  Bảng CSDL:  Bảng OTP (MaNguoiDung, MaXacThuc, MucDich, ThoiGianHetHan) ║");
+        System.out.println("║  Giao thức:  Kết nối trực tiếp qua SMTP (Socket RFC 5321)           ║");
+        System.out.printf("║  Máy chủ:    %-55s ║%n", infoHost);
+        System.out.printf("║  Tài khoản:  %-55s ║%n", infoSender);
+        System.out.println("╚══════════════════════════════════════════════════════════════════════╝");
+        System.out.println();
     }
 }
-

@@ -64,34 +64,56 @@ public class UserDAO {
     }
 
     public Long createUser(String username, String passwordHash, String email, String fullName) {
-        String sqlUser = "INSERT INTO NGUOI_DUNG (TenDangNhap, MatKhau, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, 'PENDING', FALSE, ?)";
-        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen) VALUES (?, ?)";
+        String salt = com.quizzlive.server.util.PasswordUtil.generateSalt();
+        String hash = com.quizzlive.server.util.PasswordUtil.hashPassword(passwordHash, salt);
+        return createUser(username, salt, hash, email, fullName, "avatar1.png", "Thành viên mới Quizzlive");
+    }
+
+    public Long createUser(String username, String salt, String hash, String email, String fullName, String avatar, String bio) {
+        String sqlNextId = "SELECT COALESCE(MAX(MaNguoiDung), 0) + 1 AS NextId FROM NGUOI_DUNG";
+        String sqlUser = "INSERT INTO NGUOI_DUNG (MaNguoiDung, TenDangNhap, Salt, Hash, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, ?, ?, 'PENDING', FALSE, ?)";
+        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu) VALUES (?, ?, ?, ?)";
 
         Connection conn = null;
         try {
             conn = DatabaseManager.getConnection();
             conn.setAutoCommit(false);
 
-            long userId = 0;
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            try (PreparedStatement ps = conn.prepareStatement(sqlUser, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, username);
-                ps.setString(2, passwordHash);
-                ps.setString(3, email);
-                ps.setTimestamp(4, now);
-                ps.executeUpdate();
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        userId = rs.getLong(1);
-                    }
+            long userId = 1;
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sqlNextId)) {
+                if (rs.next()) {
+                    userId = rs.getLong("NextId");
                 }
             }
 
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            try (PreparedStatement ps = conn.prepareStatement(sqlUser)) {
+                ps.setLong(1, userId);
+                ps.setString(2, username);
+                ps.setString(3, salt);
+                ps.setString(4, hash);
+                ps.setString(5, email);
+                ps.setTimestamp(6, now);
+                ps.executeUpdate();
+            }
+
+            String avatarBase64 = com.quizzlive.shared.util.ImageBase64Util.toBase64(avatar != null ? avatar : "avatar1.png");
             try (PreparedStatement psProfile = conn.prepareStatement(sqlProfile)) {
                 psProfile.setLong(1, userId);
                 psProfile.setString(2, fullName);
+                psProfile.setString(3, avatarBase64 != null ? avatarBase64 : "avatar1.png");
+                psProfile.setString(4, bio != null ? bio : "Thành viên mới Quizzlive");
                 psProfile.executeUpdate();
             }
+
+            try {
+                if (conn.getMetaData().getDatabaseProductName().toLowerCase().contains("postgresql")) {
+                    try (Statement syncStmt = conn.createStatement()) {
+                        syncStmt.execute("SELECT setval(pg_get_serial_sequence('nguoi_dung', 'manguoidung'), COALESCE((SELECT MAX(MaNguoiDung) FROM NGUOI_DUNG), 1))");
+                    } catch (Exception ignored) {}
+                }
+            } catch (Exception ignored) {}
 
             conn.commit();
             return userId;
@@ -108,19 +130,22 @@ public class UserDAO {
         return null;
     }
 
-    public void updatePendingUser(Long userId, String passwordHash, String fullName) {
-        String sqlUser = "UPDATE NGUOI_DUNG SET MatKhau = ? WHERE MaNguoiDung = ?";
+    public void updatePendingUser(Long userId, String salt, String hash, String fullName) {
+        String sqlUser = "UPDATE NGUOI_DUNG SET Salt = ?, Hash = ? WHERE MaNguoiDung = ?";
         String sqlProfile = "UPDATE HO_SO_NGUOI_DUNG SET HoTen = ? WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(sqlUser)) {
-                ps.setString(1, passwordHash);
-                ps.setLong(2, userId);
+                ps.setString(1, salt);
+                ps.setString(2, hash);
+                ps.setLong(3, userId);
                 ps.executeUpdate();
             }
-            try (PreparedStatement ps = conn.prepareStatement(sqlProfile)) {
-                ps.setString(1, fullName);
-                ps.setLong(2, userId);
-                ps.executeUpdate();
+            if (fullName != null && !fullName.trim().isEmpty()) {
+                try (PreparedStatement ps = conn.prepareStatement(sqlProfile)) {
+                    ps.setString(1, fullName.trim());
+                    ps.setLong(2, userId);
+                    ps.executeUpdate();
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -152,12 +177,33 @@ public class UserDAO {
         }
     }
 
-    public void updatePassword(Long userId, String passwordHash) {
-        String sql = "UPDATE NGUOI_DUNG SET MatKhau = ? WHERE MaNguoiDung = ?";
+    /**
+     * Kiểm tra trạng thái Online tức thời trong CSDL (chống 2 máy đăng nhập đồng thời)
+     */
+    public boolean isUserOnline(Long userId) {
+        if (userId == null) return false;
+        String sql = "SELECT TrangThaiOnline FROM NGUOI_DUNG WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, passwordHash);
-            ps.setLong(2, userId);
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("TrangThaiOnline");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public void updatePassword(Long userId, String salt, String hash) {
+        String sql = "UPDATE NGUOI_DUNG SET Salt = ?, Hash = ? WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, salt);
+            ps.setString(2, hash);
+            ps.setLong(3, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -165,12 +211,22 @@ public class UserDAO {
     }
 
     public void updateProfile(Long userId, String fullName, String avatar) {
-        String sql = "UPDATE HO_SO_NGUOI_DUNG SET HoTen = ?, AnhDaiDien = COALESCE(?, AnhDaiDien) WHERE MaNguoiDung = ?";
+        updateProfile(userId, fullName, avatar, null);
+    }
+
+    public void updateProfile(Long userId, String fullName, String avatar, String bio) {
+        String sql = "UPDATE HO_SO_NGUOI_DUNG SET " +
+                "HoTen = COALESCE(?, HoTen), " +
+                "AnhDaiDien = COALESCE(?, AnhDaiDien), " +
+                "GioiThieu = COALESCE(?, GioiThieu) " +
+                "WHERE MaNguoiDung = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, fullName);
-            ps.setString(2, avatar);
-            ps.setLong(3, userId);
+            ps.setString(1, (fullName != null && !fullName.trim().isEmpty()) ? fullName.trim() : null);
+            String avatarBase64 = (avatar != null && !avatar.trim().isEmpty()) ? com.quizzlive.shared.util.ImageBase64Util.toBase64(avatar.trim()) : null;
+            ps.setString(2, avatarBase64);
+            ps.setString(3, (bio != null && !bio.trim().isEmpty()) ? bio.trim() : null);
+            ps.setLong(4, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -265,14 +321,125 @@ public class UserDAO {
         }
     }
 
+    public void resetAllOnlineStatus() {
+        String sql = "UPDATE NGUOI_DUNG SET TrangThaiOnline = FALSE";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Dọn dẹp toàn bộ tài khoản thử nghiệm phát sinh trong quá trình chạy test (nguoi1_test_..., test_..., player_alpha, player_beta)
+     * Đảm bảo CSDL chỉ lưu giữ 4 tài khoản mẫu ban đầu và các tài khoản thật do người dùng tự đăng ký.
+     */
+    public void cleanupTestAccounts() {
+        String sql = "DELETE FROM NGUOI_DUNG WHERE TenDangNhap LIKE 'nguoi1_test_%' " +
+                "OR TenDangNhap LIKE 'test_%' " +
+                "OR TenDangNhap IN ('player_alpha', 'player_beta')";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement()) {
+            int deleted = stmt.executeUpdate(sql);
+            if (deleted > 0) {
+                System.out.println("[UserDAO] Đã tự động dọn dẹp " + deleted + " tài khoản kiểm thử rác khỏi CSDL.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        resequenceUserIds();
+    }
+
+    /**
+     * Đánh lại số thứ tự Mã ID (1, 2, 3, 4, 5...) liên tục không để bị nhảy số / cách quãng
+     */
+    public void resequenceUserIds() {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            String prodName = conn.getMetaData().getDatabaseProductName();
+            boolean isH2 = prodName.equalsIgnoreCase("H2");
+            boolean isPg = prodName.equalsIgnoreCase("PostgreSQL");
+            try (Statement stmt = conn.createStatement()) {
+                if (isH2) {
+                    stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+                } else if (isPg) {
+                    stmt.execute("SET session_replication_role = 'replica'");
+                } else {
+                    stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+                }
+
+                List<Long> ids = new ArrayList<>();
+                try (ResultSet rs = stmt.executeQuery("SELECT MaNguoiDung FROM NGUOI_DUNG ORDER BY MaNguoiDung ASC")) {
+                    while (rs.next()) {
+                        ids.add(rs.getLong("MaNguoiDung"));
+                    }
+                }
+
+                long seq = 1;
+                for (Long oldId : ids) {
+                    if (oldId != seq) {
+                        stmt.executeUpdate("UPDATE NGUOI_DUNG SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                        stmt.executeUpdate("UPDATE HO_SO_NGUOI_DUNG SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                        stmt.executeUpdate("UPDATE OTP SET MaNguoiDung = " + seq + " WHERE MaNguoiDung = " + oldId);
+                    }
+                    seq++;
+                }
+
+                if (isH2) {
+                    stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+                    stmt.execute("ALTER TABLE NGUOI_DUNG ALTER COLUMN MaNguoiDung RESTART WITH " + seq);
+                } else if (isPg) {
+                    stmt.execute("SET session_replication_role = 'origin'");
+                    try {
+                        stmt.execute("SELECT setval(pg_get_serial_sequence('nguoi_dung', 'manguoidung'), " + (seq > 1 ? seq - 1 : 1) + ", true)");
+                    } catch (Exception ignored) {}
+                } else {
+                    stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+                    stmt.execute("ALTER TABLE NGUOI_DUNG AUTO_INCREMENT = " + seq);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Xóa một tài khoản người dùng theo ID (Áp dụng ON DELETE CASCADE trên toàn bộ các bảng liên quan)
+     */
+    public boolean deleteUser(long userId) {
+        String sql = "DELETE FROM NGUOI_DUNG WHERE MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) {
+                resequenceUserIds();
+            }
+            return ok;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<User> getAllUsers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT * FROM NGUOI_DUNG ORDER BY NgayTao DESC";
+        // Sắp xếp theo MaNguoiDung ASC để tài khoản mới tạo luôn nằm ở cuối bảng
+        String sql = "SELECT u.*, h.HoTen, h.AnhDaiDien, h.GioiThieu " +
+                "FROM NGUOI_DUNG u " +
+                "LEFT JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
+                "ORDER BY u.MaNguoiDung ASC, u.NgayTao ASC";
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                list.add(mapUser(rs));
+                User u = mapUser(rs);
+                try {
+                    u.setFullName(rs.getString("HoTen"));
+                    u.setAvatar(rs.getString("AnhDaiDien"));
+                    u.setBio(rs.getString("GioiThieu"));
+                } catch (Exception ignored) {}
+                list.add(u);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -282,7 +449,7 @@ public class UserDAO {
 
     public List<AuthDTO.AuthResponse> getOnlineUsers(Long excludeUserId) {
         List<AuthDTO.AuthResponse> list = new ArrayList<>();
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.DiemIQ " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.AnhDaiDien, h.GioiThieu, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "LEFT JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
                 "WHERE u.TrangThaiOnline = TRUE AND u.TrangThai = 'ACTIVE' " +
@@ -299,6 +466,8 @@ public class UserDAO {
                     item.userId = rs.getLong("MaNguoiDung");
                     item.username = rs.getString("TenDangNhap");
                     item.fullName = rs.getString("HoTen");
+                    item.avatarUrl = rs.getString("AnhDaiDien");
+                    item.bio = rs.getString("GioiThieu");
                     item.iqScore = rs.getDouble("DiemIQ");
                     item.success = true;
                     list.add(item);
@@ -314,7 +483,11 @@ public class UserDAO {
         User u = new User();
         u.setUserId(rs.getLong("MaNguoiDung"));
         u.setUsername(rs.getString("TenDangNhap"));
-        u.setPassword(rs.getString("MatKhau"));
+        String salt = rs.getString("Salt");
+        String hash = rs.getString("Hash");
+        u.setSalt(salt);
+        u.setHash(hash);
+        u.setPassword(hash);
         u.setEmail(rs.getString("Email"));
         u.setStatus(rs.getString("TrangThai"));
         u.setOnline(rs.getBoolean("TrangThaiOnline"));

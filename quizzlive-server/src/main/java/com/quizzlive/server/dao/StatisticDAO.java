@@ -40,7 +40,7 @@ public class StatisticDAO {
 
     // Top người thắng nhiều nhất (Yêu cầu 10, 16)
     public List<LeaderboardDTO.LeaderboardItem> getTopWinners(int limit) {
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, h.TongSoTranThua, " +
                 "h.ChuoiThangHienTai, h.ChuoiThangDaiNhat, h.TongDiem, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
@@ -51,7 +51,7 @@ public class StatisticDAO {
 
     // Top tổng điểm cao nhất
     public List<LeaderboardDTO.LeaderboardItem> getTopPoints(int limit) {
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, h.TongSoTranThua, " +
                 "h.ChuoiThangHienTai, h.ChuoiThangDaiNhat, h.TongDiem, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
@@ -62,7 +62,7 @@ public class StatisticDAO {
 
     // Top chuỗi thắng dài nhất (Yêu cầu 10, 16)
     public List<LeaderboardDTO.LeaderboardItem> getTopStreaks(int limit) {
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, h.TongSoTranThua, " +
                 "h.ChuoiThangHienTai, h.ChuoiThangDaiNhat, h.TongDiem, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
@@ -73,7 +73,7 @@ public class StatisticDAO {
 
     // Top người tham gia nhiều trận nhất (Yêu cầu 10, 16)
     public List<LeaderboardDTO.LeaderboardItem> getMostPlayed(int limit) {
-        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, " +
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, h.TongSoTranThua, " +
                 "h.ChuoiThangHienTai, h.ChuoiThangDaiNhat, h.TongDiem, h.DiemIQ " +
                 "FROM NGUOI_DUNG u " +
                 "JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
@@ -83,9 +83,62 @@ public class StatisticDAO {
     }
 
     /**
-     * Tổng hợp toàn bộ dữ liệu Bảng xếp hạng trả về cho Client
+     * Lấy thông số thành tích cá nhân của người chơi (Thứ hạng, chuỗi thắng/thua, tỉ lệ thắng) (Yêu cầu 10)
      */
-    public LeaderboardDTO.LeaderboardResponse getLeaderboardResponse(int limit) {
+    public LeaderboardDTO.LeaderboardItem getUserStats(long userId) {
+        String sql = "SELECT u.MaNguoiDung, u.TenDangNhap, h.HoTen, h.TongSoTran, h.TongSoTranThang, h.TongSoTranThua, " +
+                "h.ChuoiThangHienTai, h.ChuoiThangDaiNhat, h.TongDiem, h.DiemIQ " +
+                "FROM NGUOI_DUNG u " +
+                "JOIN HO_SO_NGUOI_DUNG h ON u.MaNguoiDung = h.MaNguoiDung " +
+                "WHERE u.MaNguoiDung = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    LeaderboardDTO.LeaderboardItem item = new LeaderboardDTO.LeaderboardItem();
+                    item.userId = rs.getLong("MaNguoiDung");
+                    item.username = rs.getString("TenDangNhap");
+                    item.fullName = rs.getString("HoTen");
+                    item.totalMatches = rs.getInt("TongSoTran");
+                    item.winMatches = rs.getInt("TongSoTranThang");
+                    item.loseMatches = rs.getInt("TongSoTranThua");
+                    item.drawMatches = Math.max(0, item.totalMatches - item.winMatches - item.loseMatches);
+                    item.winRate = item.totalMatches > 0 ? (double) item.winMatches / item.totalMatches * 100.0 : 0.0;
+                    item.currentStreak = rs.getInt("ChuoiThangHienTai");
+                    item.maxStreak = rs.getInt("ChuoiThangDaiNhat");
+                    item.totalPoints = rs.getLong("TongDiem");
+                    item.iqScore = rs.getDouble("DiemIQ");
+
+                    // Tính thứ hạng hiện tại của người chơi trên bảng tổng điểm
+                    String rankSql = "SELECT COUNT(*) + 1 AS UserRank FROM HO_SO_NGUOI_DUNG h2 " +
+                            "JOIN NGUOI_DUNG u2 ON h2.MaNguoiDung = u2.MaNguoiDung " +
+                            "WHERE u2.TrangThai = 'ACTIVE' AND (h2.TongDiem > ? OR (h2.TongDiem = ? AND h2.TongSoTranThang > ?))";
+                    try (PreparedStatement psRank = conn.prepareStatement(rankSql)) {
+                        psRank.setLong(1, item.totalPoints);
+                        psRank.setLong(2, item.totalPoints);
+                        psRank.setInt(3, item.winMatches);
+                        try (ResultSet rsRank = psRank.executeQuery()) {
+                            if (rsRank.next()) {
+                                item.rank = rsRank.getInt("UserRank");
+                            } else {
+                                item.rank = 1;
+                            }
+                        }
+                    }
+                    return item;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Tổng hợp toàn bộ dữ liệu Bảng xếp hạng trả về cho Client kèm thống kê của người chơi hiện tại (Yêu cầu 10)
+     */
+    public LeaderboardDTO.LeaderboardResponse getLeaderboardResponse(Long currentUserId, int limit) {
         LeaderboardDTO.LeaderboardResponse resp = new LeaderboardDTO.LeaderboardResponse();
         resp.topPlayers = getTopPoints(limit);
         if (resp.topPlayers.isEmpty()) {
@@ -93,7 +146,14 @@ public class StatisticDAO {
         }
         resp.topStreaks = getTopStreaks(limit);
         resp.mostPlayed = getMostPlayed(limit);
+        if (currentUserId != null && currentUserId > 0) {
+            resp.myStats = getUserStats(currentUserId);
+        }
         return resp;
+    }
+
+    public LeaderboardDTO.LeaderboardResponse getLeaderboardResponse(int limit) {
+        return getLeaderboardResponse(null, limit);
     }
 
     /**
@@ -161,6 +221,9 @@ public class StatisticDAO {
                 "p1.Diem AS MyScore, " +
                 "COALESCE(p2.Diem, 0) AS OpponentScore, " +
                 "COALESCE(u2.TenDangNhap, 'Đối thủ') AS OpponentUsername, " +
+                "COALESCE(h2.HoTen, u2.TenDangNhap, 'Đối thủ') AS OpponentFullName, " +
+                "COALESCE(c.TenChuDe, 'Tất cả chủ đề') AS TopicName, " +
+                "COALESCE(t.DoKho, 'MEDIUM') AS Difficulty, " +
                 "CASE " +
                 "    WHEN p1.Diem > COALESCE(p2.Diem, 0) THEN 'WIN' " +
                 "    WHEN p1.Diem < COALESCE(p2.Diem, 0) THEN 'LOSS' " +
@@ -170,6 +233,8 @@ public class StatisticDAO {
                 "JOIN TRAN_DAU t ON p1.MaTran = t.MaTran " +
                 "LEFT JOIN NGUOI_CHOI_TRAN p2 ON t.MaTran = p2.MaTran AND p2.MaNguoiDung != p1.MaNguoiDung " +
                 "LEFT JOIN NGUOI_DUNG u2 ON p2.MaNguoiDung = u2.MaNguoiDung " +
+                "LEFT JOIN HO_SO_NGUOI_DUNG h2 ON u2.MaNguoiDung = h2.MaNguoiDung " +
+                "LEFT JOIN CHU_DE c ON t.MaChuDe = c.MaChuDe " +
                 "WHERE p1.MaNguoiDung = ? " +
                 "ORDER BY t.ThoiGianKetThuc DESC, t.MaTran DESC LIMIT ?";
 
@@ -184,9 +249,12 @@ public class StatisticDAO {
                     item.matchId = rs.getLong("MaTran");
                     item.matchCode = rs.getString("MaTranCode");
                     item.opponentUsername = rs.getString("OpponentUsername");
+                    item.opponentFullName = rs.getString("OpponentFullName");
                     item.result = rs.getString("Result");
                     item.myScore = rs.getInt("MyScore");
                     item.opponentScore = rs.getInt("OpponentScore");
+                    item.topicName = rs.getString("TopicName");
+                    item.difficulty = rs.getString("Difficulty");
                     Timestamp ts = rs.getTimestamp("ThoiGianKetThuc");
                     item.playedAt = (ts != null) ? sdf.format(ts) : "Vừa xong";
                     history.add(item);
@@ -213,6 +281,8 @@ public class StatisticDAO {
                     item.fullName = rs.getString("HoTen");
                     item.totalMatches = rs.getInt("TongSoTran");
                     item.winMatches = rs.getInt("TongSoTranThang");
+                    item.loseMatches = rs.getInt("TongSoTranThua");
+                    item.drawMatches = Math.max(0, item.totalMatches - item.winMatches - item.loseMatches);
                     item.winRate = item.totalMatches > 0 ? (double) item.winMatches / item.totalMatches * 100.0 : 0.0;
                     item.currentStreak = rs.getInt("ChuoiThangHienTai");
                     item.maxStreak = rs.getInt("ChuoiThangDaiNhat");

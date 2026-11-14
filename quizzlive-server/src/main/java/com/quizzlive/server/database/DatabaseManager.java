@@ -52,14 +52,19 @@ public class DatabaseManager {
                 dataSource.close();
             }
 
+            java.io.File dataDir = new java.io.File("data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+            }
+
             HikariConfig h2Config = new HikariConfig();
             h2Config.setDriverClassName("org.h2.Driver");
-            h2Config.setJdbcUrl("jdbc:h2:mem:quizzlive_db;DB_CLOSE_DELAY=-1;MODE=MySQL");
+            h2Config.setJdbcUrl("jdbc:h2:file:./data/quizzlive_db;DB_CLOSE_DELAY=-1;MODE=MySQL;AUTO_SERVER=TRUE");
             h2Config.setUsername("sa");
             h2Config.setPassword("");
             h2Config.setMaximumPoolSize(10);
             dataSource = new HikariDataSource(h2Config);
-            System.out.println("[DatabaseManager] Connected to in-memory H2 Database (MySQL mode).");
+            System.out.println("[DatabaseManager] Connected to persistent file-based H2 Database at ./data/quizzlive_db (MySQL mode).");
         }
 
         if (ServerConfig.isDbAutoInit() || !useMysql) {
@@ -72,7 +77,37 @@ public class DatabaseManager {
             }
         }
 
+        // Đặt lại toàn bộ trạng thái Online về FALSE khi Server khởi động
+        try {
+            new com.quizzlive.server.dao.UserDAO().resetAllOnlineStatus();
+        } catch (Exception ignored) {}
+
         isInitialized = true;
+    }
+
+    /**
+     * Khởi tạo CSDL riêng biệt trong bộ nhớ RAM cho các lớp kiểm thử tự động (Verification Tests).
+     * Đảm bảo kiểm thử KHÔNG ghi các tài khoản rác/test vào file CSDL thực tế của ứng dụng.
+     */
+    public static synchronized void initializeForTesting() {
+        if (dataSource != null) {
+            try {
+                dataSource.close();
+            } catch (Exception ignored) {}
+        }
+
+        HikariConfig h2TestConfig = new HikariConfig();
+        h2TestConfig.setDriverClassName("org.h2.Driver");
+        h2TestConfig.setJdbcUrl("jdbc:h2:mem:quizzlive_test_suite;DB_CLOSE_DELAY=-1;MODE=MySQL");
+        h2TestConfig.setUsername("sa");
+        h2TestConfig.setPassword("");
+        h2TestConfig.setMaximumPoolSize(5);
+        dataSource = new HikariDataSource(h2TestConfig);
+
+        executeSqlScript("database/schema.sql");
+        executeSqlScript("database/seed_data.sql");
+        isInitialized = true;
+        System.out.println("[DatabaseManager] Đã khởi tạo CSDL Test độc lập trong RAM (không ảnh hưởng file dữ liệu thật).");
     }
 
     public static Connection getConnection() throws SQLException {

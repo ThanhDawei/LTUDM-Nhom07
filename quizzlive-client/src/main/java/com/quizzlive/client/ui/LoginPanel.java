@@ -150,6 +150,23 @@ public class LoginPanel extends JPanel {
         } else {
             lblStatus.setForeground(Color.RED);
             lblStatus.setText(message != null ? message : "Đăng nhập thất bại!");
+            if (message != null && message.contains("đã được đăng nhập")) {
+                JOptionPane.showMessageDialog(this, message, "Cảnh Báo Đăng Nhập", JOptionPane.WARNING_MESSAGE);
+            } else if (message != null && message.contains("chưa được kích hoạt")) {
+                int opt = JOptionPane.showConfirmDialog(
+                        this,
+                        "Tài khoản chưa được kích hoạt!\n\n"
+                                + "Mã OTP xác thực đã được gửi về Cơ sở dữ liệu (Bảng OTP, thời hạn 10 phút).\n"
+                                + "Vui lòng mở Cơ sở dữ liệu (bảng OTP) để lấy mã xác thực.\n\n"
+                                + "Bạn có muốn chuyển sang màn hình kích hoạt để nhập mã OTP ngay không?",
+                        "Kích hoạt tài khoản (Mã OTP từ CSDL)",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+                if (opt == JOptionPane.YES_OPTION) {
+                    mainFrame.showPanel(MainClientFrame.CARD_REGISTER);
+                }
+            }
         }
     }
 }

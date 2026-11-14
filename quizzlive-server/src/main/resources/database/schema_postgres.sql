@@ -1,14 +1,15 @@
 -- =========================================================================
 -- QUIZZLIVE DATABASE SCHEMA - NHÓM 07: TRANH TÀI KIẾN THỨC
 -- DÀNH RIÊNG CHO POSTGRESQL (PostgreSQL 14 / 15 / 16 / 17 / 18)
--- ĐÃ TỐI ƯU HÓA: 14 BẢNG CHUẨN 3NF (Loại bỏ bảng tạm & Tinh gọn giải đấu)
+-- ĐÃ TINH GỌN: 12 BẢNG CHUẨN 3NF HOÀN HẢO (Loại bỏ bảng thừa & Tối ưu hóa hiệu năng)
 -- =========================================================================
 
 -- 1. BẢNG NGUOI_DUNG (Tài khoản người chơi)
 CREATE TABLE IF NOT EXISTS NGUOI_DUNG (
     MaNguoiDung BIGSERIAL PRIMARY KEY,
     TenDangNhap VARCHAR(50) NOT NULL UNIQUE,
-    MatKhau VARCHAR(255) NOT NULL,
+    Salt VARCHAR(64) NOT NULL,
+    Hash VARCHAR(255) NOT NULL,
     Email VARCHAR(100) NOT NULL UNIQUE,
     TrangThai VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, BLOCKED, PENDING
     TrangThaiOnline BOOLEAN NOT NULL DEFAULT FALSE,
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS NGUOI_DUNG (
 CREATE TABLE IF NOT EXISTS HO_SO_NGUOI_DUNG (
     MaNguoiDung BIGINT PRIMARY KEY,
     HoTen VARCHAR(100) NULL,
-    AnhDaiDien VARCHAR(500) NULL,
+    AnhDaiDien TEXT NULL,
     GioiThieu VARCHAR(500) NULL,
     DiemIQ DECIMAL(5,2) NOT NULL DEFAULT 0.00,
     TongSoTran INT NOT NULL DEFAULT 0,
@@ -48,20 +49,7 @@ CREATE TABLE IF NOT EXISTS OTP (
     CONSTRAINT fk_otp_nguoidung FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE
 );
 
-
--- 4. BẢNG QUAN_TRI_VIEN (Admin quản lý hệ thống trên Server GUI)
-
-CREATE TABLE IF NOT EXISTS QUAN_TRI_VIEN (
-    MaQuanTri BIGSERIAL PRIMARY KEY,
-    TenDangNhap VARCHAR(50) NOT NULL UNIQUE,
-    MatKhau VARCHAR(255) NOT NULL,
-    HoTen VARCHAR(100) NULL,
-    VaiTro VARCHAR(30) NOT NULL DEFAULT 'ADMIN',
-    TrangThai BOOLEAN NOT NULL DEFAULT TRUE,
-    NgayTao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- 5. BẢNG CHU_DE (Chủ đề câu hỏi)
+-- 4. BẢNG CHU_DE (Chủ đề câu hỏi)
 CREATE TABLE IF NOT EXISTS CHU_DE (
     MaChuDe SERIAL PRIMARY KEY,
     TenChuDe VARCHAR(100) NOT NULL,
@@ -69,34 +57,32 @@ CREATE TABLE IF NOT EXISTS CHU_DE (
     TrangThai BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- 6. BẢNG CAU_HOI (Ngân hàng câu hỏi trắc nghiệm & IQ hình ảnh)
+-- 5. BẢNG CAU_HOI (Ngân hàng câu hỏi trắc nghiệm & IQ hình ảnh)
 CREATE TABLE IF NOT EXISTS CAU_HOI (
     MaCauHoi BIGSERIAL PRIMARY KEY,
     MaChuDe INT NOT NULL,
-    LoaiCauHoi VARCHAR(20) NOT NULL DEFAULT 'STANDARD', -- STANDARD, IQ_IMAGE
+    LoaiCauHoi VARCHAR(20) NOT NULL DEFAULT 'STANDARD', -- STANDARD, IQ_IMAGE, IQ_TEST
     DoKho VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',       -- EASY, MEDIUM, HARD
     NoiDung TEXT NOT NULL,
-    HinhAnh VARCHAR(500) NULL,
+    HinhAnh TEXT NULL,
     GiaiThich TEXT NULL,
     TrangThai VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    NguoiTao BIGINT NULL,
     NgayTao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_cauhoi_chude FOREIGN KEY (MaChuDe) REFERENCES CHU_DE(MaChuDe) ON DELETE CASCADE,
-    CONSTRAINT fk_cauhoi_nguoitao FOREIGN KEY (NguoiTao) REFERENCES QUAN_TRI_VIEN(MaQuanTri) ON DELETE SET NULL
+    CONSTRAINT fk_cauhoi_chude FOREIGN KEY (MaChuDe) REFERENCES CHU_DE(MaChuDe) ON DELETE CASCADE
 );
 
--- 7. BẢNG DAP_AN (4 đáp án A, B, C, D cho mỗi câu hỏi)
+-- 6. BẢNG DAP_AN (4 đáp án A, B, C, D cho mỗi câu hỏi)
 CREATE TABLE IF NOT EXISTS DAP_AN (
     MaDapAn BIGSERIAL PRIMARY KEY,
     MaCauHoi BIGINT NOT NULL,
     KyHieu CHAR(1) NOT NULL, -- A, B, C, D
     NoiDung TEXT NOT NULL,
-    HinhAnh VARCHAR(500) NULL,
+    HinhAnh TEXT NULL,
     LaDapAnDung BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_dapan_cauhoi FOREIGN KEY (MaCauHoi) REFERENCES CAU_HOI(MaCauHoi) ON DELETE CASCADE
 );
 
--- 8. BẢNG CAU_HINH_TRAN (Cấu hình tham số trận đấu do Admin điều chỉnh)
+-- 7. BẢNG CAU_HINH_TRAN (Cấu hình tham số trận đấu do Admin điều chỉnh)
 CREATE TABLE IF NOT EXISTS CAU_HINH_TRAN (
     MaCauHinh SERIAL PRIMARY KEY,
     TenCauHinh VARCHAR(100) NOT NULL,
@@ -109,7 +95,7 @@ CREATE TABLE IF NOT EXISTS CAU_HINH_TRAN (
     TrangThai BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- 9. BẢNG GIAI_DAU (Giải đấu nhiều người theo bảng/vòng - Yêu cầu 9)
+-- 8. BẢNG GIAI_DAU (Giải đấu nhiều người theo bảng/vòng - Yêu cầu 9)
 CREATE TABLE IF NOT EXISTS GIAI_DAU (
     MaGiai BIGSERIAL PRIMARY KEY,
     TenGiai VARCHAR(200) NOT NULL,
@@ -120,7 +106,7 @@ CREATE TABLE IF NOT EXISTS GIAI_DAU (
     ThoiGianKetThuc TIMESTAMP NULL
 );
 
--- 10. BẢNG TRAN_DAU (Trận đấu trắc nghiệm 1v1 hoặc Trận thuộc Giải đấu)
+-- 9. BẢNG TRAN_DAU (Trận đấu trắc nghiệm 1v1 hoặc Trận thuộc Giải đấu)
 CREATE TABLE IF NOT EXISTS TRAN_DAU (
     MaTran BIGSERIAL PRIMARY KEY,
     MaTranCode VARCHAR(20) NOT NULL UNIQUE,
@@ -144,7 +130,7 @@ CREATE TABLE IF NOT EXISTS TRAN_DAU (
     CONSTRAINT fk_trandau_nguoithang FOREIGN KEY (NguoiThang) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE SET NULL
 );
 
--- 11. BẢNG NGUOI_CHOI_TRAN (2 người chơi trong mỗi trận)
+-- 10. BẢNG NGUOI_CHOI_TRAN (2 người chơi trong mỗi trận)
 CREATE TABLE IF NOT EXISTS NGUOI_CHOI_TRAN (
     MaTran BIGINT NOT NULL,
     MaNguoiDung BIGINT NOT NULL,
@@ -161,35 +147,7 @@ CREATE TABLE IF NOT EXISTS NGUOI_CHOI_TRAN (
     CONSTRAINT fk_nguoichoi_nguoidung FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE
 );
 
--- 12. BẢNG CAU_HOI_TRAN (5 câu hỏi được chọn cho trận đấu)
-CREATE TABLE IF NOT EXISTS CAU_HOI_TRAN (
-    MaCauHoiTran BIGSERIAL PRIMARY KEY,
-    MaTran BIGINT NOT NULL,
-    MaCauHoi BIGINT NOT NULL,
-    ThuTuCau INT NOT NULL,
-    ThoiGianBatDau TIMESTAMP NULL,
-    HanTraLoi TIMESTAMP NULL,
-    CONSTRAINT fk_cauhoitran_tran FOREIGN KEY (MaTran) REFERENCES TRAN_DAU(MaTran) ON DELETE CASCADE,
-    CONSTRAINT fk_cauhoitran_cauhoi FOREIGN KEY (MaCauHoi) REFERENCES CAU_HOI(MaCauHoi) ON DELETE CASCADE
-);
-
--- 13. BẢNG TRA_LOI (Lưu lịch sử câu trả lời & điểm số từng người)
-CREATE TABLE IF NOT EXISTS TRA_LOI (
-    MaTraLoi BIGSERIAL PRIMARY KEY,
-    MaCauHoiTran BIGINT NOT NULL,
-    MaNguoiDung BIGINT NOT NULL,
-    MaDapAn BIGINT NULL,
-    ThoiGianTraLoi TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ThoiGianPhanHoi INT NOT NULL DEFAULT 0,
-    KetQua BOOLEAN NOT NULL DEFAULT FALSE,
-    DiemNhanDuoc INT NOT NULL DEFAULT 0,
-    TrangThai VARCHAR(20) NOT NULL DEFAULT 'ANSWERED',
-    CONSTRAINT fk_traloi_cauhoitran FOREIGN KEY (MaCauHoiTran) REFERENCES CAU_HOI_TRAN(MaCauHoiTran) ON DELETE CASCADE,
-    CONSTRAINT fk_traloi_nguoidung FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE,
-    CONSTRAINT fk_traloi_dapan FOREIGN KEY (MaDapAn) REFERENCES DAP_AN(MaDapAn) ON DELETE SET NULL
-);
-
--- 14. BẢNG XEP_HANG_GIAI (Danh sách thí sinh đăng ký & Bảng xếp hạng của giải đấu - Yêu cầu 9)
+-- 11. BẢNG XEP_HANG_GIAI (Danh sách thí sinh đăng ký & Bảng xếp hạng của giải đấu - Yêu cầu 9)
 CREATE TABLE IF NOT EXISTS XEP_HANG_GIAI (
     MaGiai BIGINT NOT NULL,
     MaNguoiDung BIGINT NOT NULL,
@@ -208,7 +166,31 @@ CREATE TABLE IF NOT EXISTS XEP_HANG_GIAI (
     CONSTRAINT fk_xephanggiai_nguoidung FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE
 );
 
--- INDEXES (Tối ưu hóa tìm kiếm)
+-- 12. BẢNG LICHSU_TEST_IQ (Lưu các câu hỏi IQ người chơi đã trả lời trong ngày - 5 câu/ngày)
+CREATE TABLE IF NOT EXISTS LICHSU_TEST_IQ (
+    MaLichSu BIGSERIAL PRIMARY KEY,
+    MaNguoiDung BIGINT NOT NULL,
+    MaCauHoi BIGINT NOT NULL,
+    LaDung BOOLEAN NOT NULL DEFAULT FALSE,
+    NgayLam DATE NOT NULL,
+    ThoiGianLam TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_iq_user FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE,
+    CONSTRAINT fk_iq_cauhoi FOREIGN KEY (MaCauHoi) REFERENCES CAU_HOI(MaCauHoi) ON DELETE CASCADE
+);
+
+-- 13. BẢNG KET_TOAN_IQ_NGAY (Kết toán điểm IQ hàng ngày sau 5 câu hỏi)
+CREATE TABLE IF NOT EXISTS KET_TOAN_IQ_NGAY (
+    MaNguoiDung BIGINT NOT NULL,
+    NgayKetToan DATE NOT NULL,
+    SoCauDung INT NOT NULL DEFAULT 0,
+    SoCauSai INT NOT NULL DEFAULT 0,
+    DiemIQNhan DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    ThoiGian TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (MaNguoiDung, NgayKetToan),
+    CONSTRAINT fk_kt_user FOREIGN KEY (MaNguoiDung) REFERENCES NGUOI_DUNG(MaNguoiDung) ON DELETE CASCADE
+);
+
+-- INDEXES
 CREATE INDEX IF NOT EXISTS idx_nguoidung_online ON NGUOI_DUNG(TrangThaiOnline, TrangThai);
 CREATE INDEX IF NOT EXISTS idx_cauhoi_chude_dokho ON CAU_HOI(MaChuDe, DoKho, TrangThai, LoaiCauHoi);
 CREATE INDEX IF NOT EXISTS idx_trandau_status ON TRAN_DAU(TrangThai, ThoiGianBatDau);

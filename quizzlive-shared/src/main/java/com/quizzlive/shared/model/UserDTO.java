@@ -10,6 +10,7 @@ public class UserDTO implements Serializable {
     private String email;
     private String fullName;
     private String avatar;
+    private String bio;
     private Double iqScore;
     private Integer totalMatches;
     private Integer winMatches;
@@ -41,6 +42,9 @@ public class UserDTO implements Serializable {
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public Double getIqScore() { return iqScore; }
     public void setIqScore(Double iqScore) { this.iqScore = iqScore; }

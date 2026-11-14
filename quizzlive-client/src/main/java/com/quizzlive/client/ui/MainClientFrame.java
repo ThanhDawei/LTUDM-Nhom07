@@ -93,6 +93,10 @@ public class MainClientFrame extends JFrame {
     public LeaderboardPanel getLeaderboardPanel() { return leaderboardPanel; }
     public TournamentPanel getTournamentPanel() { return tournamentPanel; }
 
+    private IQTestDialog activeIQDialog;
+    public IQTestDialog getActiveIQDialog() { return activeIQDialog; }
+    public void setActiveIQDialog(IQTestDialog dialog) { this.activeIQDialog = dialog; }
+
     // Quản lý thông tin phiên người dùng đăng nhập hiện tại
     private Long currentUserId;
     private String currentUsername;

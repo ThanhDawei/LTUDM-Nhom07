@@ -13,7 +13,9 @@ import java.util.regex.Pattern;
 /**
  * Service xử lý Xác thực & Quản lý Tài khoản người dùng
  * Phụ trách Yêu cầu 1: Đăng ký, đăng nhập, cập nhật thông tin cá nhân, xác thực email bằng OTP (thời hạn 10 phút)
- * Cấu hình: Không dùng băm BCrypt (lưu và đối chiếu mật khẩu trực tiếp).
+ * - Mật khẩu: KHÔNG DÙNG MÃ HÓA, HÀM BĂM (lưu và đối chiếu chuỗi thô trực tiếp).
+ * - Mã OTP: Bắt buộc gửi và lưu trữ trong CSDL bảng OTP (thời hạn 10 phút).
+ * - Email: Sử dụng giao thức IMAP qua Socket thuần, KHÔNG DÙNG SMTP.
  */
 public class AuthService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})$");
@@ -24,10 +26,10 @@ public class AuthService {
      * Xử lý Đăng ký tài khoản (Yêu cầu 1):
      * 1. Kiểm tra tính hợp lệ dữ liệu (username, password, email, họ tên)
      * 2. Kiểm tra trùng lặp username, email
-     * 3. Băm mật khẩu có Salt (PBKDF2)
+     * 3. Mật khẩu không dùng mã hóa, hàm băm (lưu dạng chuỗi thô)
      * 4. Tạo tài khoản với trạng thái PENDING
-     * 5. Sinh mã OTP 6 số, lưu CSDL với thời hạn 10 phút
-     * 6. Gửi OTP qua Email / Server Console
+     * 5. Sinh mã OTP 6 số, bắt buộc lưu vào CSDL (bảng OTP) với thời hạn 10 phút
+     * 6. Gửi OTP qua giao thức IMAP / Server Console (không dùng SMTP)
      */
     public AuthDTO.AuthResponse register(AuthDTO.RegisterRequest req) {
         AuthDTO.AuthResponse resp = new AuthDTO.AuthResponse();
@@ -85,9 +87,10 @@ public class AuthService {
                 resp.message = "Tài khoản gắn với email này đã bị khóa!";
                 return resp;
             } else {
-                // Tài khoản PENDING: Cập nhật lại mật khẩu và gửi mã OTP mới
-                String passHash = PasswordUtil.hashPassword(password);
-                userDAO.updatePendingUser(existingEmail.getUserId(), passHash, fullName);
+                // Tài khoản PENDING: Cập nhật lại mật khẩu băm PBKDF2 và gửi mã OTP mới
+                String salt = PasswordUtil.generateSalt();
+                String hash = PasswordUtil.hashPassword(password, salt);
+                userDAO.updatePendingUser(existingEmail.getUserId(), salt, hash, fullName);
 
                 String otpCode = EmailService.generateOtp();
                 otpDAO.saveOtp(existingEmail.getUserId(), otpCode, "REGISTER", 10);
@@ -96,16 +99,19 @@ public class AuthService {
                 resp.success = true;
                 resp.userId = existingEmail.getUserId();
                 resp.username = existingEmail.getUsername();
-                resp.message = "Mã OTP mới đã được gửi tới email '" + email + "' (hiệu lực 10 phút). Vui lòng nhập để kích hoạt!";
+                resp.message = "Mã OTP mới đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt!";
                 return resp;
             }
         }
 
-        // Băm mật khẩu có Salt (PBKDF2)
-        String passwordHash = PasswordUtil.hashPassword(password);
+        // Băm mật khẩu bằng thuật toán PBKDF2WithHmacSHA256 kết hợp Salt
+        String salt = PasswordUtil.generateSalt();
+        String hash = PasswordUtil.hashPassword(password, salt);
 
-        // Tạo tài khoản trạng thái PENDING
-        Long userId = userDAO.createUser(username, passwordHash, email, fullName);
+        // Tạo tài khoản trạng thái PENDING kèm ảnh đại diện và giới thiệu
+        String avatar = (req.avatarUrl != null && !req.avatarUrl.trim().isEmpty()) ? req.avatarUrl.trim() : "avatar1.png";
+        String bio = (req.bio != null && !req.bio.trim().isEmpty()) ? req.bio.trim() : "Thành viên mới Quizzlive";
+        Long userId = userDAO.createUser(username, salt, hash, email, fullName, avatar, bio);
         if (userId == null) {
             resp.success = false;
             resp.message = "Đăng ký thất bại do lỗi hệ thống CSDL!";
@@ -116,13 +122,13 @@ public class AuthService {
         String otpCode = EmailService.generateOtp();
         otpDAO.saveOtp(userId, otpCode, "REGISTER", 10);
 
-        // Gửi email OTP (hoặc log ra Server Console)
+        // Ghi nhận và gửi OTP (lưu CSDL và in Console Server)
         EmailService.sendOtpEmail(email, otpCode, "Kích hoạt tài khoản");
 
         resp.success = true;
         resp.userId = userId;
         resp.username = username;
-        resp.message = "Đăng ký thành công! Mã OTP đã gửi tới email '" + email + "' (hiệu lực 10 phút).";
+        resp.message = "Đăng ký thành công! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt.";
         return resp;
     }
 
@@ -175,14 +181,56 @@ public class AuthService {
     }
 
     /**
+     * Gửi lại mã OTP qua cơ chế kết nối trực tiếp SMTP (Payload email để trống)
+     */
+    public AuthDTO.AuthResponse resendOtp(String email) {
+        AuthDTO.AuthResponse resp = new AuthDTO.AuthResponse();
+        if (email == null || email.trim().isEmpty()) {
+            resp.success = false;
+            resp.message = "Email không được để trống!";
+            return resp;
+        }
+
+        User user = userDAO.findByEmail(email.trim());
+        if (user == null) {
+            resp.success = false;
+            resp.message = "Không tìm thấy người dùng với email: " + email;
+            return resp;
+        }
+
+        String otpCode = EmailService.generateOtp();
+        otpDAO.saveOtp(user.getUserId(), otpCode, "REGISTER", 10);
+        EmailService.sendOtpEmail(email.trim(), otpCode, "Gửi lại mã OTP kích hoạt tài khoản");
+
+        resp.success = true;
+        resp.userId = user.getUserId();
+        resp.username = user.getUsername();
+        resp.message = "Mã OTP mới đã được phát sinh và lưu trữ vào CSDL (Bảng OTP, hiệu lực 10 phút).";
+        return resp;
+    }
+
+    /**
      * Xử lý Đăng nhập (Yêu cầu 1):
      * 1. Hỗ trợ đăng nhập bằng tên tài khoản hoặc email
-     * 2. Kiểm tra mật khẩu (đối chiếu hash PBKDF2 có salt)
+     * 2. Kiểm tra mật khẩu (đối chiếu trực tiếp dạng thô, không dùng mã hóa, hàm băm)
      * 3. Kiểm tra tài khoản có bị khóa không (Yêu cầu 15)
-     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa
+     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa (nếu chưa, sinh OTP mới lưu CSDL 10 phút & gửi qua IMAP)
      * 5. Cập nhật trạng thái Online
      */
     public AuthDTO.AuthResponse login(AuthDTO.LoginRequest req) {
+        return login(req, null);
+    }
+
+    /**
+     * Xử lý Đăng nhập (Yêu cầu 1):
+     * 1. Hỗ trợ đăng nhập bằng tên tài khoản hoặc email
+     * 2. Kiểm tra mật khẩu (đối chiếu trực tiếp dạng thô, không dùng mã hóa, hàm băm)
+     * 3. Kiểm tra tài khoản có bị khóa không (Yêu cầu 15)
+     * 4. Kiểm tra tài khoản đã kích hoạt OTP chưa (nếu chưa, sinh OTP mới lưu CSDL 10 phút & gửi qua IMAP)
+     * 5. Kiểm tra đa luồng / 2 máy đăng nhập cùng 1 tài khoản (nếu máy khác đã đăng nhập thì thông báo tài khoản đã được đăng nhập)
+     * 6. Cập nhật trạng thái Online & nạp thông tin họ tên, ảnh đại diện, giới thiệu
+     */
+    public AuthDTO.AuthResponse login(AuthDTO.LoginRequest req, com.quizzlive.server.network.SessionManager sessionManager) {
         AuthDTO.AuthResponse resp = new AuthDTO.AuthResponse();
 
         if (req == null) {
@@ -212,8 +260,8 @@ public class AuthService {
             return resp;
         }
 
-        // Kiểm tra mật khẩu băm có salt
-        boolean passwordOk = PasswordUtil.verifyPassword(password, user.getPassword());
+        // Kiểm tra mật khẩu bằng thuật toán PBKDF2 kết hợp Salt
+        boolean passwordOk = PasswordUtil.verifyPassword(password, user.getSalt(), user.getHash());
         if (!passwordOk) {
             resp.success = false;
             resp.message = "Tên đăng nhập hoặc mật khẩu không chính xác!";
@@ -229,28 +277,48 @@ public class AuthService {
 
         // Kiểm tra tài khoản chưa xác thực OTP
         if ("PENDING".equalsIgnoreCase(user.getStatus())) {
-            // Tự động phát sinh và gửi lại mã OTP mới để người dùng kích hoạt
+            // Tự động phát sinh và lưu lại mã OTP mới vào CSDL để người dùng kích hoạt
             String newOtp = EmailService.generateOtp();
             otpDAO.saveOtp(user.getUserId(), newOtp, "REGISTER", 10);
             EmailService.sendOtpEmail(user.getEmail(), newOtp, "Kích hoạt tài khoản");
 
             resp.success = false;
-            resp.message = "Tài khoản chưa được kích hoạt qua email! Chúng tôi đã gửi lại mã OTP mới tới: " + user.getEmail();
+            resp.message = "Tài khoản chưa được kích hoạt! Mã OTP đã được gửi và lưu trữ trong Cơ sở dữ liệu (Bảng OTP, hiệu lực 10 phút). Vui lòng mở CSDL để lấy mã OTP kích hoạt.";
             return resp;
         }
 
+        // Kiểm tra 2 luồng / 2 thiết bị đăng nhập 1 tài khoản (Chống đăng nhập đồng thời trên 2 máy):
+        // 1. Kiểm tra session bộ nhớ (trong cùng tiến trình Server)
+        if (sessionManager != null) {
+            com.quizzlive.server.network.ClientSession activeSession = sessionManager.getSessionByUserId(user.getUserId());
+            if (activeSession != null && activeSession.isConnected()) {
+                resp.success = false;
+                resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
+                return resp;
+            } else if (activeSession != null) {
+                sessionManager.removeSession(activeSession);
+            }
+        }
 
+        // 2. Kiểm tra trạng thái Online trong CSDL (dành cho đa máy / đa server trỏ cùng CSDL)
+        if (userDAO.isUserOnline(user.getUserId())) {
+            resp.success = false;
+            resp.message = "Tài khoản đã được đăng nhập trên một thiết bị khác!";
+            return resp;
+        }
 
         // Cập nhật trạng thái Online
         userDAO.updateOnlineStatus(user.getUserId(), true);
 
-        // Lấy thông tin hồ sơ
+        // Lấy thông tin hồ sơ (kèm ảnh đại diện, giới thiệu)
         UserProfile profile = userDAO.getUserProfile(user.getUserId());
 
         resp.success = true;
         resp.userId = user.getUserId();
         resp.username = user.getUsername();
         resp.fullName = profile != null && profile.getFullName() != null ? profile.getFullName() : user.getUsername();
+        resp.avatarUrl = profile != null && profile.getAvatar() != null ? profile.getAvatar() : "avatar1.png";
+        resp.bio = profile != null && profile.getBio() != null ? profile.getBio() : "Thành viên Quizzlive";
         resp.iqScore = profile != null ? profile.getIqScore() : 0.0;
         resp.message = "Đăng nhập thành công!";
         return resp;
@@ -277,7 +345,7 @@ public class AuthService {
 
         // Nếu người dùng muốn đổi mật khẩu
         if (req.newPassword != null && !req.newPassword.trim().isEmpty()) {
-            if (req.currentPassword == null || !PasswordUtil.verifyPassword(req.currentPassword, user.getPassword())) {
+            if (req.currentPassword == null || !PasswordUtil.verifyPassword(req.currentPassword, user.getSalt(), user.getHash())) {
                 resp.success = false;
                 resp.message = "Mật khẩu hiện tại không chính xác!";
                 return resp;
@@ -287,12 +355,14 @@ public class AuthService {
                 resp.message = "Mật khẩu mới phải có tối thiểu 6 ký tự!";
                 return resp;
             }
-            userDAO.updatePassword(userId, PasswordUtil.hashPassword(req.newPassword.trim()));
+            String newSalt = PasswordUtil.generateSalt();
+            String newHash = PasswordUtil.hashPassword(req.newPassword.trim(), newSalt);
+            userDAO.updatePassword(userId, newSalt, newHash);
         }
 
-        // Cập nhật họ tên và ảnh đại diện
-        if (req.fullName != null && !req.fullName.trim().isEmpty()) {
-            userDAO.updateProfile(userId, req.fullName.trim(), req.avatarUrl);
+        // Cập nhật họ tên, ảnh đại diện và giới thiệu
+        if ((req.fullName != null && !req.fullName.trim().isEmpty()) || req.avatarUrl != null || req.bio != null) {
+            userDAO.updateProfile(userId, req.fullName, req.avatarUrl, req.bio);
         }
 
         UserProfile profile = userDAO.getUserProfile(userId);
@@ -300,8 +370,16 @@ public class AuthService {
         resp.userId = userId;
         resp.username = user.getUsername();
         resp.fullName = profile != null ? profile.getFullName() : user.getUsername();
+        resp.avatarUrl = profile != null ? profile.getAvatar() : "avatar1.png";
+        resp.bio = profile != null ? profile.getBio() : "";
         resp.iqScore = profile != null ? profile.getIqScore() : 0.0;
-        resp.message = "Cập nhật hồ sơ thành công!";
+        if (req.newPassword != null && !req.newPassword.trim().isEmpty()
+                && (req.fullName == null || req.fullName.trim().isEmpty())
+                && req.avatarUrl == null && req.bio == null) {
+            resp.message = "Đổi mật khẩu thành công!";
+        } else {
+            resp.message = "Cập nhật hồ sơ thành công!";
+        }
         return resp;
     }
 

@@ -17,3 +17,8 @@ Thumbs.db
 master_gui_showcase.html
 run_server.bat
 run_client.bat
+
+# Embedded local database storage
+data/
+*.mv.db
+*.trace.db

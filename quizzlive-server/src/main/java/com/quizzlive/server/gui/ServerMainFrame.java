@@ -1,6 +1,7 @@
 package com.quizzlive.server.gui;
 
 import com.quizzlive.server.dao.MatchConfigDAO;
+import com.quizzlive.server.dao.OtpDAO;
 import com.quizzlive.server.dao.QuestionDAO;
 import com.quizzlive.server.dao.StatisticDAO;
 import com.quizzlive.server.dao.UserDAO;
@@ -11,12 +12,14 @@ import com.quizzlive.shared.dto.LeaderboardDTO;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServerMainFrame extends JFrame {
     private final SocketServer server;
     private final UserDAO userDAO = new UserDAO();
+    private final OtpDAO otpDAO = new OtpDAO();
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final MatchConfigDAO configDAO = new MatchConfigDAO();
     private final StatisticDAO statisticDAO = new StatisticDAO();
@@ -82,21 +85,36 @@ public class ServerMainFrame extends JFrame {
         lblTotalUsers.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         JButton btnRefreshUsers = new JButton("Làm mới danh sách");
+        btnRefreshUsers.setFocusPainted(false);
+        btnRefreshUsers.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefreshUsers.addActionListener(e -> loadUsersData());
+
+        JButton btnCheckOtp = new JButton("Xem mã OTP (CSDL)");
+        btnCheckOtp.setFocusPainted(false);
+        btnCheckOtp.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCheckOtp.setBackground(new Color(41, 128, 185));
+        btnCheckOtp.setForeground(Color.WHITE);
+        btnCheckOtp.addActionListener(e -> viewUserOtpFromDb());
 
         JButton btnBlock = new JButton("Khóa / Mở khóa người dùng");
         btnBlock.setForeground(Color.RED);
         btnBlock.addActionListener(e -> toggleBlockUser());
 
+        JButton btnDeleteUser = new JButton("Xóa tài khoản");
+        btnDeleteUser.setForeground(new Color(192, 57, 43));
+        btnDeleteUser.addActionListener(e -> deleteSelectedUser());
+
         topBar.add(lblOnlineUsers);
         topBar.add(lblTotalUsers);
         topBar.add(btnRefreshUsers);
+        topBar.add(btnCheckOtp);
         topBar.add(btnBlock);
+        topBar.add(btnDeleteUser);
 
         panel.add(topBar, BorderLayout.NORTH);
 
         // User table
-        String[] columns = {"Mã ID", "Tên đăng nhập", "Email", "Trạng thái", "Online", "Ngày tạo"};
+        String[] columns = {"Mã ID", "Tên đăng nhập", "Email", "Họ tên", "Ảnh", "Giới thiệu", "Trạng thái", "Online", "Ngày tạo"};
         userTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -234,6 +252,7 @@ public class ServerMainFrame extends JFrame {
         lblOnlineUsers.setText("Đang online: " + statisticDAO.getOnlineUserCount());
         lblTotalUsers.setText("Tổng người dùng: " + statisticDAO.getTotalUserCount());
 
+        int selectedRow = tblUsers.getSelectedRow();
         userTableModel.setRowCount(0);
         List<User> users = userDAO.getAllUsers();
         for (User u : users) {
@@ -241,10 +260,60 @@ public class ServerMainFrame extends JFrame {
                     u.getUserId(),
                     u.getUsername(),
                     u.getEmail(),
+                    u.getFullName() != null ? u.getFullName() : "",
+                    u.getAvatar() != null ? u.getAvatar() : "avatar1.png",
+                    u.getBio() != null ? u.getBio() : "",
                     u.getStatus(),
                     u.isOnline() ? "Online" : "Offline",
                     u.getCreatedAt()
             });
+        }
+        if (selectedRow >= 0 && selectedRow < userTableModel.getRowCount()) {
+            tblUsers.setRowSelectionInterval(selectedRow, selectedRow);
+        }
+    }
+
+    /**
+     * Xem mã OTP của người dùng được lưu trữ trong bảng OTP của Cơ sở dữ liệu (Yêu cầu 1)
+     */
+    private void viewUserOtpFromDb() {
+        int row = tblUsers.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 người dùng trên bảng để xem mã OTP trong Cơ sở dữ liệu!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        Long userId = (Long) userTableModel.getValueAt(row, 0);
+        String username = (String) userTableModel.getValueAt(row, 1);
+        String status = (String) userTableModel.getValueAt(row, 6);
+
+        OtpDAO.OtpInfo info = otpDAO.getLatestOtpInfo(userId, "REGISTER");
+        if (info != null) {
+            String verifyStatus;
+            if (info.isVerified()) {
+                verifyStatus = "ĐÃ XÁC THỰC (Thành công lúc " + info.verifiedTime + ")";
+            } else if (info.isExpired()) {
+                verifyStatus = "ĐÃ HẾT HẠN (Quá 10 phút)";
+            } else {
+                verifyStatus = "ĐANG CHỜ XÁC THỰC (Hợp lệ trong 10 phút)";
+            }
+
+            String msg = "THÔNG TIN MÃ OTP TRONG CƠ SỞ DỮ LIỆU (BẢNG OTP):\n\n"
+                    + "• Mã ID người dùng: " + userId + "\n"
+                    + "• Tên đăng nhập: " + username + "\n"
+                    + "• Trạng thái tài khoản: " + status + "\n"
+                    + "• Mã OTP (MaXacThuc): " + info.otpCode + "\n"
+                    + "• Mục đích: " + info.purpose + "\n"
+                    + "• Thời gian tạo: " + info.createdAt + "\n"
+                    + "• Thời gian hết hạn: " + info.expireTime + " (10 phút)\n"
+                    + "• Trạng thái OTP: " + verifyStatus + "\n\n"
+                    + "(Dữ liệu được truy vấn trực tiếp từ bảng OTP trong Cơ sở dữ liệu)";
+
+            JOptionPane.showMessageDialog(this, msg, "Chi tiết OTP CSDL - " + username, JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Không tìm thấy bản ghi mã OTP nào trong bảng OTP của CSDL cho tài khoản '" + username + "' (ID: " + userId + ").",
+                    "Thông báo OTP", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -256,12 +325,41 @@ public class ServerMainFrame extends JFrame {
         }
 
         Long userId = (Long) userTableModel.getValueAt(row, 0);
-        String currentStatus = (String) userTableModel.getValueAt(row, 3);
+        String currentStatus = (String) userTableModel.getValueAt(row, 6);
         boolean isBlocked = "BLOCKED".equalsIgnoreCase(currentStatus);
 
         userDAO.blockUser(userId, !isBlocked);
         JOptionPane.showMessageDialog(this, isBlocked ? "Đã mở khóa người dùng!" : "Đã khóa người dùng thành công!");
         loadUsersData();
+    }
+
+    private void deleteSelectedUser() {
+        int row = tblUsers.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 người dùng trên bảng để xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Long userId = (Long) userTableModel.getValueAt(row, 0);
+        String username = (String) userTableModel.getValueAt(row, 1);
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản [" + username + "] (Mã ID: " + userId + ")?",
+                "Xác nhận xóa tài khoản",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            boolean success = userDAO.deleteUser(userId);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Đã xóa tài khoản [" + username + "] thành công!");
+                loadUsersData();
+            } else {
+                JOptionPane.showMessageDialog(this, "Xóa tài khoản thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void loadQuestionsData() {
@@ -281,6 +379,15 @@ public class ServerMainFrame extends JFrame {
                     break;
                 }
             }
+            String imgDisplay = "Không có";
+            if (q.getImage() != null && !q.getImage().trim().isEmpty()) {
+                String imgStr = q.getImage().trim();
+                if (imgStr.startsWith("data:image")) {
+                    imgDisplay = "[Ảnh Base64 (" + imgStr.length() + " chars)]";
+                } else {
+                    imgDisplay = imgStr;
+                }
+            }
             questionTableModel.addRow(new Object[]{
                     q.getQuestionId(),
                     q.getTopicName(),
@@ -288,18 +395,30 @@ public class ServerMainFrame extends JFrame {
                     q.getDifficulty(),
                     q.getContent(),
                     correctAns,
-                    q.getImage() != null ? q.getImage() : "Không có"
+                    imgDisplay
             });
         }
     }
 
     private void showAddQuestionDialog() {
         JDialog dialog = new JDialog(this, "Thêm Câu Hỏi Mới", true);
-        dialog.setSize(600, 500);
+        dialog.setSize(650, 600);
         dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new GridLayout(9, 2, 8, 8));
+        dialog.setLayout(new BorderLayout(10, 10));
 
-        JComboBox<String> cbTopic = new JComboBox<>(new String[]{"1. Khoa học Tự nhiên", "2. Lịch sử & Địa lý", "3. Công nghệ & Máy tính", "4. Tư duy IQ & Logic"});
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(6, 6, 6, 6);
+
+        JComboBox<String> cbTopic = new JComboBox<>(new String[]{
+                "1. Khoa học Tự nhiên",
+                "2. Lịch sử & Địa lý",
+                "3. Công nghệ & Máy tính",
+                "4. Tư duy IQ & Logic"
+        });
+        JComboBox<String> cbType = new JComboBox<>(new String[]{"STANDARD", "IQ_TEST"});
         JComboBox<String> cbDiff = new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD"});
         JTextField txtContent = new JTextField();
         JTextField txtAnsA = new JTextField();
@@ -308,27 +427,134 @@ public class ServerMainFrame extends JFrame {
         JTextField txtAnsD = new JTextField();
         JComboBox<String> cbCorrect = new JComboBox<>(new String[]{"A", "B", "C", "D"});
 
-        dialog.add(new JLabel("Chủ đề:")); dialog.add(cbTopic);
-        dialog.add(new JLabel("Độ khó:")); dialog.add(cbDiff);
-        dialog.add(new JLabel("Nội dung câu hỏi:")); dialog.add(txtContent);
-        dialog.add(new JLabel("Đáp án A:")); dialog.add(txtAnsA);
-        dialog.add(new JLabel("Đáp án B:")); dialog.add(txtAnsB);
-        dialog.add(new JLabel("Đáp án C:")); dialog.add(txtAnsC);
-        dialog.add(new JLabel("Đáp án D:")); dialog.add(txtAnsD);
-        dialog.add(new JLabel("Đáp án đúng:")); dialog.add(cbCorrect);
+        // Panel chọn hình ảnh Base64 cho câu hỏi IQ_TEST
+        JLabel lblImage = new JLabel("Hình ảnh câu hỏi (Base64):");
+        lblImage.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblImage.setForeground(new Color(37, 99, 235));
 
-        JButton btnSave = new JButton("Lưu Câu Hỏi");
+        JPanel pnlImageChooser = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JButton btnBrowseImg = new JButton("📁 Chọn file ảnh...");
+        JLabel lblImgPreview = new JLabel();
+        JLabel lblImgStatus = new JLabel("Chưa chọn ảnh");
+        lblImgStatus.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblImgStatus.setForeground(Color.GRAY);
+
+        pnlImageChooser.add(btnBrowseImg);
+        pnlImageChooser.add(lblImgPreview);
+        pnlImageChooser.add(lblImgStatus);
+
+        final String[] selectedImageBase64 = new String[1];
+
+        btnBrowseImg.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Chọn hình ảnh minh họa cho câu hỏi");
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Tệp hình ảnh (*.png, *.jpg, *.jpeg, *.gif, *.bmp)", "png", "jpg", "jpeg", "gif", "bmp"));
+            int ret = chooser.showOpenDialog(dialog);
+            if (ret == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+                String b64 = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(file);
+                if (b64 != null) {
+                    selectedImageBase64[0] = b64;
+                    lblImgStatus.setText(file.getName() + " (Đã chuyển thành Base64)");
+                    lblImgStatus.setForeground(new Color(22, 163, 74));
+                    java.awt.image.BufferedImage img = com.quizzlive.shared.util.ImageBase64Util.base64ToImage(b64);
+                    if (img != null) {
+                        Image thumb = img.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+                        lblImgPreview.setIcon(new ImageIcon(thumb));
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Không thể đọc và chuyển đổi file ảnh này sang Base64!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        // Ẩn/hiện trường Hình ảnh dựa trên loại câu hỏi (STANDARD / IQ_TEST)
+        Runnable toggleImageField = () -> {
+            boolean isIq = "IQ_TEST".equals(cbType.getSelectedItem());
+            lblImage.setVisible(isIq);
+            pnlImageChooser.setVisible(isIq);
+            dialog.revalidate();
+            dialog.repaint();
+        };
+
+        cbType.addActionListener(e -> toggleImageField.run());
+
+        cbTopic.addActionListener(e -> {
+            if (cbTopic.getSelectedIndex() == 3) { // Tư duy IQ & Logic
+                cbType.setSelectedItem("IQ_TEST");
+            } else {
+                cbType.setSelectedItem("STANDARD");
+            }
+        });
+
+        // Add components to GridBagLayout
+        int row = 0;
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Chủ đề:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(cbTopic, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Loại câu hỏi (Option):"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(cbType, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(lblImage, gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(pnlImageChooser, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Độ khó:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(cbDiff, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Nội dung câu hỏi:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(txtContent, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Đáp án A:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(txtAnsA, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Đáp án B:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(txtAnsB, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Đáp án C:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(txtAnsC, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Đáp án D:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(txtAnsD, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; formPanel.add(new JLabel("Đáp án đúng:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 0.7; formPanel.add(cbCorrect, gbc);
+
+        // Khởi tạo ban đầu ẩn/hiện trường ảnh
+        toggleImageField.run();
+
+        JButton btnSave = new JButton("💾 Lưu Câu Hỏi Vào CSDL");
+        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnSave.setBackground(new Color(37, 99, 235));
+        btnSave.setForeground(Color.WHITE);
+        btnSave.setPreferredSize(new Dimension(0, 42));
+
         btnSave.addActionListener(e -> {
             if (txtContent.getText().trim().isEmpty() || txtAnsA.getText().trim().isEmpty() || txtAnsB.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Vui lòng nhập đầy đủ nội dung câu hỏi và các đáp án!");
+                JOptionPane.showMessageDialog(dialog, "Vui lòng nhập đầy đủ nội dung câu hỏi và các đáp án!", "Thông báo", JOptionPane.WARNING_MESSAGE);
                 return;
+            }
+
+            String questionType = (String) cbType.getSelectedItem();
+            if ("IQ_TEST".equals(questionType) && selectedImageBase64[0] == null) {
+                int confirmNoImg = JOptionPane.showConfirmDialog(
+                        dialog,
+                        "Bạn đang chọn loại câu hỏi IQ_TEST nhưng chưa chọn hình ảnh minh họa.\nBạn có muốn tiếp tục lưu câu hỏi mà không có ảnh không?",
+                        "Xác nhận",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+                if (confirmNoImg != JOptionPane.YES_OPTION) {
+                    return;
+                }
             }
 
             Question q = new Question();
             q.setTopicId(cbTopic.getSelectedIndex() + 1);
+            q.setQuestionType(questionType);
             q.setDifficulty((String) cbDiff.getSelectedItem());
             q.setContent(txtContent.getText().trim());
-            q.setQuestionType(cbTopic.getSelectedIndex() == 3 ? "IQ_IMAGE" : "STANDARD");
+            q.setImage("IQ_TEST".equals(questionType) ? selectedImageBase64[0] : null);
 
             List<Answer> ansList = new ArrayList<>();
             String correctSymbol = (String) cbCorrect.getSelectedItem();
@@ -339,12 +565,17 @@ public class ServerMainFrame extends JFrame {
             q.setAnswers(ansList);
 
             questionDAO.saveQuestionWithAnswers(q);
-            JOptionPane.showMessageDialog(dialog, "Thêm câu hỏi mới thành công!");
+            JOptionPane.showMessageDialog(dialog, "Thêm câu hỏi mới thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             dialog.dispose();
             loadQuestionsData();
         });
 
-        dialog.add(new JLabel("")); dialog.add(btnSave);
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 15, 20));
+        bottomPanel.add(btnSave, BorderLayout.CENTER);
+
+        dialog.add(formPanel, BorderLayout.CENTER);
+        dialog.add(bottomPanel, BorderLayout.SOUTH);
         dialog.setVisible(true);
     }
 

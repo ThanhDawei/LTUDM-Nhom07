@@ -8,6 +8,8 @@ public class AuthDTO {
         public String password;
         public String email;
         public String fullName;
+        public String avatarUrl;
+        public String bio;
     }
 
     public static class VerifyOtpRequest implements Serializable {
@@ -25,6 +27,7 @@ public class AuthDTO {
         public String currentPassword;
         public String newPassword;
         public String avatarUrl;
+        public String bio;
     }
 
     public static class AuthResponse implements Serializable {
@@ -33,6 +36,9 @@ public class AuthDTO {
         public Long userId;
         public String username;
         public String fullName;
+        public String avatarUrl;
+        public String bio;
         public Double iqScore;
+        public String otpCode;
     }
 }

@@ -49,9 +49,15 @@ public class PacketRouter {
                 session.sendPacket(new Packet(OpCode.VERIFY_OTP_RESP, JsonUtil.toJson(resp)));
                 break;
             }
+            case RESEND_OTP_REQ: {
+                AuthDTO.VerifyOtpRequest req = JsonUtil.fromJson(json, AuthDTO.VerifyOtpRequest.class);
+                AuthDTO.AuthResponse resp = authService.resendOtp(req != null ? req.email : null);
+                session.sendPacket(new Packet(OpCode.RESEND_OTP_RESP, JsonUtil.toJson(resp)));
+                break;
+            }
             case LOGIN_REQ: {
                 AuthDTO.LoginRequest req = JsonUtil.fromJson(json, AuthDTO.LoginRequest.class);
-                AuthDTO.AuthResponse resp = authService.login(req);
+                AuthDTO.AuthResponse resp = authService.login(req, sessionManager);
                 if (resp != null && resp.success) {
                     session.setUserId(resp.userId);
                     session.setUsername(resp.username);
@@ -125,7 +131,18 @@ public class PacketRouter {
 
             // --- 5. TEST IQ TRONG LÚC CHỜ (Yêu cầu 11) ---
             case IQ_TEST_START_REQ: {
-                iqTestService.sendRandomIQQuestion(session);
+                Integer topicId = null;
+                String difficulty = null;
+                try {
+                    if (json != null && !json.trim().isEmpty() && !json.equals("{}")) {
+                        IQTestDTO.IQStartRequest req = JsonUtil.fromJson(json, IQTestDTO.IQStartRequest.class);
+                        if (req != null) {
+                            topicId = req.topicId;
+                            difficulty = req.difficulty;
+                        }
+                    }
+                } catch (Exception ignored) {}
+                iqTestService.sendRandomIQQuestion(session, topicId, difficulty);
                 break;
             }
             case IQ_SUBMIT_ANSWER_REQ: {
@@ -161,7 +178,16 @@ public class PacketRouter {
             }
             // --- 7. BẢNG XẾP HẠNG & LỊCH SỬ (Yêu cầu 10) ---
             case LEADERBOARD_REQ: {
-                LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(20);
+                Long currentUserId = session.getUserId();
+                try {
+                    if (json != null && json.contains("userId")) {
+                        com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                        if (obj != null && obj.has("userId") && !obj.get("userId").isJsonNull()) {
+                            currentUserId = obj.get("userId").getAsLong();
+                        }
+                    }
+                } catch (Exception ignored) {}
+                LeaderboardDTO.LeaderboardResponse resp = statisticDAO.getLeaderboardResponse(currentUserId, 20);
                 session.sendPacket(new Packet(OpCode.LEADERBOARD_RESP, JsonUtil.toJson(resp)));
                 break;
             }

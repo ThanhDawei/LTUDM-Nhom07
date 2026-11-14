@@ -22,10 +22,22 @@ public class ServerConfig {
     private static boolean speedBonusEnabled = true;
     private static int matchmakingTimeoutSeconds = 60;
 
+    // SMTP Settings (Kết nối trực tiếp qua SMTP)
     private static String smtpHost = "";
     private static int smtpPort = 587;
+    private static boolean smtpSsl = false;
+    private static boolean smtpStartTls = true;
     private static String smtpUsername = "";
     private static String smtpPassword = "";
+    private static String smtpFrom = "";
+
+    // Giữ tương thích IMAP nếu cần
+    private static String imapHost = "";
+    private static int imapPort = 993;
+    private static boolean imapSsl = true;
+    private static String imapUsername = "";
+    private static String imapPassword = "";
+    private static String imapFolder = "INBOX";
 
     static {
         loadConfig();
@@ -57,8 +69,18 @@ public class ServerConfig {
 
                 smtpHost = prop.getProperty("mail.smtp.host", "");
                 smtpPort = Integer.parseInt(prop.getProperty("mail.smtp.port", "587"));
+                smtpSsl = Boolean.parseBoolean(prop.getProperty("mail.smtp.ssl", "false"));
+                smtpStartTls = Boolean.parseBoolean(prop.getProperty("mail.smtp.starttls", "true"));
                 smtpUsername = prop.getProperty("mail.smtp.username", "");
                 smtpPassword = prop.getProperty("mail.smtp.password", "");
+                smtpFrom = prop.getProperty("mail.smtp.from", "");
+
+                imapHost = prop.getProperty("mail.imap.host", "");
+                imapPort = Integer.parseInt(prop.getProperty("mail.imap.port", "993"));
+                imapSsl = Boolean.parseBoolean(prop.getProperty("mail.imap.ssl", "true"));
+                imapUsername = prop.getProperty("mail.imap.username", "");
+                imapPassword = prop.getProperty("mail.imap.password", "");
+                imapFolder = prop.getProperty("mail.imap.folder", "INBOX");
             }
         } catch (Exception e) {
             System.out.println("[ServerConfig] Could not load application.properties, using defaults.");
@@ -85,6 +107,16 @@ public class ServerConfig {
 
     public static String getSmtpHost() { return smtpHost; }
     public static int getSmtpPort() { return smtpPort; }
+    public static boolean isSmtpSsl() { return smtpSsl; }
+    public static boolean isSmtpStartTls() { return smtpStartTls; }
     public static String getSmtpUsername() { return smtpUsername; }
     public static String getSmtpPassword() { return smtpPassword; }
+    public static String getSmtpFrom() { return smtpFrom; }
+
+    public static String getImapHost() { return imapHost; }
+    public static int getImapPort() { return imapPort; }
+    public static boolean isImapSsl() { return imapSsl; }
+    public static String getImapUsername() { return imapUsername; }
+    public static String getImapPassword() { return imapPassword; }
+    public static String getImapFolder() { return imapFolder; }
 }

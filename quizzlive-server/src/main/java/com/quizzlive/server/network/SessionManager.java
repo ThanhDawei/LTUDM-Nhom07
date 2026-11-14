@@ -14,6 +14,11 @@ public class SessionManager {
     }
 
     public void removeSession(ClientSession session) {
+        if (session != null && session.getUserId() != null) {
+            try {
+                new com.quizzlive.server.dao.UserDAO().updateOnlineStatus(session.getUserId(), false);
+            } catch (Exception ignored) {}
+        }
         sessions.remove(session);
         System.out.println("[SessionManager] Client disconnected. Active: " + sessions.size());
     }

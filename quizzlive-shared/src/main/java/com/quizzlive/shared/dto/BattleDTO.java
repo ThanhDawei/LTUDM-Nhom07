@@ -18,6 +18,8 @@ public class BattleDTO {
         public int timeLimitSeconds; // 10
         public String questionContent;
         public String questionImage;
+        public String topicName;
+        public String difficulty;
         public List<QuestionAnswerOption> options;
     }
 
