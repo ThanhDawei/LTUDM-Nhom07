@@ -134,8 +134,13 @@ public class ClientPacketHandler implements NetworkListener {
             // --- 2. MATCHMAKING & CHALLENGE BATTLE (Yêu cầu 2, 3) ---
             case MATCH_FOUND_NOTIFY: {
                 mainFrame.getWaitingPanel().stopCountdown();
+                MatchmakingDTO.MatchFoundNotify matchNotify = JsonUtil.fromJson(json, MatchmakingDTO.MatchFoundNotify.class);
+                if (matchNotify != null) {
+                    mainFrame.getBattlePanel().initMatch(matchNotify);
+                } else {
+                    mainFrame.getBattlePanel().resetBattleView();
+                }
                 mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
-                JOptionPane.showMessageDialog(mainFrame, "Đã kết nối trận đấu 1v1 thành công! Trận đấu bắt đầu ngay bây giờ.", "Vào Trận!", JOptionPane.INFORMATION_MESSAGE);
                 break;
             }
 
@@ -163,22 +168,28 @@ public class ClientPacketHandler implements NetworkListener {
 
             // --- 4. BATTLE REALTIME 1V1 (Yêu cầu 5, 6, 7, 8) ---
             case BATTLE_START_NOTIFY: {
-                mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
+                if (mainFrame.getBattlePanel().isBattleActive()) {
+                    mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
+                }
                 break;
             }
 
             case BATTLE_QUESTION_NOTIFY: {
                 BattleDTO.BattleQuestionNotify question = JsonUtil.fromJson(json, BattleDTO.BattleQuestionNotify.class);
-                if (question != null) {
+                if (question != null && mainFrame.getBattlePanel().isBattleActive()
+                        && question.matchId == mainFrame.getBattlePanel().getCurrentMatchId()) {
                     mainFrame.showPanel(MainClientFrame.CARD_BATTLE);
                     mainFrame.getBattlePanel().renderNewQuestion(question);
+                } else if (question != null) {
+                    System.out.println("[ClientPacketHandler] Bỏ qua câu hỏi ma từ trận đã kết thúc/hủy: MatchId=" + question.matchId);
                 }
                 break;
             }
 
             case BATTLE_ROUND_RESULT_NOTIFY: {
                 BattleDTO.RoundResultNotify roundResult = JsonUtil.fromJson(json, BattleDTO.RoundResultNotify.class);
-                if (roundResult != null) {
+                if (roundResult != null && mainFrame.getBattlePanel().isBattleActive()
+                        && roundResult.matchId == mainFrame.getBattlePanel().getCurrentMatchId()) {
                     mainFrame.getBattlePanel().renderRoundResult(roundResult);
                 }
                 break;
@@ -186,18 +197,20 @@ public class ClientPacketHandler implements NetworkListener {
 
             case BATTLE_FINAL_RESULT_NOTIFY: {
                 BattleDTO.FinalResultNotify finalResult = JsonUtil.fromJson(json, BattleDTO.FinalResultNotify.class);
-                if (finalResult != null) {
+                if (finalResult != null && mainFrame.getBattlePanel().isBattleActive()
+                        && finalResult.matchId == mainFrame.getBattlePanel().getCurrentMatchId()) {
                     mainFrame.getBattlePanel().renderFinalResult(finalResult);
                 }
                 break;
             }
 
             case BATTLE_OPPONENT_DISCONNECTED: {
+                mainFrame.getBattlePanel().resetBattleView();
+                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
                 com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
                 String msg = (obj != null && obj.has("message")) ? obj.get("message").getAsString()
                         : "Đối thủ đã rời khỏi trận đấu hoặc đầu hàng. Bạn được xử thắng!";
-                JOptionPane.showMessageDialog(mainFrame, msg, "🏆 Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
-                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+                JOptionPane.showMessageDialog(mainFrame, msg, "Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
                 break;
             }
 

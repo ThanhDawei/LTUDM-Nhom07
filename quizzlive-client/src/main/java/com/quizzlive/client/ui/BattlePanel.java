@@ -3,6 +3,7 @@ package com.quizzlive.client.ui;
 import com.quizzlive.client.service.ClientBattleService;
 import com.quizzlive.client.util.BrutalUI;
 import com.quizzlive.shared.dto.BattleDTO;
+import com.quizzlive.shared.dto.MatchmakingDTO;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,6 +24,7 @@ public class BattlePanel extends JPanel {
     private final ClientBattleService battleService = new ClientBattleService();
 
     private long currentMatchId;
+    private boolean isBattleActive = false;
     private int currentQuestionIndex;
     private int timeRemaining = 10;
     private Timer questionTimer;
@@ -219,7 +221,7 @@ public class BattlePanel extends JPanel {
         JPanel statusBox = new JPanel(new GridLayout(2, 1, 0, 4));
         statusBox.setOpaque(false);
 
-        lblStatus = new JLabel("⚡ Hãy chọn 1 đáp án nhanh nhất để nhận thưởng thời gian!");
+        lblStatus = new JLabel("Hãy chọn 1 đáp án nhanh nhất để nhận thưởng thời gian!");
         lblStatus.setFont(BrutalUI.FONT_BODY_BOLD);
         lblStatus.setForeground(BrutalUI.COLOR_BLACK);
 
@@ -231,7 +233,7 @@ public class BattlePanel extends JPanel {
         statusBox.add(lblOpponentStatus);
         bottomPanel.add(statusBox, BorderLayout.CENTER);
 
-        btnSurrender = new BrutalUI.BrutalButton("🏳️ Đầu Hàng", BrutalUI.BrutalButton.Style.DANGER, 12);
+        btnSurrender = new BrutalUI.BrutalButton("Đầu Hàng", BrutalUI.BrutalButton.Style.DANGER, 12);
         btnSurrender.setPreferredSize(new Dimension(130, 42));
         btnSurrender.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
@@ -244,6 +246,7 @@ public class BattlePanel extends JPanel {
             if (confirm == JOptionPane.YES_OPTION) {
                 if (questionTimer != null) questionTimer.stop();
                 battleService.surrender(currentMatchId);
+                resetBattleView();
                 JOptionPane.showMessageDialog(this, "Bạn đã đầu hàng và bị xử thua trận đấu này!", "Đầu Hàng", JOptionPane.INFORMATION_MESSAGE);
                 mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
             }
@@ -257,6 +260,11 @@ public class BattlePanel extends JPanel {
      * Bắt đầu 1 câu hỏi mới nhận từ Server (Yêu cầu 5, 7)
      */
     public void renderNewQuestion(BattleDTO.BattleQuestionNotify question) {
+        if (!isBattleActive || question.matchId != this.currentMatchId) {
+            System.out.println("[BattlePanel] Bỏ qua câu hỏi ma từ trận đã kết thúc hoặc không khớp: " + question.matchId);
+            return;
+        }
+
         this.currentMatchId = question.matchId;
         this.currentQuestionIndex = question.questionIndex;
         this.currentOptions = question.options;
@@ -275,7 +283,7 @@ public class BattlePanel extends JPanel {
         String topicStr = (question.topicName != null && !question.topicName.trim().isEmpty())
                 ? question.topicName : "Đa lĩnh vực";
         String diffStr = formatDifficultyDisplay(question.difficulty);
-        lblTopicBadge.setText("⚡ " + topicStr.toUpperCase() + " · " + diffStr.toUpperCase() + " · THỜI GIAN THỰC (10S/CÂU)");
+        lblTopicBadge.setText(topicStr.toUpperCase() + " · " + diffStr.toUpperCase() + " · THỜI GIAN THỰC (10S/CÂU)");
 
         if (question.questionImage != null && !question.questionImage.isEmpty()) {
             if (com.quizzlive.shared.util.ImageBase64Util.isBase64Image(question.questionImage)) {
@@ -308,7 +316,7 @@ public class BattlePanel extends JPanel {
             btnAnswerD.setAnswerContent(question.options.get(3).content);
         }
 
-        lblStatus.setText("⚡ Hãy chọn 1 đáp án nhanh nhất để nhận tối đa 200 điểm!");
+        lblStatus.setText("Hãy chọn 1 đáp án nhanh nhất để nhận tối đa 200 điểm!");
         lblStatus.setForeground(BrutalUI.COLOR_BLACK);
         lblOpponentStatus.setText("Đối thủ đang suy nghĩ...");
 
@@ -333,7 +341,7 @@ public class BattlePanel extends JPanel {
                 if (!answerSubmitted) {
                     answerSubmitted = true;
                     battleService.submitAnswer(currentMatchId, currentQuestionIndex, null, 10);
-                    lblStatus.setText("⏰ Hết thời gian 10 giây!");
+                    lblStatus.setText("Hết thời gian 10 giây!");
                     lblStatus.setForeground(BrutalUI.COLOR_WRONG_BORDER);
                     disableAnswerButtons();
                 }
@@ -358,7 +366,7 @@ public class BattlePanel extends JPanel {
         // Gửi đáp án lên server
         battleService.submitAnswer(currentMatchId, currentQuestionIndex, ansId, responseTime);
 
-        lblStatus.setText("✓ Đã nộp đáp án (" + responseTime + "s). Đang đợi kết quả từ đối thủ...");
+        lblStatus.setText("Đã nộp đáp án (" + responseTime + "s). Đang đợi kết quả từ đối thủ...");
         lblStatus.setForeground(new Color(146, 64, 14));
         disableAnswerButtons();
     }
@@ -395,7 +403,7 @@ public class BattlePanel extends JPanel {
         // 4. Hiển thị lựa chọn của đối thủ (Yêu cầu 6)
         if (opponent != null) {
             String oppText = opponent.selectedAnswerId != null ?
-                    "Đối thủ chọn: " + getAnswerKey(opponent.selectedAnswerId) + (opponent.isCorrect ? " (Đúng ✅)" : " (Sai ❌)")
+                    "Đối thủ chọn: " + getAnswerKey(opponent.selectedAnswerId) + (opponent.isCorrect ? " (Đúng)" : " (Sai)")
                     : "Đối thủ không kịp trả lời!";
             lblOpponentStatus.setText(oppText);
         }
@@ -426,18 +434,129 @@ public class BattlePanel extends JPanel {
             message = "Trận đấu kết thúc với tỉ số hòa!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
             messageType = JOptionPane.INFORMATION_MESSAGE;
         } else if (result.winnerUserId != null && myUserId != null && result.winnerUserId.equals(myUserId)) {
-            title = "🏆 CHIẾN THẮNG!";
+            title = "CHIẾN THẮNG!";
             message = "Chúc mừng! Bạn đã giành chiến thắng xuất sắc!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
             messageType = JOptionPane.INFORMATION_MESSAGE;
         } else {
-            title = "💔 THẤT BẠI!";
+            title = "THẤT BẠI!";
             message = "Bạn đã thua trận đấu này!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
             messageType = JOptionPane.WARNING_MESSAGE;
         }
 
         JOptionPane.showMessageDialog(this, message, title, messageType);
+        // Dọn dẹp sạch sẽ giao diện trận đấu ngay khi rời phòng đấu
+        resetBattleView();
         // Quay về phòng chờ
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+    }
+
+    /**
+     * Khởi tạo giao diện chuẩn bị cho trận đấu mới (Yêu cầu 2, 5)
+     * Xóa sạch toàn bộ câu hỏi, ảnh, đáp án và điểm số của trận cũ
+     */
+    public void initMatch(MatchmakingDTO.MatchFoundNotify notify) {
+        if (questionTimer != null) questionTimer.stop();
+
+        this.currentMatchId = (notify != null) ? notify.matchId : 0;
+        this.isBattleActive = true;
+        this.currentQuestionIndex = 0;
+        this.currentOptions = null;
+        this.answerSubmitted = false;
+        this.selectedAnswerId = null;
+
+        // 1. Đặt điểm số 2 bên về 0
+        lblPlayer1Score.setText("0 điểm");
+        lblPlayer2Score.setText("0 điểm");
+
+        // 2. Gán tên người chơi và đối thủ mới
+        String myName = mainFrame.getCurrentUsername();
+        lblPlayer1Name.setText((myName != null && !myName.trim().isEmpty() ? myName : "Bạn") + " (Bạn)");
+
+        String oppName = "Đối thủ";
+        if (notify != null) {
+            if (notify.opponentFullName != null && !notify.opponentFullName.trim().isEmpty()) {
+                oppName = notify.opponentFullName;
+            } else if (notify.opponentUsername != null && !notify.opponentUsername.trim().isEmpty()) {
+                oppName = notify.opponentUsername;
+            }
+        }
+        lblPlayer2Name.setText(oppName + " (Đối thủ)");
+
+        // 3. Reset Round badge & Topic badge
+        lblRoundBadge.setText("CHUẨN BỊ VÀO TRẬN");
+        if (notify != null) {
+            String topicStr = (notify.topicName != null && !notify.topicName.trim().isEmpty()) ? notify.topicName : "Đa Lĩnh Vực";
+            String diffStr = formatDifficultyDisplay(notify.difficulty);
+            lblTopicBadge.setText(topicStr.toUpperCase() + " · " + diffStr.toUpperCase() + " · THỜI GIAN THỰC (10S/CÂU)");
+        } else {
+            lblTopicBadge.setText("ĐA LĨNH VỰC · TRUNG BÌNH · THỜI GIAN THỰC (10S/CÂU)");
+        }
+
+        // 4. Xóa sạch câu hỏi trận cũ và hiển thị thông báo chờ câu 1
+        txtQuestion.setText("Đã kết nối với đối thủ [" + oppName + "]!\nTrận đấu đang chuẩn bị bắt đầu. Câu hỏi số 1 sẽ xuất hiện trong giây lát...");
+        lblQuestionImage.setIcon(null);
+        lblQuestionImage.setText("");
+        lblQuestionImage.setVisible(false);
+
+        // 5. Reset và vô hiệu hóa 4 nút đáp án
+        resetAnswerButtonStyles();
+        btnAnswerA.setAnswerContent("...");
+        btnAnswerB.setAnswerContent("...");
+        btnAnswerC.setAnswerContent("...");
+        btnAnswerD.setAnswerContent("...");
+        disableAnswerButtons();
+
+        // 6. Reset thanh thời gian và số giây
+        timerProgressBar.setMaximum(10);
+        timerProgressBar.setValue(10);
+        lblTimerText.setText("10s");
+
+        // 7. Reset trạng thái
+        lblStatus.setText("Hãy sẵn sàng phản xạ nhanh để nhận tối đa điểm số!");
+        lblStatus.setForeground(BrutalUI.COLOR_BLACK);
+        lblOpponentStatus.setText("Đối thủ đã kết nối.");
+    }
+
+    /**
+     * Dọn dẹp sạch sẽ toàn bộ màn hình khi rời phòng đấu hoặc kết thúc trận
+     */
+    public void resetBattleView() {
+        if (questionTimer != null) questionTimer.stop();
+
+        this.currentMatchId = 0;
+        this.isBattleActive = false;
+        this.currentQuestionIndex = 0;
+        this.currentOptions = null;
+        this.answerSubmitted = false;
+        this.selectedAnswerId = null;
+
+        lblPlayer1Score.setText("0 điểm");
+        lblPlayer2Score.setText("0 điểm");
+        lblPlayer1Name.setText("Bạn");
+        lblPlayer2Name.setText("Đối thủ");
+
+        lblRoundBadge.setText("CÂU HỎI 1 / 5");
+        lblTopicBadge.setText("Chủ đề: Đang nạp · Độ khó: Trung Bình");
+
+        txtQuestion.setText("Đang chờ trận đấu tiếp theo...");
+        lblQuestionImage.setIcon(null);
+        lblQuestionImage.setText("");
+        lblQuestionImage.setVisible(false);
+
+        resetAnswerButtonStyles();
+        btnAnswerA.setAnswerContent("Đang tải...");
+        btnAnswerB.setAnswerContent("Đang tải...");
+        btnAnswerC.setAnswerContent("Đang tải...");
+        btnAnswerD.setAnswerContent("Đang tải...");
+        disableAnswerButtons();
+
+        timerProgressBar.setMaximum(10);
+        timerProgressBar.setValue(10);
+        lblTimerText.setText("10s");
+
+        lblStatus.setText("Sẵn sàng thi đấu!");
+        lblStatus.setForeground(BrutalUI.COLOR_BLACK);
+        lblOpponentStatus.setText("");
     }
 
     private void resetAnswerButtonStyles() {
@@ -503,5 +622,13 @@ public class BattlePanel extends JPanel {
         if (u.contains("HARD") || u.contains("KHÓ")) return "Khó (HARD)";
         if (u.contains("MEDIUM") || u.contains("TRUNG BÌNH")) return "Trung bình (MEDIUM)";
         return diff;
+    }
+
+    public boolean isBattleActive() {
+        return isBattleActive;
+    }
+
+    public long getCurrentMatchId() {
+        return currentMatchId;
     }
 }
