@@ -150,39 +150,49 @@ public class QuestionDAO {
      * Trích xuất câu hỏi từ bảng CAU_HOI trong CSDL, loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ.
      */
     public Question getRandomIQQuestion(Long userId) {
-        return getRandomIQQuestion(userId, null, null);
+        return getRandomIQQuestion(userId, null, null, null);
     }
 
     public Question getRandomIQQuestion() {
-        return getRandomIQQuestion(null, null, null);
+        return getRandomIQQuestion(null, null, null, null);
+    }
+
+    public Question getRandomIQQuestion(Long userId, Integer topicId, String difficulty) {
+        return getRandomIQQuestion(userId, topicId, difficulty, null);
     }
 
     /**
      * Lấy ngẫu nhiên câu hỏi trực tiếp từ CSDL (bảng CAU_HOI) cho Task 11.
      * Trích xuất câu hỏi từ bảng CAU_HOI trong CSDL, bám sát theo Chủ đề (topicId) và Độ khó (difficulty)
      * mà người dùng đã lựa chọn khi ghép cặp.
-     * Loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ (DaTangIQ = TRUE).
+     * Loại trừ câu hỏi người dùng đã trả lời tăng điểm IQ (DaTangIQ = TRUE) và câu hỏi vừa làm (excludeQuestionId).
      */
-    public Question getRandomIQQuestion(Long userId, Integer topicId, String difficulty) {
+    public Question getRandomIQQuestion(Long userId, Integer topicId, String difficulty, Long excludeQuestionId) {
         ensureIQTableExists();
         List<Question> list;
 
-        // 1. Thử lần 1: Lấy đúng chủ đề (topicId) và độ khó (difficulty), loại trừ các câu đã trả lời tăng IQ
-        list = fetchCandidateIQQuestions(userId, topicId, difficulty, true);
+        // 1. Thử lần 1: Lấy đúng chủ đề (topicId) và độ khó (difficulty), loại trừ câu đã tăng IQ và câu vừa trả lời
+        list = fetchCandidateIQQuestions(userId, topicId, difficulty, true, excludeQuestionId);
 
-        // 2. Thử lần 2: Nếu chưa có câu hỏi và người dùng có chọn độ khó cụ thể -> nới lỏng độ khó (vẫn giữ đúng chủ đề người chơi chọn)
+        // 2. Thử lần 2: Nếu chưa có câu hỏi -> nới lỏng độ khó (vẫn giữ đúng chủ đề người chơi chọn, loại trừ câu vừa làm)
         if (list.isEmpty() && difficulty != null && !difficulty.equalsIgnoreCase("ALL")) {
-            list = fetchCandidateIQQuestions(userId, topicId, null, true);
+            list = fetchCandidateIQQuestions(userId, topicId, null, true, excludeQuestionId);
         }
 
-        // 3. Thử lần 3: Nếu người chơi đã trả lời tăng IQ hết tất cả câu hỏi của chủ đề này -> lấy lại câu hỏi của chủ đề này để luyện tập
+        // 3. Thử lần 3: Nếu người chơi đã tăng IQ hết tất cả câu của chủ đề này -> lấy lại câu hỏi của chủ đề này để luyện tập
         if (list.isEmpty() && topicId != null && topicId > 0) {
-            list = fetchCandidateIQQuestions(userId, topicId, null, false);
+            list = fetchCandidateIQQuestions(userId, topicId, null, false, excludeQuestionId);
+            if (list.isEmpty()) {
+                list = fetchCandidateIQQuestions(userId, topicId, null, false, null);
+            }
         }
 
         // 4. Thử lần 4 (dự phòng tối hậu nếu CSDL chưa có câu hỏi nào thuộc chủ đề này): lấy từ các chủ đề khác
         if (list.isEmpty()) {
-            list = fetchCandidateIQQuestions(userId, null, null, false);
+            list = fetchCandidateIQQuestions(userId, null, null, false, excludeQuestionId);
+            if (list.isEmpty()) {
+                list = fetchCandidateIQQuestions(userId, null, null, false, null);
+            }
         }
 
         if (list.isEmpty()) {
@@ -217,7 +227,7 @@ public class QuestionDAO {
         return selected;
     }
 
-    private List<Question> fetchCandidateIQQuestions(Long userId, Integer topicId, String difficulty, boolean excludePassed) {
+    private List<Question> fetchCandidateIQQuestions(Long userId, Integer topicId, String difficulty, boolean excludePassed, Long excludeQuestionId) {
         List<Question> candidateList = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT c.*, d.TenChuDe FROM CAU_HOI c " +
                 "LEFT JOIN CHU_DE d ON c.MaChuDe = d.MaChuDe " +
@@ -235,6 +245,10 @@ public class QuestionDAO {
         if (excludePassed && userId != null && userId > 0) {
             sql.append("AND c.MaCauHoi NOT IN (SELECT MaCauHoi FROM LICHSU_TEST_IQ WHERE MaNguoiDung = ? AND DaTangIQ = TRUE) ");
             params.add(userId);
+        }
+        if (excludeQuestionId != null && excludeQuestionId > 0) {
+            sql.append("AND c.MaCauHoi <> ? ");
+            params.add(excludeQuestionId);
         }
 
         try (Connection conn = DatabaseManager.getConnection();

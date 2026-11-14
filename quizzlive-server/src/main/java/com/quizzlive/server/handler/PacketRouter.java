@@ -121,16 +121,18 @@ public class PacketRouter {
             case IQ_TEST_START_REQ: {
                 Integer topicId = null;
                 String difficulty = null;
+                Long excludeQuestionId = null;
                 try {
                     if (json != null && !json.trim().isEmpty() && !json.equals("{}")) {
                         IQTestDTO.IQStartRequest req = JsonUtil.fromJson(json, IQTestDTO.IQStartRequest.class);
                         if (req != null) {
                             topicId = req.topicId;
                             difficulty = req.difficulty;
+                            excludeQuestionId = req.excludeQuestionId;
                         }
                     }
                 } catch (Exception ignored) {}
-                iqTestService.sendRandomIQQuestion(session, topicId, difficulty);
+                iqTestService.sendRandomIQQuestion(session, topicId, difficulty, excludeQuestionId);
                 break;
             }
             case IQ_SUBMIT_ANSWER_REQ: {

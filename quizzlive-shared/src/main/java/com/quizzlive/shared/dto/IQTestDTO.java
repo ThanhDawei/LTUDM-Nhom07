@@ -7,6 +7,7 @@ public class IQTestDTO {
     public static class IQStartRequest implements Serializable {
         public Integer topicId;
         public String difficulty;
+        public Long excludeQuestionId;
     }
 
     public static class IQQuestionNotify implements Serializable {

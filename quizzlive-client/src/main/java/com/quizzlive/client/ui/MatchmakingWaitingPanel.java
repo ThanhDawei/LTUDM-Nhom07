@@ -181,7 +181,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         btnNextIQ.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNextIQ.addActionListener(e -> {
             lblIqResult.setText("");
-            iqService.requestIQQuestion(currentTopicId, currentDifficulty);
+            iqService.requestIQQuestion(currentTopicId, currentDifficulty, currentIqQuestionId);
         });
 
         btnSubmitIQ = new JButton("Nộp Đáp Án IQ");
@@ -386,9 +386,23 @@ public class MatchmakingWaitingPanel extends JPanel {
             rbOptD.setEnabled(false);
         } else {
             lblIqResult.setForeground(new Color(231, 76, 60));
-            lblIqResult.setText("❌ " + result.message + " (Điểm IQ: " + result.currentIqScore + ")");
-            btnSubmitIQ.setEnabled(true);
-            btnSubmitIQ.setText("Chọn lại & Nộp lại");
+            lblIqResult.setText("❌ " + result.message + " Đang chuyển sang câu hỏi mới...");
+            btnSubmitIQ.setEnabled(false);
+            btnSubmitIQ.setText("Chưa chính xác");
+            // Khóa đáp án, không cho phép trả lời lại câu hỏi này
+            rbOptA.setEnabled(false);
+            rbOptB.setEnabled(false);
+            rbOptC.setEnabled(false);
+            rbOptD.setEnabled(false);
+
+            // Lập tức đổi sang câu hỏi mới sau 700ms (đủ để người chơi nhìn rõ thông báo)
+            Timer autoNextTimer = new Timer(700, e -> {
+                if (queueTimer != null && queueTimer.isRunning()) {
+                    iqService.requestIQQuestion(currentTopicId, currentDifficulty, currentIqQuestionId);
+                }
+            });
+            autoNextTimer.setRepeats(false);
+            autoNextTimer.start();
         }
 
         // Tự động đồng bộ điểm IQ hiển thị tại Sảnh (Lobby)

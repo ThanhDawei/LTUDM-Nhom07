@@ -28,14 +28,18 @@ public class IQTestService {
      * Yêu cầu 11: Câu hỏi nào trả lời tăng IQ rồi thì không làm câu hỏi đó nữa.
      */
     public void sendRandomIQQuestion(ClientSession session) {
-        sendRandomIQQuestion(session, null, null);
+        sendRandomIQQuestion(session, null, null, null);
     }
 
     public void sendRandomIQQuestion(ClientSession session, Integer topicId, String difficulty) {
+        sendRandomIQQuestion(session, topicId, difficulty, null);
+    }
+
+    public void sendRandomIQQuestion(ClientSession session, Integer topicId, String difficulty, Long excludeQuestionId) {
         if (session == null) return;
 
         Long userId = session.getUserId();
-        Question q = questionDAO.getRandomIQQuestion(userId, topicId, difficulty);
+        Question q = questionDAO.getRandomIQQuestion(userId, topicId, difficulty, excludeQuestionId);
 
         if (q == null) {
             // Trường hợp người dùng đã giải đúng tất cả câu hỏi IQ trong hệ thống
