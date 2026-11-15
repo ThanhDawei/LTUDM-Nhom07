@@ -30,6 +30,8 @@ public class SocketServer {
             new UserDAO().resetAllOnlineStatus();
             // Dọn dẹp tài khoản test rác để chỉ hiển thị tài khoản mẫu và tài khoản thật do người dùng đăng ký
             new UserDAO().cleanupTestAccounts();
+            // Khởi tạo cặp khóa RSA-2048 phục vụ mã hóa lai (Hybrid Encryption)
+            com.quizzlive.server.security.ServerSecurityManager.getInstance();
 
             ServerSocketFactory factory;
             if (ServerConfig.isSslEnabled()) {

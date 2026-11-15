@@ -104,12 +104,17 @@ public class ServerMainFrame extends JFrame {
         btnDeleteUser.setForeground(new Color(192, 57, 43));
         btnDeleteUser.addActionListener(e -> deleteSelectedUser());
 
+        JLabel lblCryptoStatus = new JLabel("🔒 Mã hóa lai: RSA-2048 + AES-256 GCM");
+        lblCryptoStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblCryptoStatus.setForeground(new Color(41, 128, 185));
+
         topBar.add(lblOnlineUsers);
         topBar.add(lblTotalUsers);
         topBar.add(btnRefreshUsers);
         topBar.add(btnCheckOtp);
         topBar.add(btnBlock);
         topBar.add(btnDeleteUser);
+        topBar.add(lblCryptoStatus);
 
         panel.add(topBar, BorderLayout.NORTH);
 

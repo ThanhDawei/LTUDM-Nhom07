@@ -105,6 +105,12 @@ public class LoginPanel extends JPanel {
         btnGoRegister.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_REGISTER));
         card.add(btnGoRegister, gbc);
 
+        gbc.gridy++;
+        JLabel lblSecurity = new JLabel("🔒 Kênh truyền bảo vệ bởi Mã hóa lai RSA-2048 + AES-256 GCM", SwingConstants.CENTER);
+        lblSecurity.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblSecurity.setForeground(new Color(46, 125, 50));
+        card.add(lblSecurity, gbc);
+
         add(card);
     }
 

@@ -5,6 +5,12 @@ package com.quizzlive.shared.protocol;
  * Specially designed for Nhóm 07 - Đề tài 09: Tranh tài kiến thức (16 yêu cầu)
  */
 public enum OpCode {
+    // --- 0. BẢO MẬT & MÃ HÓA LAI (HYBRID ENCRYPTION: RSA-2048 + AES-256) ---
+    HANDSHAKE_INIT(1),           // Server -> Client: Gửi RSA Public Key
+    HANDSHAKE_KEY_EXCHANGE(2),   // Client -> Server: Gửi AES Session Key (được mã hóa bằng RSA)
+    HANDSHAKE_SUCCESS(3),        // Server -> Client: Xác nhận bắt tay thành công (mã hóa bằng AES)
+    ENCRYPTED_PACKET(4),         // Gói tin bọc toàn bộ dữ liệu đã được mã hóa bằng AES
+
     // --- 1. AUTHENTICATION & PROFILE (Yêu cầu 1) ---
     REGISTER_REQ(101),
     REGISTER_RESP(102),
