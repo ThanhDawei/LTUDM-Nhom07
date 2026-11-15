@@ -3,12 +3,14 @@ package com.quizzlive.client.ui;
 import com.quizzlive.client.network.SocketClient;
 import com.quizzlive.client.service.ClientAuthService;
 import com.quizzlive.client.util.AvatarUtil;
+import com.quizzlive.client.util.BrutalUI;
 
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * Giao diện Đăng ký tài khoản và Xác thực OTP
+ * Giao diện Đăng ký tài khoản và Xác thực OTP - Chuẩn phong cách NEO-BRUTALIST
+ * Thiết kế Card trắng viền đen 2px, bóng cứng 5px, tương phản cao, badge nổi bật
  * Phụ trách Yêu cầu 1: "Đăng ký, đăng nhập, cập nhật thông tin như đề 01, có xác thực email bằng OTP"
  */
 public class RegisterPanel extends JPanel {
@@ -22,10 +24,10 @@ public class RegisterPanel extends JPanel {
     private String selectedAvatar = "avatar1.png";
     private JLabel lblRegAvatarPreview;
     private JLabel lblAvatarFileName;
-    private JButton btnBrowseAvatar;
+    private BrutalUI.BrutalButton btnBrowseAvatar;
     private JTextField txtBio;
-    private JButton btnRegister;
-    private JButton btnBackToLogin;
+    private BrutalUI.BrutalButton btnRegister;
+    private BrutalUI.BrutalButton btnBackToLogin;
     private JLabel lblStatus;
 
     private String pendingEmail;
@@ -37,74 +39,119 @@ public class RegisterPanel extends JPanel {
 
     private void initComponents() {
         setLayout(new GridBagLayout());
-        setBackground(new Color(245, 247, 250));
+        setBackground(BrutalUI.COLOR_BG);
 
-        JPanel card = new JPanel(new GridBagLayout());
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(25, 35, 25, 35)
-        ));
+        // Card chính Neo-Brutalist
+        BrutalUI.CardPanel card = new BrutalUI.CardPanel(16, 5);
+        card.setLayout(new GridBagLayout());
+        card.setBorder(BorderFactory.createEmptyBorder(22, 32, 22, 32));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(5, 6, 5, 6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
 
-        JLabel lblTitle = new JLabel("ĐĂNG KÝ TÀI KHOẢN", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(new Color(39, 174, 96));
+        // 1. Badge Neo-Brutalist
+        JPanel badgeRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        badgeRow.setOpaque(false);
+        JLabel badge = BrutalUI.createBadge("ĐĂNG KÝ THÀNH VIÊN", new Color(220, 252, 231), new Color(21, 128, 61));
+        badgeRow.add(badge);
+        card.add(badgeRow, gbc);
+
+        // 2. Tiêu đề
+        gbc.gridy++;
+        gbc.insets = new Insets(8, 6, 2, 6);
+        JLabel lblTitle = new JLabel("TẠO TÀI KHOẢN MỚI", SwingConstants.CENTER);
+        lblTitle.setFont(BrutalUI.FONT_TITLE_XL);
+        lblTitle.setForeground(BrutalUI.COLOR_BLACK);
         card.add(lblTitle, gbc);
 
+        // 3. Phụ đề
         gbc.gridy++;
-        JLabel lblSubtitle = new JLabel("Nhập email chính xác để nhận mã xác thực OTP (10 phút)", SwingConstants.CENTER);
-        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblSubtitle.setForeground(Color.GRAY);
+        gbc.insets = new Insets(0, 6, 12, 6);
+        JLabel lblSubtitle = new JLabel("Nhập email chính xác để nhận mã xác thực OTP (thời hạn 10 phút)", SwingConstants.CENTER);
+        lblSubtitle.setFont(BrutalUI.FONT_SMALL);
+        lblSubtitle.setForeground(BrutalUI.COLOR_MUTED);
         card.add(lblSubtitle, gbc);
 
+        // 4. Form fields
         gbc.gridwidth = 1;
+        gbc.insets = new Insets(4, 6, 4, 6);
+
+        // Tên đăng nhập
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Tên đăng nhập:"), gbc);
+        JLabel lblUser = new JLabel("Tên đăng nhập:");
+        lblUser.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblUser.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblUser, gbc);
+
         gbc.gridx = 1;
-        txtUsername = new JTextField(18);
+        txtUsername = createStyledTextField(18);
         card.add(txtUsername, gbc);
 
+        // Mật khẩu
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Mật khẩu:"), gbc);
+        JLabel lblPass = new JLabel("Mật khẩu:");
+        lblPass.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblPass.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblPass, gbc);
+
         gbc.gridx = 1;
         txtPassword = new JPasswordField(18);
+        txtPassword.setFont(BrutalUI.FONT_BODY);
+        txtPassword.setPreferredSize(new Dimension(240, 36));
+        txtPassword.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
+                BorderFactory.createEmptyBorder(4, 10, 4, 10)
+        ));
+        txtPassword.addActionListener(e -> handleRegister());
         card.add(txtPassword, gbc);
 
+        // Email
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Địa chỉ Email:"), gbc);
+        JLabel lblEmail = new JLabel("Địa chỉ Email:");
+        lblEmail.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblEmail.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblEmail, gbc);
+
         gbc.gridx = 1;
-        txtEmail = new JTextField(18);
+        txtEmail = createStyledTextField(18);
         card.add(txtEmail, gbc);
 
+        // Họ và tên
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Họ và tên:"), gbc);
+        JLabel lblFullName = new JLabel("Họ và tên:");
+        lblFullName.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblFullName.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblFullName, gbc);
+
         gbc.gridx = 1;
-        txtFullName = new JTextField(18);
+        txtFullName = createStyledTextField(18);
         card.add(txtFullName, gbc);
 
+        // Ảnh đại diện
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Ảnh đại diện:"), gbc);
+        JLabel lblAvatarTitle = new JLabel("Ảnh đại diện:");
+        lblAvatarTitle.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblAvatarTitle.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblAvatarTitle, gbc);
+
         gbc.gridx = 1;
-        btnBrowseAvatar = new JButton("📁 Chọn ảnh...");
-        btnBrowseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnBrowseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnBrowseAvatar = new BrutalUI.BrutalButton("Chọn ảnh...", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnBrowseAvatar.setPreferredSize(new Dimension(110, 32));
+        btnBrowseAvatar.setFont(BrutalUI.FONT_SMALL_BOLD);
 
         lblRegAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(selectedAvatar, 32));
         lblAvatarFileName = new JLabel("Mặc định (avatar1.png)");
-        lblAvatarFileName.setFont(new Font("Segoe UI", Font.ITALIC, 11));
-        lblAvatarFileName.setForeground(Color.DARK_GRAY);
+        lblAvatarFileName.setFont(BrutalUI.FONT_SMALL);
+        lblAvatarFileName.setForeground(BrutalUI.COLOR_MUTED);
 
         btnBrowseAvatar.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -127,42 +174,60 @@ public class RegisterPanel extends JPanel {
         regAvatarRow.add(lblAvatarFileName);
         card.add(regAvatarRow, gbc);
 
+        // Giới thiệu
         gbc.gridy++;
         gbc.gridx = 0;
-        card.add(new JLabel("Giới thiệu:"), gbc);
+        JLabel lblBio = new JLabel("Giới thiệu:");
+        lblBio.setFont(BrutalUI.FONT_BODY_BOLD);
+        lblBio.setForeground(BrutalUI.COLOR_BLACK);
+        card.add(lblBio, gbc);
+
         gbc.gridx = 1;
-        txtBio = new JTextField("Đam mê kiến thức và trắc nghiệm", 18);
+        txtBio = createStyledTextField(18);
+        txtBio.setText("Đam mê kiến thức và trắc nghiệm");
         card.add(txtBio, gbc);
 
+        // Status Label
         gbc.gridy++;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
+        gbc.insets = new Insets(4, 6, 6, 6);
         lblStatus = new JLabel(" ", SwingConstants.CENTER);
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblStatus.setForeground(Color.RED);
+        lblStatus.setFont(BrutalUI.FONT_SMALL_BOLD);
+        lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
         card.add(lblStatus, gbc);
 
+        // Register Button
         gbc.gridy++;
-        btnRegister = new JButton("Đăng Ký & Nhận OTP");
-        btnRegister.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnRegister.setBackground(new Color(39, 174, 96));
-        btnRegister.setForeground(Color.WHITE);
-        btnRegister.setFocusPainted(false);
-        btnRegister.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        gbc.insets = new Insets(4, 6, 6, 6);
+        btnRegister = new BrutalUI.BrutalButton("ĐĂNG KÝ & NHẬN OTP", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnRegister.setPreferredSize(new Dimension(380, 42));
+        btnRegister.setFont(BrutalUI.FONT_BODY_BOLD);
         btnRegister.addActionListener(e -> handleRegister());
         card.add(btnRegister, gbc);
 
+        // Back to Login Button
         gbc.gridy++;
-        btnBackToLogin = new JButton("Đã có tài khoản? Đăng nhập");
-        btnBackToLogin.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnBackToLogin.setBorderPainted(false);
-        btnBackToLogin.setContentAreaFilled(false);
-        btnBackToLogin.setForeground(new Color(41, 128, 185));
-        btnBackToLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        gbc.insets = new Insets(2, 6, 6, 6);
+        btnBackToLogin = new BrutalUI.BrutalButton("← Đã có tài khoản? Quay lại đăng nhập", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnBackToLogin.setPreferredSize(new Dimension(380, 36));
+        btnBackToLogin.setFont(BrutalUI.FONT_SMALL_BOLD);
         btnBackToLogin.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LOGIN));
         card.add(btnBackToLogin, gbc);
 
         add(card);
+    }
+
+    private JTextField createStyledTextField(int columns) {
+        JTextField tf = new JTextField(columns);
+        tf.setFont(BrutalUI.FONT_BODY);
+        tf.setPreferredSize(new Dimension(240, 36));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
+                BorderFactory.createEmptyBorder(4, 10, 4, 10)
+        ));
+        tf.addActionListener(e -> handleRegister());
+        return tf;
     }
 
     private void handleRegister() {
@@ -174,30 +239,30 @@ public class RegisterPanel extends JPanel {
         String bio = txtBio.getText().trim();
 
         if (username.isEmpty() || password.isEmpty() || email.isEmpty() || fullName.isEmpty()) {
-            lblStatus.setForeground(Color.RED);
+            lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
             lblStatus.setText("Vui lòng điền đầy đủ tất cả các trường!");
             return;
         }
 
         if (username.length() < 3) {
-            lblStatus.setForeground(Color.RED);
+            lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
             lblStatus.setText("Tên đăng nhập phải có tối thiểu 3 ký tự!");
             return;
         }
 
         if (password.length() < 6) {
-            lblStatus.setForeground(Color.RED);
+            lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
             lblStatus.setText("Mật khẩu phải có tối thiểu 6 ký tự!");
             return;
         }
 
         if (!email.contains("@") || !email.contains(".")) {
-            lblStatus.setForeground(Color.RED);
+            lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
             lblStatus.setText("Định dạng email không hợp lệ!");
             return;
         }
 
-        lblStatus.setForeground(new Color(41, 128, 185));
+        lblStatus.setForeground(BrutalUI.COLOR_INFO_TEXT);
         lblStatus.setText("Đang gửi yêu cầu đăng ký...");
         btnRegister.setEnabled(false);
         this.pendingEmail = email;
@@ -210,7 +275,7 @@ public class RegisterPanel extends JPanel {
                 authService.sendRegister(username, password, email, fullName, avatar, bio);
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblStatus.setForeground(Color.RED);
+                    lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
                     lblStatus.setText("Không thể kết nối đến máy chủ: " + e.getMessage());
                     btnRegister.setEnabled(true);
                 });
@@ -227,7 +292,7 @@ public class RegisterPanel extends JPanel {
             lblStatus.setText("");
             promptOtpDialog();
         } else {
-            lblStatus.setForeground(Color.RED);
+            lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
             lblStatus.setText(message != null ? message : "Đăng ký thất bại!");
         }
     }
@@ -249,7 +314,7 @@ public class RegisterPanel extends JPanel {
         );
 
         if (otp != null && !otp.trim().isEmpty()) {
-            lblStatus.setForeground(new Color(41, 128, 185));
+            lblStatus.setForeground(BrutalUI.COLOR_INFO_TEXT);
             lblStatus.setText("Đang xác thực mã OTP từ CSDL...");
 
             new Thread(() -> {
@@ -260,7 +325,7 @@ public class RegisterPanel extends JPanel {
                     authService.sendVerifyOtp(pendingEmail, otp.trim());
                 } catch (Exception e) {
                     SwingUtilities.invokeLater(() -> {
-                        lblStatus.setForeground(Color.RED);
+                        lblStatus.setForeground(BrutalUI.COLOR_WRONG_TEXT);
                         lblStatus.setText("Lỗi mạng khi gửi OTP: " + e.getMessage());
                     });
                 }
