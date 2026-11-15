@@ -211,27 +211,27 @@ public class AvatarUtil {
             case "avatar2.png":
                 c1 = new Color(142, 36, 170); // Tím
                 c2 = new Color(233, 30, 99);  // Hồng
-                symbol = "👑";
+                symbol = "P2";
                 break;
             case "avatar3.png":
                 c1 = new Color(239, 108, 0);  // Cam đậm
                 c2 = new Color(255, 179, 0);  // Vàng
-                symbol = "⚡";
+                symbol = "P3";
                 break;
             case "avatar4.png":
                 c1 = new Color(46, 125, 50);  // Xanh lá đậm
                 c2 = new Color(0, 150, 136);  // Ngọc bích
-                symbol = "⭐";
+                symbol = "P4";
                 break;
             case "avatar5.png":
                 c1 = new Color(198, 40, 40);  // Đỏ ruby
                 c2 = new Color(255, 112, 67); // Cam đỏ
-                symbol = "🏆";
+                symbol = "P5";
                 break;
             default: // avatar1.png
                 c1 = new Color(21, 101, 192); // Xanh dương
                 c2 = new Color(0, 180, 216);  // Cyan
-                symbol = "🎓";
+                symbol = "P1";
                 break;
         }
 
@@ -246,18 +246,9 @@ public class AvatarUtil {
         g2.drawOval(2, 2, size - 5, size - 5);
 
         // Vẽ biểu tượng icon trung tâm
-        int fontSize = (int) (size * 0.48);
-        Font font = new Font("Segoe UI Emoji", Font.PLAIN, fontSize);
+        Font font = new Font("Segoe UI", Font.BOLD, (int) (size * 0.42));
         g2.setFont(font);
         FontMetrics fm = g2.getFontMetrics();
-
-        // Nếu font không hỗ trợ emoji thì vẽ chữ A1-A5
-        if (font.canDisplayUpTo(symbol) != -1) {
-            font = new Font("Segoe UI", Font.BOLD, (int) (size * 0.42));
-            g2.setFont(font);
-            fm = g2.getFontMetrics();
-            symbol = name.replace("avatar", "P").replace(".png", "");
-        }
 
         int x = (size - fm.stringWidth(symbol)) / 2;
         int y = ((size - fm.getHeight()) / 2) + fm.getAscent();

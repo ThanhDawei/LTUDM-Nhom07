@@ -100,7 +100,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         progressBar.setMaximumSize(new Dimension(260, 16));
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        lblQueueCriteria = new JLabel("🎯 Mục tiêu: Tất cả chủ đề   |   ⚡ Mọi cấp độ", SwingConstants.CENTER);
+        lblQueueCriteria = new JLabel("Mục tiêu: Tất cả chủ đề   |   Mọi cấp độ", SwingConstants.CENTER);
         lblQueueCriteria.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblQueueCriteria.setForeground(BrutalUI.COLOR_MUTED);
         lblQueueCriteria.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -121,7 +121,7 @@ public class MatchmakingWaitingPanel extends JPanel {
 
         // Nút Hủy Tìm Kiếm (Neo-Brutalist Danger Button)
         btnCancelQueue = new BrutalUI.BrutalButton(
-                "✖ HỦY TÌM KIẾM & VỀ SẢNH",
+                "HỦY TÌM KIẾM & VỀ SẢNH",
                 BrutalUI.BrutalButton.Style.DANGER
         );
         btnCancelQueue.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -144,7 +144,7 @@ public class MatchmakingWaitingPanel extends JPanel {
 
         JPanel iqHeaderLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         iqHeaderLeft.setOpaque(false);
-        JLabel lblIqBadge = BrutalUI.createBadge("🧠 BÀI TEST IQ", new Color(254, 240, 138), BrutalUI.COLOR_BLACK);
+        JLabel lblIqBadge = BrutalUI.createBadge("BÀI TEST IQ", new Color(254, 240, 138), BrutalUI.COLOR_BLACK);
         lblIqTitle = new JLabel("Bài Test IQ Trong Ngày (5 câu/ngày)");
         lblIqTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblIqTitle.setForeground(BrutalUI.COLOR_BLACK);
@@ -234,7 +234,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         JPanel iqFooter = new JPanel(new BorderLayout(12, 0));
         iqFooter.setOpaque(false);
 
-        lblIqResult = new JLabel("ℹ Điểm IQ được lưu vào hồ sơ cá nhân và không ảnh hưởng đến điểm thi đấu.");
+        lblIqResult = new JLabel("Lưu ý: Điểm IQ được lưu vào hồ sơ cá nhân và không ảnh hưởng đến điểm thi đấu.");
         lblIqResult.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblIqResult.setForeground(new Color(113, 113, 122));
         iqFooter.add(lblIqResult, BorderLayout.CENTER);
@@ -332,7 +332,7 @@ public class MatchmakingWaitingPanel extends JPanel {
 
         String t = (topicName != null && !topicName.trim().isEmpty()) ? topicName : "Tất cả chủ đề";
         String d = (diffName != null && !diffName.trim().isEmpty()) ? diffName : "Mọi cấp độ";
-        lblQueueCriteria.setText("🎯 Mục tiêu: " + t + "   |   ⚡ Độ khó: " + d);
+        lblQueueCriteria.setText("Mục tiêu: " + t + "   |   Độ khó: " + d);
 
         if (queueTimer != null && queueTimer.isRunning()) {
             queueTimer.stop();
@@ -435,7 +435,7 @@ public class MatchmakingWaitingPanel extends JPanel {
 
             if (question.isDailyCompleted || question.questionId == -1L) {
                 // Đã hoàn thành 5/5 câu hỏi IQ trong ngày hôm nay
-                if (lblIqTitle != null) lblIqTitle.setText("🧠 BÀI TEST IQ TRONG NGÀY (5 CÂU/NGÀY)");
+                if (lblIqTitle != null) lblIqTitle.setText("BÀI TEST IQ TRONG NGÀY (5 CÂU/NGÀY)");
                 if (lblIqMeta != null) {
                     lblIqMeta.setText("Trạng thái: " + (question.dailyMessage != null ? question.dailyMessage : "Đã hoàn thành 5/5 câu hỏi hôm nay"));
                 }
@@ -487,12 +487,12 @@ public class MatchmakingWaitingPanel extends JPanel {
             String topicStr = question.topicName != null ? question.topicName : "Tư duy IQ & Logic";
             String diffStr = question.difficulty != null ? question.difficulty : "MEDIUM";
             if (lblIqMeta != null) {
-                lblIqMeta.setText("📌 Câu " + idx + "/" + max + " trong ngày • Mã #" + question.questionId + " | Chủ đề: " + topicStr + " | Cấp độ: " + diffStr);
+                lblIqMeta.setText("Câu " + idx + "/" + max + " trong ngày - Mã #" + question.questionId + " | Chủ đề: " + topicStr + " | Cấp độ: " + diffStr);
             }
 
             if (btnSubmitIQ != null) {
                 btnSubmitIQ.setEnabled(true);
-                btnSubmitIQ.setText("Nộp & Chuyển câu tiếp ➡️");
+                btnSubmitIQ.setText("Nộp & Chuyển câu tiếp >>");
             }
             if (btnNextIQ != null) btnNextIQ.setVisible(false); // Không bỏ qua tùy tiện vì giới hạn 5 câu
             if (bgIqOptions != null) bgIqOptions.clearSelection();
@@ -579,7 +579,7 @@ public class MatchmakingWaitingPanel extends JPanel {
             lblIqResult.setText(result.message);
         } else {
             // ĐÃ HOÀN THÀNH VÀ KẾT TOÁN 5 CÂU HỎI TRONG NGÀY
-            lblIqTitle.setText("🎉 ĐÃ HOÀN THÀNH TEST IQ HÔM NAY (5/5 CÂU)");
+            lblIqTitle.setText("ĐÃ HOÀN THÀNH TEST IQ HÔM NAY (5/5 CÂU)");
             lblIqResult.setForeground(new Color(22, 163, 74));
             lblIqResult.setText("<html><b style='color:#16a34a;'>Đã kết toán điểm IQ:</b> Đúng " + result.correctCount + "/5, Sai "
                     + result.wrongCount + "/5 (Cộng +" + String.format("%.1f", result.deltaIq) + " IQ). Điểm mới: <b>"

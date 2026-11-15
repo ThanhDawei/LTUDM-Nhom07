@@ -113,6 +113,10 @@ public class BattleRoom {
     }
 
     public synchronized void nextQuestion() {
+        if (matchFinished) {
+            return;
+        }
+
         if (currentQuestionIndex >= totalQuestions || currentQuestionIndex >= questions.size()) {
             finishMatch();
             return;
@@ -163,6 +167,10 @@ public class BattleRoom {
 
     // nhận câu hỏi tính điểm và dồng bộ
     public synchronized void submitAnswer(long userId, Long selectedAnswerId, int responseTime) {
+        if (matchFinished) {
+            return;
+        }
+
         if (userId == player1.getUserId() && !p1Answered) {
             p1Answered = true;
             p1SelectedAnswerId = selectedAnswerId;
@@ -175,7 +183,7 @@ public class BattleRoom {
 
         if (p1Answered && p2Answered) {
             if (currentRoundTimer != null && !currentRoundTimer.isDone()) {
-                currentRoundTimer.cancel(false);
+                currentRoundTimer.cancel(true);
             }
             onBothAnswered();
         }
@@ -183,6 +191,10 @@ public class BattleRoom {
 
     // quá 10s mà có 1 ng ko trl
     private synchronized void onRoundTimeout() {
+        if (matchFinished) {
+            return;
+        }
+
         if (!p1Answered) {
             p1Answered = true;
             p1SelectedAnswerId = null;
@@ -198,6 +210,9 @@ public class BattleRoom {
     }
 
     private synchronized void onBothAnswered() {
+        if (matchFinished) {
+            return;
+        }
         Question currentQ = questions.get(currentQuestionIndex);
 
         long correctAnswerId = 0;
@@ -306,7 +321,11 @@ public class BattleRoom {
                 topicId,
                 difficulty);
 
-        scheduler.shutdown();
+        if (currentRoundTimer != null) {
+            currentRoundTimer.cancel(true);
+        }
+        scheduler.shutdownNow();
+        BattleManager.getInstance().removeBattle(matchId);
     }
 
     // khi có 1 ng bị disconnet
@@ -315,6 +334,12 @@ public class BattleRoom {
             return;
         matchFinished = true;
 
+        if (currentRoundTimer != null) {
+            currentRoundTimer.cancel(true);
+        }
+        scheduler.shutdownNow();
+        BattleManager.getInstance().removeBattle(matchId);
+
         ClientSession winner = (disconnectedUserId == player1.getUserId()) ? player2 : player1;
 
         winner.sendPacket(new Packet(
@@ -322,8 +347,6 @@ public class BattleRoom {
                 "{\"message\":\"Đối thủ đã mất kết nối hoặc thoát trận. Bạn được xử thắng!\"}"));
 
         userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
-
-        scheduler.shutdown();
     }
 
     // Xử lý khi người chơi bấm nút "Đầu Hàng"
@@ -331,6 +354,12 @@ public class BattleRoom {
         if (matchFinished)
             return;
         matchFinished = true;
+
+        if (currentRoundTimer != null) {
+            currentRoundTimer.cancel(true);
+        }
+        scheduler.shutdownNow();
+        BattleManager.getInstance().removeBattle(matchId);
 
         ClientSession winner = (surrenderUserId == player1.getUserId()) ? player2 : player1;
         ClientSession loser = (surrenderUserId == player1.getUserId()) ? player1 : player2;
@@ -341,8 +370,6 @@ public class BattleRoom {
 
         userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
         userDAO.updateMatchResult(loser.getUserId(), false, false, 0);
-
-        scheduler.shutdown();
     }
 
     public long getMatchId() {

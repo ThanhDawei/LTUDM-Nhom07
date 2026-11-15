@@ -52,7 +52,7 @@ public class TournamentPanel extends JPanel {
 
         JPanel tagLine = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         tagLine.setOpaque(false);
-        JLabel badgeTag = BrutalUI.createBadge("🎖️ GIẢI ĐẤU TRANH TÀI THEO BẢNG / VÒNG (YÊU CẦU 9)", new Color(254, 243, 199), new Color(146, 64, 14));
+        JLabel badgeTag = BrutalUI.createBadge("GIẢI ĐẤU TRANH TÀI THEO BẢNG / VÒNG (YÊU CẦU 9)", new Color(254, 243, 199), new Color(146, 64, 14));
         tagLine.add(badgeTag);
 
         JLabel lblTitle = new JLabel("ĐẤU TRƯỜNG GIẢI ĐẤU TOÀN TRƯỜNG");
@@ -66,11 +66,11 @@ public class TournamentPanel extends JPanel {
         JPanel headerActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         headerActions.setOpaque(false);
 
-        BrutalUI.BrutalButton btnRefresh = new BrutalUI.BrutalButton("🔄 Làm Mới", BrutalUI.BrutalButton.Style.OUTLINE, 10);
+        BrutalUI.BrutalButton btnRefresh = new BrutalUI.BrutalButton("Làm Mới", BrutalUI.BrutalButton.Style.OUTLINE, 10);
         btnRefresh.setPreferredSize(new Dimension(115, 38));
         btnRefresh.addActionListener(e -> tournamentService.requestTournamentList());
 
-        BrutalUI.BrutalButton btnBack = new BrutalUI.BrutalButton("⬅️ Về Phòng Chờ", BrutalUI.BrutalButton.Style.PRIMARY, 10);
+        BrutalUI.BrutalButton btnBack = new BrutalUI.BrutalButton("Về Phòng Chờ", BrutalUI.BrutalButton.Style.PRIMARY, 10);
         btnBack.setPreferredSize(new Dimension(145, 38));
         btnBack.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LOBBY));
 
@@ -94,7 +94,7 @@ public class TournamentPanel extends JPanel {
         leftHeader.setOpaque(false);
         leftHeader.setBorder(BorderFactory.createEmptyBorder(2, 4, 8, 4));
 
-        JLabel lblLeftTitle = new JLabel("🏆 Danh Sách Giải Đấu Đang Mở");
+        JLabel lblLeftTitle = new JLabel("Danh Sách Giải Đấu Đang Mở");
         lblLeftTitle.setFont(BrutalUI.FONT_BODY_BOLD);
         lblLeftTitle.setForeground(BrutalUI.COLOR_BLACK);
 
@@ -125,11 +125,11 @@ public class TournamentPanel extends JPanel {
         JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         leftActions.setOpaque(false);
 
-        btnViewDetails = new BrutalUI.BrutalButton("🔍 Xem Bảng Đấu", BrutalUI.BrutalButton.Style.OUTLINE, 12);
+        btnViewDetails = new BrutalUI.BrutalButton("Xem Bảng Đấu", BrutalUI.BrutalButton.Style.OUTLINE, 12);
         btnViewDetails.setPreferredSize(new Dimension(140, 40));
         btnViewDetails.addActionListener(e -> handleViewStandings());
 
-        btnJoinTournament = new BrutalUI.BrutalButton("✨ Đăng Ký Tham Gia", BrutalUI.BrutalButton.Style.SUCCESS, 12);
+        btnJoinTournament = new BrutalUI.BrutalButton("Đăng Ký Tham Gia", BrutalUI.BrutalButton.Style.SUCCESS, 12);
         btnJoinTournament.setPreferredSize(new Dimension(170, 40));
         btnJoinTournament.addActionListener(e -> handleJoinTournament());
 
@@ -147,7 +147,7 @@ public class TournamentPanel extends JPanel {
         rightHeader.setOpaque(false);
         rightHeader.setBorder(BorderFactory.createEmptyBorder(2, 4, 8, 4));
 
-        JLabel lblRightTitle = new JLabel("📊 Bảng Xếp Hạng Vòng / Bảng Đấu");
+        JLabel lblRightTitle = new JLabel("Bảng Xếp Hạng Vòng / Bảng Đấu");
         lblRightTitle.setFont(BrutalUI.FONT_BODY_BOLD);
         lblRightTitle.setForeground(BrutalUI.COLOR_BLACK);
 
@@ -163,7 +163,7 @@ public class TournamentPanel extends JPanel {
         tblStandings = new JTable(modelStandings);
         styleBrutalTable(tblStandings);
 
-        // Renderer đặc biệt cho thứ hạng (Huy hiệu 🥇 🥈 🥉)
+        // Renderer đặc biệt cho thứ hạng
         tblStandings.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -172,13 +172,13 @@ public class TournamentPanel extends JPanel {
                 lbl.setFont(BrutalUI.FONT_BODY_BOLD);
                 String valStr = value != null ? value.toString() : "";
                 if ("1".equals(valStr)) {
-                    lbl.setText("🥇 1");
+                    lbl.setText("Top 1");
                     lbl.setForeground(new Color(180, 83, 9));
                 } else if ("2".equals(valStr)) {
-                    lbl.setText("🥈 2");
+                    lbl.setText("Top 2");
                     lbl.setForeground(new Color(75, 85, 99));
                 } else if ("3".equals(valStr)) {
-                    lbl.setText("🥉 3");
+                    lbl.setText("Top 3");
                     lbl.setForeground(new Color(180, 83, 9));
                 } else {
                     lbl.setText("  " + valStr);
@@ -196,7 +196,7 @@ public class TournamentPanel extends JPanel {
         // Chú thích dưới cùng
         JPanel rightFooter = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 8));
         rightFooter.setOpaque(false);
-        JLabel lblNotice = new JLabel("🎯 Bảng đấu tự động cập nhật ngay khi mỗi trận đấu giải kết thúc.");
+        JLabel lblNotice = new JLabel("Bảng đấu tự động cập nhật ngay khi mỗi trận đấu giải kết thúc.");
         lblNotice.setFont(BrutalUI.FONT_SMALL);
         lblNotice.setForeground(BrutalUI.COLOR_MUTED);
         rightFooter.add(lblNotice);
