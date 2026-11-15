@@ -130,8 +130,15 @@ public class LoginPanel extends JPanel {
         btnGoRegister.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_REGISTER));
 
         formFooter.add(btnLogin);
-        formFooter.add(Box.createVerticalStrut(12));
+        formFooter.add(Box.createVerticalStrut(8));
         formFooter.add(btnGoRegister);
+        formFooter.add(Box.createVerticalStrut(10));
+
+        JLabel lblSecurity = new JLabel("[BẢO MẬT] Kênh truyền bảo vệ bởi Mã hóa lai RSA-2048 + AES-256 GCM", SwingConstants.CENTER);
+        lblSecurity.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblSecurity.setForeground(new Color(22, 101, 52));
+        lblSecurity.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formFooter.add(lblSecurity);
 
         loginCard.add(formFooter, BorderLayout.SOUTH);
 
