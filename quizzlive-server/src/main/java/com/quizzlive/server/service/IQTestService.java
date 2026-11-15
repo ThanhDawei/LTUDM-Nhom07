@@ -145,7 +145,7 @@ public class IQTestService {
             res.isCorrect = isCorrect;
             res.currentQuestionIndex = answeredAfter;
             res.maxDailyQuestions = MAX_DAILY_QUESTIONS;
-            res.message = (isCorrect ? "✅ Câu " + answeredAfter + "/" + MAX_DAILY_QUESTIONS + ": Đúng!" : "❌ Câu " + answeredAfter + "/" + MAX_DAILY_QUESTIONS + ": Sai!")
+            res.message = (isCorrect ? "[Đúng] Câu " + answeredAfter + "/" + MAX_DAILY_QUESTIONS + ": Chính xác!" : "[Sai] Câu " + answeredAfter + "/" + MAX_DAILY_QUESTIONS + ": Chưa đúng!")
                     + " Đang chuyển sang câu tiếp theo...";
             session.sendPacket(new Packet(OpCode.IQ_RESULT_NOTIFY, JsonUtil.toJson(res)));
 
@@ -196,7 +196,7 @@ public class IQTestService {
         res.wrongCount = wrongCount;
         res.deltaIq = deltaIq;
         res.currentIqScore = newIq;
-        res.message = String.format("🎉 Hoàn thành bài Test IQ hôm nay (5/5 câu)!\n• Đúng: %d/5 | Sai: %d/5 (-%.1f điểm)\n• Kết toán: +%.1f điểm IQ (Điểm mới: %.1f)",
+        res.message = String.format("Hoàn thành bài Test IQ hôm nay (5/5 câu)!\n- Đúng: %d/5 | Sai: %d/5 (-%.1f điểm)\n- Kết toán: +%.1f điểm IQ (Điểm mới: %.1f)",
                 correctCount, wrongCount, wrongCount * 0.2, deltaIq, newIq);
 
         session.sendPacket(new Packet(OpCode.IQ_RESULT_NOTIFY, JsonUtil.toJson(res)));

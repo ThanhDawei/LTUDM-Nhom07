@@ -61,10 +61,10 @@ public class ServerMainFrame extends JFrame {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
-        tabbedPane.addTab("📊 Trạng Thái & Người Dùng", createUsersPanel());
-        tabbedPane.addTab("📚 Ngân Hàng Câu Hỏi", createQuestionsPanel());
-        tabbedPane.addTab("⚙️ Cấu Hình Trận Đấu", createConfigPanel());
-        tabbedPane.addTab("🏆 Thống Kê & Báo Cáo", createStatsPanel());
+        tabbedPane.addTab("Trạng Thái & Người Dùng", createUsersPanel());
+        tabbedPane.addTab("Ngân Hàng Câu Hỏi", createQuestionsPanel());
+        tabbedPane.addTab("Cấu Hình Trận Đấu", createConfigPanel());
+        tabbedPane.addTab("Thống Kê & Báo Cáo", createStatsPanel());
 
         getContentPane().add(tabbedPane, BorderLayout.CENTER);
     }
@@ -433,7 +433,7 @@ public class ServerMainFrame extends JFrame {
         lblImage.setForeground(new Color(37, 99, 235));
 
         JPanel pnlImageChooser = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        JButton btnBrowseImg = new JButton("📁 Chọn file ảnh...");
+        JButton btnBrowseImg = new JButton("Chọn file ảnh...");
         JLabel lblImgPreview = new JLabel();
         JLabel lblImgStatus = new JLabel("Chưa chọn ảnh");
         lblImgStatus.setFont(new Font("Segoe UI", Font.ITALIC, 11));
@@ -523,7 +523,7 @@ public class ServerMainFrame extends JFrame {
         // Khởi tạo ban đầu ẩn/hiện trường ảnh
         toggleImageField.run();
 
-        JButton btnSave = new JButton("💾 Lưu Câu Hỏi Vào CSDL");
+        JButton btnSave = new JButton("Lưu Câu Hỏi Vào CSDL");
         btnSave.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnSave.setBackground(new Color(37, 99, 235));
         btnSave.setForeground(Color.WHITE);

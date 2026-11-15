@@ -97,7 +97,7 @@ public class RegisterPanel extends JPanel {
         gbc.gridx = 0;
         card.add(new JLabel("Ảnh đại diện:"), gbc);
         gbc.gridx = 1;
-        btnBrowseAvatar = new JButton("📁 Chọn ảnh...");
+        btnBrowseAvatar = new JButton("Chọn ảnh...");
         btnBrowseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnBrowseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
 

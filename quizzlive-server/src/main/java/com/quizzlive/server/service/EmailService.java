@@ -216,7 +216,7 @@ public class EmailService {
 
         System.out.println();
         System.out.println("╔══════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║       💾 QUIZZLIVE - MÃ XÁC THỰC OTP ĐÃ LƯU VÀO CƠ SỞ DỮ LIỆU        ║");
+        System.out.println("║          QUIZZLIVE - MÃ XÁC THỰC OTP ĐÃ LƯU VÀO CƠ SỞ DỮ LIỆU        ║");
         System.out.println("╠══════════════════════════════════════════════════════════════════════╣");
         System.out.printf("║  Người nhận: %-55s ║%n", payload.recipientEmail);
         System.out.printf("║  Mục đích:   %-55s ║%n", payload.purpose);

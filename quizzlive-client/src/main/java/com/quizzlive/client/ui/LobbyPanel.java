@@ -46,11 +46,6 @@ public class LobbyPanel extends JPanel {
     private BrutalUI.BrutalButton btnFindMatch;
     private BrutalUI.BrutalButton btnChallenge;
 
-    // Quick Stats Components
-    private JLabel lblStatTotal;
-    private JLabel lblStatWinRate;
-    private JLabel lblStatIq;
-
     private Long currentUserId;
     private String currentUsername;
 
@@ -132,7 +127,7 @@ public class LobbyPanel extends JPanel {
         lblBio.setFont(new Font("Segoe UI", Font.ITALIC, 11));
         lblBio.setForeground(BrutalUI.COLOR_MUTED);
 
-        lblUserStats = new JLabel("🏆 Điểm IQ: -- | Thắng: 0 | Chuỗi thắng: 0");
+        lblUserStats = new JLabel("Điểm IQ: -- | Thắng: 0 | Chuỗi thắng: 0");
         lblUserStats.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblUserStats.setForeground(BrutalUI.COLOR_MUTED);
 
@@ -147,7 +142,7 @@ public class LobbyPanel extends JPanel {
         JPanel navActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         navActions.setOpaque(false);
 
-        BrutalUI.BrutalButton btnLeaderboard = new BrutalUI.BrutalButton("🏆 Bảng Xếp Hạng", BrutalUI.BrutalButton.Style.OUTLINE);
+        BrutalUI.BrutalButton btnLeaderboard = new BrutalUI.BrutalButton("Bảng Xếp Hạng", BrutalUI.BrutalButton.Style.OUTLINE);
         btnLeaderboard.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnLeaderboard.addActionListener(e -> {
             mainFrame.getLeaderboardPanel().updateAvatar(currentAvatar);
@@ -155,19 +150,19 @@ public class LobbyPanel extends JPanel {
             mainFrame.showPanel(MainClientFrame.CARD_LEADERBOARD);
         });
 
-        BrutalUI.BrutalButton btnTournament = new BrutalUI.BrutalButton("🎖️ Giải Đấu", BrutalUI.BrutalButton.Style.OUTLINE);
+        BrutalUI.BrutalButton btnTournament = new BrutalUI.BrutalButton("Giải Đấu", BrutalUI.BrutalButton.Style.OUTLINE);
         btnTournament.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnTournament.addActionListener(e -> {
             new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
             mainFrame.showPanel(MainClientFrame.CARD_TOURNAMENT);
         });
 
-        BrutalUI.BrutalButton btnTestIQ = new BrutalUI.BrutalButton("🧠 Test IQ", BrutalUI.BrutalButton.Style.OUTLINE);
+        BrutalUI.BrutalButton btnTestIQ = new BrutalUI.BrutalButton("Test IQ", BrutalUI.BrutalButton.Style.OUTLINE);
         btnTestIQ.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnTestIQ.setToolTipText("Làm bài Test IQ hàng ngày (5 câu/ngày, kết toán sau 5 câu)");
         btnTestIQ.addActionListener(e -> showIQTestDialog());
 
-        BrutalUI.BrutalButton btnProfile = new BrutalUI.BrutalButton("👤 Hồ Sơ", BrutalUI.BrutalButton.Style.OUTLINE);
+        BrutalUI.BrutalButton btnProfile = new BrutalUI.BrutalButton("Hồ Sơ", BrutalUI.BrutalButton.Style.OUTLINE);
         btnProfile.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnProfile.addActionListener(e -> showUpdateProfileDialog());
 
@@ -218,7 +213,7 @@ public class LobbyPanel extends JPanel {
         matchBody.setLayout(new BoxLayout(matchBody, BoxLayout.Y_AXIS));
 
         // Selector Chủ Đề
-        JLabel lblTopicTitle = new JLabel("📚 CHỌN CHỦ ĐỀ (TOPIC)");
+        JLabel lblTopicTitle = new JLabel("CHỌN CHỦ ĐỀ (TOPIC)");
         lblTopicTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblTopicTitle.setForeground(new Color(63, 63, 70));
         lblTopicTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -234,7 +229,7 @@ public class LobbyPanel extends JPanel {
         cbTopics.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Selector Độ Khó (Neo-Brutalist)
-        JLabel lblDiffTitle = new JLabel("🎯 CHỌN ĐỘ KHÓ (DIFFICULTY)");
+        JLabel lblDiffTitle = new JLabel("CHỌN ĐỘ KHÓ (DIFFICULTY)");
         lblDiffTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblDiffTitle.setForeground(new Color(63, 63, 70));
         lblDiffTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -245,7 +240,7 @@ public class LobbyPanel extends JPanel {
         cbDifficulty.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Nút Tìm Trận CTA Đậm Chất Brutal
-        btnFindMatch = new BrutalUI.BrutalButton("⚡ BẮT ĐẦU TÌM ĐỐI THỦ NGAY (60S)", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnFindMatch = new BrutalUI.BrutalButton("BẮT ĐẦU TÌM ĐỐI THỦ NGAY (60S)", BrutalUI.BrutalButton.Style.PRIMARY);
         btnFindMatch.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnFindMatch.setPreferredSize(new Dimension(0, 48));
         btnFindMatch.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
@@ -259,34 +254,9 @@ public class LobbyPanel extends JPanel {
         matchBody.add(lblDiffTitle);
         matchBody.add(Box.createVerticalStrut(4));
         matchBody.add(cbDifficulty);
-        matchBody.add(Box.createVerticalStrut(18));
+        matchBody.add(Box.createVerticalStrut(24));
         matchBody.add(btnFindMatch);
-        matchBody.add(Box.createVerticalStrut(18));
 
-        // Quick Stats Banner (3 thẻ mini viền đen)
-        JPanel statsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
-        statsPanel.setOpaque(false);
-        statsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        lblStatTotal = new JLabel("0", SwingConstants.CENTER);
-        lblStatWinRate = new JLabel("0%", SwingConstants.CENTER);
-        lblStatIq = new JLabel("--", SwingConstants.CENTER);
-
-        statsPanel.add(createMiniStatCard("TỔNG TRẬN", lblStatTotal, BrutalUI.COLOR_BLACK));
-        statsPanel.add(createMiniStatCard("TỈ LỆ THẮNG", lblStatWinRate, new Color(22, 163, 74)));
-
-        JPanel cardIq = createMiniStatCard("ĐIỂM IQ (TEST)", lblStatIq, new Color(37, 99, 235));
-        cardIq.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        cardIq.setToolTipText("Bấm để làm bài Test IQ hôm nay (5 câu/ngày)");
-        cardIq.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                showIQTestDialog();
-            }
-        });
-        statsPanel.add(cardIq);
-
-        matchBody.add(statsPanel);
         matchCard.add(matchBody, BorderLayout.CENTER);
 
         centerPanel.add(matchCard);
@@ -360,7 +330,7 @@ public class LobbyPanel extends JPanel {
         onlineCard.add(scrollOnline, BorderLayout.CENTER);
 
         // Footer Online Card: Nút Mời Thách Đấu
-        btnChallenge = new BrutalUI.BrutalButton("⚡ MỜI THÁCH ĐẤU NGƯỜI NÀY", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnChallenge = new BrutalUI.BrutalButton("MỜI THÁCH ĐẤU NGƯỜI NÀY", BrutalUI.BrutalButton.Style.PRIMARY);
         btnChallenge.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnChallenge.setPreferredSize(new Dimension(0, 44));
         btnChallenge.addActionListener(e -> handleSendChallenge());
@@ -381,26 +351,6 @@ public class LobbyPanel extends JPanel {
                 BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)
         ));
-    }
-
-    private JPanel createMiniStatCard(String title, JLabel valLabel, Color valColor) {
-        JPanel card = new JPanel(new BorderLayout(0, 4));
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
-                BorderFactory.createEmptyBorder(8, 6, 8, 6)
-        ));
-
-        JLabel lblT = new JLabel(title, SwingConstants.CENTER);
-        lblT.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        lblT.setForeground(BrutalUI.COLOR_MUTED);
-
-        valLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        valLabel.setForeground(valColor);
-
-        card.add(lblT, BorderLayout.NORTH);
-        card.add(valLabel, BorderLayout.CENTER);
-        return card;
     }
 
     // =========================================================================
@@ -512,7 +462,7 @@ public class LobbyPanel extends JPanel {
         int choice = JOptionPane.showConfirmDialog(
                 this,
                 inviteBox,
-                "⚔️ LỜI MỜI THÁCH ĐẤU 1V1 (YÊU CẦU 3)",
+                "LỜI MỜI THÁCH ĐẤU 1V1 (YÊU CẦU 3)",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
@@ -531,7 +481,7 @@ public class LobbyPanel extends JPanel {
 
         final String[] selectedAvatar = new String[]{currentAvatar != null ? currentAvatar : "avatar1.png"};
 
-        JButton btnChooseAvatar = new JButton("📁 Chọn ảnh từ máy...");
+        JButton btnChooseAvatar = new JButton("Chọn ảnh từ máy...");
         btnChooseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnChooseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -563,7 +513,7 @@ public class LobbyPanel extends JPanel {
         JTextField txtBio = new JTextField(20);
         txtBio.setText(currentBio != null ? currentBio : "");
 
-        JButton btnChangePass = new JButton("🔑 Đổi mật khẩu...");
+        JButton btnChangePass = new JButton("Đổi mật khẩu...");
         btnChangePass.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnChangePass.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnChangePass.addActionListener(e -> showChangePasswordDialog());
@@ -607,7 +557,7 @@ public class LobbyPanel extends JPanel {
         panel.add(new JLabel("Xác nhận mật khẩu mới:"));
         panel.add(txtConfirmPass);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "🔑 Đổi Mật Khẩu", JOptionPane.OK_CANCEL_OPTION);
+        int result = JOptionPane.showConfirmDialog(this, panel, "Đổi Mật Khẩu", JOptionPane.OK_CANCEL_OPTION);
         if (result == JOptionPane.OK_OPTION) {
             String curPass = new String(txtCurPass.getPassword());
             String newPass = new String(txtNewPass.getPassword());
@@ -669,20 +619,14 @@ public class LobbyPanel extends JPanel {
         } else {
             lblBio.setText("Thành viên Quizzlive");
         }
-        lblUserStats.setText("🏆 Điểm IQ: " + (auth.iqScore != null ? auth.iqScore.intValue() : "--") + " | Online");
-        if (lblStatIq != null) {
-            lblStatIq.setText(auth.iqScore != null ? String.valueOf(auth.iqScore.intValue()) : "--");
-        }
+        lblUserStats.setText("Điểm IQ: " + (auth.iqScore != null ? auth.iqScore.intValue() : "--") + " | Online");
         authService.requestOnlineUsers();
         matchmakingService.requestTopicList();
         startOnlineRefreshTimer();
     }
 
     public void updateIQDisplay(double newIq) {
-        lblUserStats.setText("🏆 Điểm IQ: " + newIq);
-        if (lblStatIq != null) {
-            lblStatIq.setText(String.valueOf((int) newIq));
-        }
+        lblUserStats.setText("Điểm IQ: " + newIq);
     }
 
     public Long getCurrentUserId() {
@@ -724,7 +668,7 @@ public class LobbyPanel extends JPanel {
                         avatarIcon,
                         displayName,
                         (u.iqScore != null && u.iqScore > 0) ? u.iqScore : "Chưa test",
-                        "🟢 Online"
+                        "Online"
                 });
             }
         }

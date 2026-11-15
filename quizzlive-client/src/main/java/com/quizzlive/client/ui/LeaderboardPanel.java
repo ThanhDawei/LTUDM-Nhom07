@@ -60,7 +60,7 @@ public class LeaderboardPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 18, 12, 18)
         ));
 
-        JLabel lblTitle = new JLabel("🏆 BẢNG XẾP HẠNG & LỊCH SỬ THI ĐẤU (Yêu cầu 10)");
+        JLabel lblTitle = new JLabel("BẢNG XẾP HẠNG & LỊCH SỬ THI ĐẤU (Yêu cầu 10)");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblTitle.setForeground(new Color(41, 128, 185));
         header.add(lblTitle, BorderLayout.WEST);
@@ -68,13 +68,13 @@ public class LeaderboardPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
 
-        JButton btnRefresh = new JButton("🔄 Làm Mới");
+        JButton btnRefresh = new JButton("Làm Mới");
         btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnRefresh.setFocusPainted(false);
         btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefresh.addActionListener(e -> refreshData(mainFrame.getLobbyPanel().getCurrentUserId()));
 
-        JButton btnBack = new JButton("⬅️ Quay lại Phòng Chờ");
+        JButton btnBack = new JButton("Quay lại Phòng Chờ");
         btnBack.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnBack.setFocusPainted(false);
         btnBack.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -110,7 +110,7 @@ public class LeaderboardPanel extends JPanel {
         tblTopPoints.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         tblTopPoints.getTableHeader().setBackground(new Color(236, 240, 245));
         setupTableAlignment(tblTopPoints);
-        tabbedPane.addTab("🥇 Bảng Xếp Hạng Điểm & Thắng", new JScrollPane(tblTopPoints));
+        tabbedPane.addTab("Bảng Xếp Hạng Điểm & Thắng", new JScrollPane(tblTopPoints));
 
         // Tab 2: Top Chuỗi Thắng
         modelTopStreaks = new DefaultTableModel(new String[]{
@@ -125,7 +125,7 @@ public class LeaderboardPanel extends JPanel {
         tblTopStreaks.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         tblTopStreaks.getTableHeader().setBackground(new Color(236, 240, 245));
         setupTableAlignment(tblTopStreaks);
-        tabbedPane.addTab("🔥 Top Chuỗi Thắng Dài Nhất", new JScrollPane(tblTopStreaks));
+        tabbedPane.addTab("Top Chuỗi Thắng Dài Nhất", new JScrollPane(tblTopStreaks));
 
         // Tab 3: Lịch Sử Đấu Cá Nhân
         JPanel pnlHistoryTab = new JPanel(new BorderLayout(0, 8));
@@ -151,7 +151,7 @@ public class LeaderboardPanel extends JPanel {
         setupHistoryTableAlignment(tblHistory);
         pnlHistoryTab.add(new JScrollPane(tblHistory), BorderLayout.CENTER);
 
-        tabbedPane.addTab("📜 Lịch Sử Đấu Cá Nhân", pnlHistoryTab);
+        tabbedPane.addTab("Lịch Sử Đấu Cá Nhân", pnlHistoryTab);
 
         add(tabbedPane, BorderLayout.CENTER);
     }
@@ -175,11 +175,11 @@ public class LeaderboardPanel extends JPanel {
         JPanel pnlRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         pnlRow1.setOpaque(false);
 
-        lblMyName = new JLabel("👤 Hồ sơ: Đang tải...");
+        lblMyName = new JLabel("Hồ sơ: Đang tải...");
         lblMyName.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblMyName.setForeground(new Color(41, 128, 185));
 
-        lblMyRank = new JLabel("🏅 Thứ hạng: --");
+        lblMyRank = new JLabel("Thứ hạng: --");
         lblMyRank.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblMyRank.setForeground(new Color(230, 126, 34));
 
@@ -189,13 +189,13 @@ public class LeaderboardPanel extends JPanel {
         JPanel pnlRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
         pnlRow2.setOpaque(false);
 
-        lblMyWinRate = new JLabel("🎯 Tỉ lệ thắng: --");
+        lblMyWinRate = new JLabel("Tỉ lệ thắng: --");
         lblMyWinRate.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
-        lblMyStreaks = new JLabel("🔥 Chuỗi thắng: --");
+        lblMyStreaks = new JLabel("Chuỗi thắng: --");
         lblMyStreaks.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
-        lblMyScore = new JLabel("💎 Tổng điểm: -- | Điểm IQ: --");
+        lblMyScore = new JLabel("Tổng điểm: -- | Điểm IQ: --");
         lblMyScore.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
         pnlRow2.add(lblMyWinRate);
@@ -253,13 +253,13 @@ public class LeaderboardPanel extends JPanel {
                 c.setFont(c.getFont().deriveFont(Font.BOLD));
                 String text = String.valueOf(value);
                 if ("WIN".equalsIgnoreCase(text) || text.contains("THẮNG")) {
-                    c.setText("🏆 THẮNG");
+                    c.setText("THẮNG");
                     c.setForeground(new Color(39, 174, 96));
                 } else if ("LOSS".equalsIgnoreCase(text) || text.contains("THUA")) {
-                    c.setText("❌ THUA");
+                    c.setText("THUA");
                     c.setForeground(new Color(231, 76, 60));
                 } else if ("DRAW".equalsIgnoreCase(text) || text.contains("HÒA")) {
-                    c.setText("🤝 HÒA");
+                    c.setText("HÒA");
                     c.setForeground(new Color(243, 156, 18));
                 }
                 return c;
@@ -286,24 +286,24 @@ public class LeaderboardPanel extends JPanel {
             if (resp.myStats != null) {
                 LeaderboardDTO.LeaderboardItem me = resp.myStats;
                 String displayTitle = me.fullName != null && !me.fullName.trim().isEmpty() ? me.fullName : me.username;
-                lblMyName.setText("👤 " + displayTitle + " (@" + me.username + ")");
-                lblMyRank.setText("🏅 Thứ hạng: #" + me.rank);
-                lblMyWinRate.setText(String.format("🎯 Tỉ lệ thắng: %.1f%% (%d Thắng - %d Thua - %d Hòa / %d trận)",
+                lblMyName.setText(displayTitle + " (@" + me.username + ")");
+                lblMyRank.setText("Thứ hạng: #" + me.rank);
+                lblMyWinRate.setText(String.format("Tỉ lệ thắng: %.1f%% (%d Thắng - %d Thua - %d Hòa / %d trận)",
                         me.winRate, me.winMatches, me.loseMatches, me.drawMatches, me.totalMatches));
-                lblMyStreaks.setText("🔥 Chuỗi thắng: Hiện tại " + me.currentStreak + " trận | Kỷ lục " + me.maxStreak + " trận");
-                lblMyScore.setText(String.format("💎 Tổng điểm: %,d điểm | Điểm IQ: %.1f", me.totalPoints, me.iqScore));
+                lblMyStreaks.setText("Chuỗi thắng: Hiện tại " + me.currentStreak + " trận | Kỷ lục " + me.maxStreak + " trận");
+                lblMyScore.setText(String.format("Tổng điểm: %,d điểm | Điểm IQ: %.1f", me.totalPoints, me.iqScore));
             } else {
-                lblMyName.setText("👤 Người chơi QuizzLive");
-                lblMyRank.setText("🏅 Thứ hạng: #--");
-                lblMyWinRate.setText("🎯 Tỉ lệ thắng: Chưa có dữ liệu");
-                lblMyStreaks.setText("🔥 Chuỗi thắng: --");
-                lblMyScore.setText("💎 Tổng điểm: --");
+                lblMyName.setText("Người chơi QuizzLive");
+                lblMyRank.setText("Thứ hạng: #--");
+                lblMyWinRate.setText("Tỉ lệ thắng: Chưa có dữ liệu");
+                lblMyStreaks.setText("Chuỗi thắng: --");
+                lblMyScore.setText("Tổng điểm: --");
             }
 
             // Tab 1: Top Điểm & Thắng
             if (resp.topPlayers != null) {
                 for (LeaderboardDTO.LeaderboardItem item : resp.topPlayers) {
-                    String rankDisplay = item.rank == 1 ? "🥇 1" : (item.rank == 2 ? "🥈 2" : (item.rank == 3 ? "🥉 3" : "#" + item.rank));
+                    String rankDisplay = item.rank == 1 ? "Top 1" : (item.rank == 2 ? "Top 2" : (item.rank == 3 ? "Top 3" : "#" + item.rank));
                     modelTopPoints.addRow(new Object[]{
                             rankDisplay,
                             item.username,
@@ -323,7 +323,7 @@ public class LeaderboardPanel extends JPanel {
             // Tab 2: Top Chuỗi Thắng
             if (resp.topStreaks != null) {
                 for (LeaderboardDTO.LeaderboardItem item : resp.topStreaks) {
-                    String rankDisplay = item.rank == 1 ? "🥇 1" : (item.rank == 2 ? "🥈 2" : (item.rank == 3 ? "🥉 3" : "#" + item.rank));
+                    String rankDisplay = item.rank == 1 ? "Top 1" : (item.rank == 2 ? "Top 2" : (item.rank == 3 ? "Top 3" : "#" + item.rank));
                     modelTopStreaks.addRow(new Object[]{
                             rankDisplay,
                             item.username,
