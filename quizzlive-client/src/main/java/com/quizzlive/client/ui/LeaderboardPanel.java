@@ -2,6 +2,7 @@ package com.quizzlive.client.ui;
 
 import com.quizzlive.client.service.ClientLeaderboardService;
 import com.quizzlive.client.util.AvatarUtil;
+import com.quizzlive.client.util.BrutalUI;
 import com.quizzlive.shared.dto.LeaderboardDTO;
 
 import javax.swing.*;
@@ -11,8 +12,9 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Giao diện Bảng Xếp Hạng & Lịch Sử Thi Đấu
- * Phụ trách Yêu cầu 10: "Xếp hạng chung: thứ hạng, chuỗi thắng/thua dài nhất, tỉ lệ thắng/thua; xem lịch sử trận"
+ * Giao diện Bảng Xếp Hạng & Lịch Sử Thi Đấu - Chuẩn phong cách NEO-BRUTALIST
+ * Thiết kế theo SCREEN 10 trong master_gui_showcase.html
+ * Phụ trách: Thành viên 1 · Yêu cầu 10 (Xếp hạng chung & Lịch sử trận đấu)
  */
 public class LeaderboardPanel extends JPanel {
     private final MainClientFrame mainFrame;
@@ -21,7 +23,7 @@ public class LeaderboardPanel extends JPanel {
     private JTabbedPane tabbedPane;
 
     // Banner Thông số cá nhân (My Stats Card)
-    private JPanel pnlMyStats;
+    private BrutalUI.CardPanel pnlMyStats;
     private JLabel lblMyAvatar;
     private JLabel lblMyName;
     private JLabel lblMyRank;
@@ -48,52 +50,64 @@ public class LeaderboardPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout(12, 12));
-        setBackground(new Color(245, 247, 250));
-        setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(BrutalUI.COLOR_BG);
+        setBorder(BorderFactory.createEmptyBorder(18, 24, 18, 24));
 
-        // 1. TOP HEADER
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(Color.WHITE);
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(12, 18, 12, 18)
-        ));
+        // =========================================================================
+        // 1. TOP HEADER (Neo-Brutalist Card)
+        // =========================================================================
+        BrutalUI.CardPanel headerCard = new BrutalUI.CardPanel(14, 3);
+        headerCard.setLayout(new BorderLayout(12, 0));
+        headerCard.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
 
-        JLabel lblTitle = new JLabel("BẢNG XẾP HẠNG & LỊCH SỬ THI ĐẤU (Yêu cầu 10)");
+        JPanel headerLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        headerLeft.setOpaque(false);
+
+        JLabel badge = BrutalUI.createBadge("Yêu Cầu 10", new Color(244, 244, 245), BrutalUI.COLOR_BLACK);
+        JLabel lblTitle = new JLabel("BẢNG XẾP HẠNG & LỊCH SỬ THI ĐẤU");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        lblTitle.setForeground(new Color(41, 128, 185));
-        header.add(lblTitle, BorderLayout.WEST);
+        lblTitle.setForeground(BrutalUI.COLOR_BLACK);
+
+        headerLeft.add(lblTitle);
+        headerLeft.add(badge);
+        headerCard.add(headerLeft, BorderLayout.WEST);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
 
-        JButton btnRefresh = new JButton("Làm Mới");
-        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnRefresh.setFocusPainted(false);
-        btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        BrutalUI.BrutalButton btnRefresh = new BrutalUI.BrutalButton("Làm Mới", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnRefresh.setPreferredSize(new Dimension(110, 36));
         btnRefresh.addActionListener(e -> refreshData(mainFrame.getLobbyPanel().getCurrentUserId()));
 
-        JButton btnBack = new JButton("Quay lại Phòng Chờ");
-        btnBack.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btnBack.setFocusPainted(false);
-        btnBack.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        BrutalUI.BrutalButton btnBack = new BrutalUI.BrutalButton("Quay lại Phòng Chờ", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnBack.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnBack.setPreferredSize(new Dimension(170, 36));
         btnBack.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LOBBY));
 
         actions.add(btnRefresh);
         actions.add(btnBack);
-        header.add(actions, BorderLayout.EAST);
+        headerCard.add(actions, BorderLayout.EAST);
 
+        // =========================================================================
         // 2. MY STATS BANNER CARD (Thành tích cá nhân của người chơi hiện tại)
+        // =========================================================================
         pnlMyStats = createMyStatsCard();
 
-        JPanel northPanel = new JPanel(new BorderLayout(0, 10));
+        JPanel northPanel = new JPanel(new BorderLayout(0, 12));
         northPanel.setOpaque(false);
-        northPanel.add(header, BorderLayout.NORTH);
+        northPanel.add(headerCard, BorderLayout.NORTH);
         northPanel.add(pnlMyStats, BorderLayout.CENTER);
         add(northPanel, BorderLayout.NORTH);
 
-        // 3. TABS
+        // =========================================================================
+        // 3. CENTER CARD: TABS BẢNG XẾP HẠNG VÀ LỊCH SỬ
+        // =========================================================================
+        BrutalUI.CardPanel centerCard = new BrutalUI.CardPanel(16, 4);
+        centerCard.setLayout(new BorderLayout());
+        centerCard.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
         tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
@@ -105,12 +119,9 @@ public class LeaderboardPanel extends JPanel {
             public boolean isCellEditable(int row, int col) { return false; }
         };
         tblTopPoints = new JTable(modelTopPoints);
-        tblTopPoints.setRowHeight(28);
-        tblTopPoints.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tblTopPoints.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tblTopPoints.getTableHeader().setBackground(new Color(236, 240, 245));
+        styleBrutalTable(tblTopPoints);
         setupTableAlignment(tblTopPoints);
-        tabbedPane.addTab("Bảng Xếp Hạng Điểm & Thắng", new JScrollPane(tblTopPoints));
+        tabbedPane.addTab("Top Điểm & Thành Tích", createTableScrollPane(tblTopPoints));
 
         // Tab 2: Top Chuỗi Thắng
         modelTopStreaks = new DefaultTableModel(new String[]{
@@ -120,21 +131,18 @@ public class LeaderboardPanel extends JPanel {
             public boolean isCellEditable(int row, int col) { return false; }
         };
         tblTopStreaks = new JTable(modelTopStreaks);
-        tblTopStreaks.setRowHeight(28);
-        tblTopStreaks.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tblTopStreaks.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tblTopStreaks.getTableHeader().setBackground(new Color(236, 240, 245));
+        styleBrutalTable(tblTopStreaks);
         setupTableAlignment(tblTopStreaks);
-        tabbedPane.addTab("Top Chuỗi Thắng Dài Nhất", new JScrollPane(tblTopStreaks));
+        tabbedPane.addTab("Top Chuỗi Thắng Dài Nhất", createTableScrollPane(tblTopStreaks));
 
         // Tab 3: Lịch Sử Đấu Cá Nhân
-        JPanel pnlHistoryTab = new JPanel(new BorderLayout(0, 8));
-        pnlHistoryTab.setBackground(Color.WHITE);
-        pnlHistoryTab.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel pnlHistoryTab = new JPanel(new BorderLayout(0, 10));
+        pnlHistoryTab.setOpaque(false);
+        pnlHistoryTab.setBorder(BorderFactory.createEmptyBorder(8, 6, 6, 6));
 
-        lblHistoryCount = new JLabel("Lịch sử các trận đấu đã tham gia:");
-        lblHistoryCount.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblHistoryCount.setForeground(new Color(52, 73, 94));
+        lblHistoryCount = new JLabel("Lịch sử các trận đấu đã tham gia (10 trận gần nhất):");
+        lblHistoryCount.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblHistoryCount.setForeground(BrutalUI.COLOR_BLACK);
         pnlHistoryTab.add(lblHistoryCount, BorderLayout.NORTH);
 
         modelHistory = new DefaultTableModel(new String[]{
@@ -144,59 +152,56 @@ public class LeaderboardPanel extends JPanel {
             public boolean isCellEditable(int row, int col) { return false; }
         };
         tblHistory = new JTable(modelHistory);
-        tblHistory.setRowHeight(28);
-        tblHistory.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tblHistory.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tblHistory.getTableHeader().setBackground(new Color(236, 240, 245));
+        styleBrutalTable(tblHistory);
         setupHistoryTableAlignment(tblHistory);
-        pnlHistoryTab.add(new JScrollPane(tblHistory), BorderLayout.CENTER);
+        pnlHistoryTab.add(createTableScrollPane(tblHistory), BorderLayout.CENTER);
 
         tabbedPane.addTab("Lịch Sử Đấu Cá Nhân", pnlHistoryTab);
 
-        add(tabbedPane, BorderLayout.CENTER);
+        centerCard.add(tabbedPane, BorderLayout.CENTER);
+        add(centerCard, BorderLayout.CENTER);
     }
 
-    private JPanel createMyStatsCard() {
-        JPanel card = new JPanel(new BorderLayout(15, 0));
-        card.setBackground(new Color(238, 246, 255));
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(185, 215, 245), 1),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
+    private BrutalUI.CardPanel createMyStatsCard() {
+        BrutalUI.CardPanel card = new BrutalUI.CardPanel(14, 3);
+        card.setLayout(new BorderLayout(16, 0));
+        card.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
 
-        // Left: Avatar
-        lblMyAvatar = new JLabel(AvatarUtil.getAvatarIcon("avatar1.png", 54));
+        // Left: Avatar có viền đen
+        lblMyAvatar = new JLabel(AvatarUtil.getAvatarIcon("avatar1.png", 52));
+        lblMyAvatar.setBorder(BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2));
         card.add(lblMyAvatar, BorderLayout.WEST);
 
         // Center: Stats grid
-        JPanel pnlContent = new JPanel(new GridLayout(2, 1, 4, 4));
+        JPanel pnlContent = new JPanel(new GridLayout(2, 1, 4, 6));
         pnlContent.setOpaque(false);
 
-        JPanel pnlRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        JPanel pnlRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         pnlRow1.setOpaque(false);
 
         lblMyName = new JLabel("Hồ sơ: Đang tải...");
         lblMyName.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblMyName.setForeground(new Color(41, 128, 185));
+        lblMyName.setForeground(BrutalUI.COLOR_BLACK);
 
-        lblMyRank = new JLabel("Thứ hạng: --");
-        lblMyRank.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblMyRank.setForeground(new Color(230, 126, 34));
+        lblMyRank = BrutalUI.createBadge("Thứ hạng: #--", new Color(254, 243, 199), new Color(146, 64, 14));
 
         pnlRow1.add(lblMyName);
         pnlRow1.add(lblMyRank);
 
-        JPanel pnlRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+        JPanel pnlRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
         pnlRow2.setOpaque(false);
 
         lblMyWinRate = new JLabel("Tỉ lệ thắng: --");
-        lblMyWinRate.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblMyWinRate.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblMyWinRate.setForeground(new Color(22, 163, 74));
 
         lblMyStreaks = new JLabel("Chuỗi thắng: --");
-        lblMyStreaks.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblMyStreaks.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblMyStreaks.setForeground(new Color(217, 119, 6));
 
         lblMyScore = new JLabel("Tổng điểm: -- | Điểm IQ: --");
-        lblMyScore.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblMyScore.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblMyScore.setForeground(new Color(37, 99, 235));
 
         pnlRow2.add(lblMyWinRate);
         pnlRow2.add(lblMyStreaks);
@@ -207,6 +212,28 @@ public class LeaderboardPanel extends JPanel {
 
         card.add(pnlContent, BorderLayout.CENTER);
         return card;
+    }
+
+    private void styleBrutalTable(JTable table) {
+        table.setRowHeight(32);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        table.setSelectionBackground(new Color(254, 243, 199)); // Pastel amber
+        table.setSelectionForeground(BrutalUI.COLOR_BLACK);
+        table.setGridColor(new Color(228, 228, 231));
+        table.setShowGrid(true);
+
+        // Header style
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.getTableHeader().setBackground(BrutalUI.COLOR_BLACK);
+        table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setPreferredSize(new Dimension(0, 34));
+    }
+
+    private JScrollPane createTableScrollPane(JTable table) {
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBorder(BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2));
+        sp.getViewport().setBackground(Color.WHITE);
+        return sp;
     }
 
     private void setupTableAlignment(JTable table) {
@@ -220,13 +247,13 @@ public class LeaderboardPanel extends JPanel {
                 c.setHorizontalAlignment(SwingConstants.CENTER);
                 c.setFont(c.getFont().deriveFont(Font.BOLD));
                 if (row == 0) {
-                    c.setForeground(new Color(212, 175, 55)); // Gold
+                    c.setForeground(new Color(217, 119, 6)); // Top 1 Gold Amber
                 } else if (row == 1) {
-                    c.setForeground(new Color(149, 165, 166)); // Silver
+                    c.setForeground(new Color(100, 116, 139)); // Top 2 Silver Slate
                 } else if (row == 2) {
-                    c.setForeground(new Color(184, 115, 51)); // Bronze
+                    c.setForeground(new Color(180, 83, 9)); // Top 3 Bronze
                 } else {
-                    c.setForeground(Color.DARK_GRAY);
+                    c.setForeground(BrutalUI.COLOR_BLACK);
                 }
                 return c;
             }
@@ -254,13 +281,13 @@ public class LeaderboardPanel extends JPanel {
                 String text = String.valueOf(value);
                 if ("WIN".equalsIgnoreCase(text) || text.contains("THẮNG")) {
                     c.setText("THẮNG");
-                    c.setForeground(new Color(39, 174, 96));
+                    c.setForeground(new Color(22, 163, 74));
                 } else if ("LOSS".equalsIgnoreCase(text) || text.contains("THUA")) {
                     c.setText("THUA");
-                    c.setForeground(new Color(231, 76, 60));
+                    c.setForeground(new Color(220, 38, 38));
                 } else if ("DRAW".equalsIgnoreCase(text) || text.contains("HÒA")) {
                     c.setText("HÒA");
-                    c.setForeground(new Color(243, 156, 18));
+                    c.setForeground(new Color(217, 119, 6));
                 }
                 return c;
             }
@@ -375,7 +402,7 @@ public class LeaderboardPanel extends JPanel {
 
     public void updateAvatar(String avatarUrl) {
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            lblMyAvatar.setIcon(AvatarUtil.getAvatarIcon(avatarUrl, 54));
+            lblMyAvatar.setIcon(AvatarUtil.getAvatarIcon(avatarUrl, 52));
         }
     }
 }
