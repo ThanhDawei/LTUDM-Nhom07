@@ -384,7 +384,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         stopCountdown();
         JOptionPane.showMessageDialog(this,
                 "Hết thời gian 60 giây chưa tìm thấy đối thủ phù hợp!\nĐưa người chơi về phòng chờ.",
-                "Thông báo ghép cặp (YC 2)", JOptionPane.INFORMATION_MESSAGE);
+                "Thông báo ghép cặp", JOptionPane.INFORMATION_MESSAGE);
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
     }
 

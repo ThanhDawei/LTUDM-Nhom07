@@ -347,6 +347,18 @@ public class BattleRoom {
                 "{\"message\":\"Đối thủ đã mất kết nối hoặc thoát trận. Bạn được xử thắng!\"}"));
 
         userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
+        userDAO.updateMatchResult(disconnectedUserId, false, false, 0);
+
+        statisticDAO.saveMatchRecord(
+                matchId,
+                "MATCH_" + matchId,
+                player1.getUserId(),
+                player2.getUserId(),
+                (winner.getUserId().equals(player1.getUserId())) ? Math.max(p1TotalScore, 100) : p1TotalScore,
+                (winner.getUserId().equals(player2.getUserId())) ? Math.max(p2TotalScore, 100) : p2TotalScore,
+                winner.getUserId(),
+                topicId,
+                difficulty);
     }
 
     // Xử lý khi người chơi bấm nút "Đầu Hàng"
@@ -370,6 +382,17 @@ public class BattleRoom {
 
         userDAO.updateMatchResult(winner.getUserId(), true, false, 100);
         userDAO.updateMatchResult(loser.getUserId(), false, false, 0);
+
+        statisticDAO.saveMatchRecord(
+                matchId,
+                "MATCH_" + matchId,
+                player1.getUserId(),
+                player2.getUserId(),
+                (winner.getUserId().equals(player1.getUserId())) ? Math.max(p1TotalScore, 100) : p1TotalScore,
+                (winner.getUserId().equals(player2.getUserId())) ? Math.max(p2TotalScore, 100) : p2TotalScore,
+                winner.getUserId(),
+                topicId,
+                difficulty);
     }
 
     public long getMatchId() {

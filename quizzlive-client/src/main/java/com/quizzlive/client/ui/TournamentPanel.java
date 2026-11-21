@@ -52,7 +52,7 @@ public class TournamentPanel extends JPanel {
 
         JPanel tagLine = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         tagLine.setOpaque(false);
-        JLabel badgeTag = BrutalUI.createBadge("GIẢI ĐẤU TRANH TÀI THEO BẢNG / VÒNG (YÊU CẦU 9)", new Color(254, 243, 199), new Color(146, 64, 14));
+        JLabel badgeTag = BrutalUI.createBadge("GIẢI ĐẤU TRANH TÀI THEO BẢNG / VÒNG", new Color(254, 243, 199), new Color(146, 64, 14));
         tagLine.add(badgeTag);
 
         JLabel lblTitle = new JLabel("ĐẤU TRƯỜNG GIẢI ĐẤU TOÀN TRƯỜNG");

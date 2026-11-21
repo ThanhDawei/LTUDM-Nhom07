@@ -138,12 +138,11 @@ public class LobbyPanel extends JPanel {
 
         topPanel.add(brandAndUserBox, BorderLayout.WEST);
 
-        // Action Navigation Buttons
+        // Action Navigation Buttons (Vừa vặn, căn giữa theo chiều dọc)
         JPanel navActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         navActions.setOpaque(false);
 
         BrutalUI.BrutalButton btnLeaderboard = new BrutalUI.BrutalButton("Bảng Xếp Hạng", BrutalUI.BrutalButton.Style.OUTLINE);
-        btnLeaderboard.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnLeaderboard.addActionListener(e -> {
             mainFrame.getLeaderboardPanel().updateAvatar(currentAvatar);
             mainFrame.getLeaderboardPanel().refreshData(currentUserId);
@@ -151,34 +150,37 @@ public class LobbyPanel extends JPanel {
         });
 
         BrutalUI.BrutalButton btnTournament = new BrutalUI.BrutalButton("Giải Đấu", BrutalUI.BrutalButton.Style.OUTLINE);
-        btnTournament.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnTournament.addActionListener(e -> {
             new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
             mainFrame.showPanel(MainClientFrame.CARD_TOURNAMENT);
         });
 
         BrutalUI.BrutalButton btnTestIQ = new BrutalUI.BrutalButton("Test IQ", BrutalUI.BrutalButton.Style.OUTLINE);
-        btnTestIQ.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnTestIQ.setToolTipText("Làm bài Test IQ hàng ngày (5 câu/ngày, kết toán sau 5 câu)");
         btnTestIQ.addActionListener(e -> showIQTestDialog());
 
         BrutalUI.BrutalButton btnProfile = new BrutalUI.BrutalButton("Hồ Sơ", BrutalUI.BrutalButton.Style.OUTLINE);
-        btnProfile.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnProfile.addActionListener(e -> showUpdateProfileDialog());
 
         BrutalUI.BrutalButton btnLogout = new BrutalUI.BrutalButton("Đăng Xuất", BrutalUI.BrutalButton.Style.DANGER);
-        btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnLogout.addActionListener(e -> {
             authService.sendLogout();
             mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
         });
 
-        navActions.add(btnLeaderboard);
-        navActions.add(btnTournament);
-        navActions.add(btnTestIQ);
-        navActions.add(btnProfile);
-        navActions.add(btnLogout);
-        topPanel.add(navActions, BorderLayout.EAST);
+        BrutalUI.BrutalButton[] navBtns = {btnLeaderboard, btnTournament, btnTestIQ, btnProfile, btnLogout};
+        Font navFont = new Font("Segoe UI", Font.BOLD, 12);
+        for (BrutalUI.BrutalButton btn : navBtns) {
+            btn.setFont(navFont);
+            Dimension pref = btn.getPreferredSize();
+            btn.setPreferredSize(new Dimension(pref.width + 8, 34));
+            navActions.add(btn);
+        }
+
+        JPanel navCenterWrapper = new JPanel(new GridBagLayout());
+        navCenterWrapper.setOpaque(false);
+        navCenterWrapper.add(navActions);
+        topPanel.add(navCenterWrapper, BorderLayout.EAST);
 
         add(topPanel, BorderLayout.NORTH);
 
@@ -410,7 +412,7 @@ public class LobbyPanel extends JPanel {
                 "Bạn có chắc muốn gửi lời mời thách đấu 1v1 tới [" + targetName + "]?\n" +
                 "• Chủ đề câu hỏi: " + topicName + "\n" +
                 "• Mức độ khó: " + diffName,
-                "Xác Nhận Thách Đấu (Yêu Cầu 3)",
+                "Xác Nhận Thách Đấu",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
@@ -462,7 +464,7 @@ public class LobbyPanel extends JPanel {
         int choice = JOptionPane.showConfirmDialog(
                 this,
                 inviteBox,
-                "LỜI MỜI THÁCH ĐẤU 1V1 (YÊU CẦU 3)",
+                "LỜI MỜI THÁCH ĐẤU 1V1",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
@@ -475,61 +477,138 @@ public class LobbyPanel extends JPanel {
     }
 
 
+    private void styleBrutalField(JTextField field) {
+        field.setFont(BrutalUI.FONT_BODY);
+        field.setBackground(Color.WHITE);
+        field.setForeground(BrutalUI.COLOR_BLACK);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+    }
+
     private void showUpdateProfileDialog() {
-        JTextField txtName = new JTextField(20);
-        txtName.setText(lblWelcome.getText().replace("Xin chào, ", "").replace("!", "").trim());
+        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(parentWindow, "Cập Nhật Hồ Sơ Cá Nhân", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setSize(520, 500);
+        dialog.setResizable(false);
+        dialog.setLocationRelativeTo(this);
+        dialog.getContentPane().setBackground(BrutalUI.COLOR_BG);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+
+        BrutalUI.CardPanel card = new BrutalUI.CardPanel(16, 4);
+        JPanel content = new JPanel(new BorderLayout(0, 16));
+        content.setOpaque(false);
+        content.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+
+        // Header
+        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 0, 4));
+        headerPanel.setOpaque(false);
+        JLabel lblTitle = new JLabel("HỒ SƠ CÁ NHÂN");
+        lblTitle.setFont(BrutalUI.FONT_TITLE_XL);
+        lblTitle.setForeground(BrutalUI.COLOR_BLACK);
+        JLabel lblSub = new JLabel("Cập nhật tên hiển thị, ảnh đại diện và bảo mật tài khoản");
+        lblSub.setFont(BrutalUI.FONT_SMALL);
+        lblSub.setForeground(BrutalUI.COLOR_MUTED);
+        headerPanel.add(lblTitle);
+        headerPanel.add(lblSub);
+        content.add(headerPanel, BorderLayout.NORTH);
+
+        // Form body
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(6, 0, 6, 0);
+        gbc.weightx = 1.0;
 
         final String[] selectedAvatar = new String[]{currentAvatar != null ? currentAvatar : "avatar1.png"};
 
-        JButton btnChooseAvatar = new JButton("Chọn ảnh từ máy...");
-        btnChooseAvatar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnChooseAvatar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Avatar Box
+        JPanel avatarBox = new JPanel(new BorderLayout(14, 0));
+        avatarBox.setBackground(new Color(250, 250, 250));
+        avatarBox.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
 
-        JLabel lblAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(selectedAvatar[0], 44));
+        JLabel lblAvatarPreview = new JLabel(AvatarUtil.getAvatarIcon(selectedAvatar[0], 56));
+        lblAvatarPreview.setBorder(BorderFactory.createLineBorder(BrutalUI.COLOR_BLACK, 2));
+
+        JPanel avatarMeta = new JPanel(new BorderLayout(0, 6));
+        avatarMeta.setOpaque(false);
         JLabel lblAvatarName = new JLabel(getFileNameFromPath(selectedAvatar[0]));
-        lblAvatarName.setFont(new Font("Segoe UI", Font.ITALIC, 11));
-        lblAvatarName.setForeground(Color.DARK_GRAY);
+        lblAvatarName.setFont(BrutalUI.FONT_SMALL_BOLD);
+        lblAvatarName.setForeground(BrutalUI.COLOR_BLACK);
 
+        BrutalUI.BrutalButton btnChooseAvatar = new BrutalUI.BrutalButton("Chọn ảnh từ máy...", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnChooseAvatar.setFont(BrutalUI.FONT_SMALL_BOLD);
         btnChooseAvatar.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Chọn ảnh đại diện mới từ máy tính");
             chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                     "Hình ảnh (*.png, *.jpg, *.jpeg, *.gif, *.bmp)", "png", "jpg", "jpeg", "gif", "bmp"));
-            int ret = chooser.showOpenDialog(this);
+            int ret = chooser.showOpenDialog(dialog);
             if (ret == JFileChooser.APPROVE_OPTION) {
                 java.io.File file = chooser.getSelectedFile();
                 selectedAvatar[0] = AvatarUtil.saveCustomAvatar(file, "avatar_user_" + (currentUserId != null ? currentUserId : "0"));
                 lblAvatarName.setText(file.getName());
-                lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar[0], 44));
+                lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar[0], 56));
             }
         });
 
-        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        avatarRow.setOpaque(false);
-        avatarRow.add(btnChooseAvatar);
-        avatarRow.add(lblAvatarPreview);
-        avatarRow.add(lblAvatarName);
+        avatarMeta.add(lblAvatarName, BorderLayout.NORTH);
+        avatarMeta.add(btnChooseAvatar, BorderLayout.WEST);
+        avatarBox.add(lblAvatarPreview, BorderLayout.WEST);
+        avatarBox.add(avatarMeta, BorderLayout.CENTER);
+
+        JTextField txtName = new JTextField(20);
+        txtName.setText(lblWelcome.getText().replace("Xin chào, ", "").replace("!", "").trim());
+        styleBrutalField(txtName);
 
         JTextField txtBio = new JTextField(20);
         txtBio.setText(currentBio != null ? currentBio : "");
+        styleBrutalField(txtBio);
 
-        JButton btnChangePass = new JButton("Đổi mật khẩu...");
-        btnChangePass.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnChangePass.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnChangePass.addActionListener(e -> showChangePasswordDialog());
+        BrutalUI.BrutalButton btnChangePass = new BrutalUI.BrutalButton("Đổi mật khẩu...", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnChangePass.setFont(BrutalUI.FONT_SMALL_BOLD);
+        btnChangePass.addActionListener(e -> showChangePasswordDialog(dialog));
 
-        JPanel panel = new JPanel(new GridLayout(4, 2, 8, 10));
-        panel.add(new JLabel("Họ tên mới:"));
-        panel.add(txtName);
-        panel.add(new JLabel("Ảnh đại diện (avatar):"));
-        panel.add(avatarRow);
-        panel.add(new JLabel("Giới thiệu bản thân:"));
-        panel.add(txtBio);
-        panel.add(new JLabel("Bảo mật tài khoản:"));
-        panel.add(btnChangePass);
+        int r = 0;
+        gbc.gridy = r++; form.add(avatarBox, gbc);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Cập Nhật Hồ Sơ Cá Nhân (YC 1)", JOptionPane.OK_CANCEL_OPTION);
-        if (result == JOptionPane.OK_OPTION) {
+        JLabel lName = new JLabel("Họ tên mới:");
+        lName.setFont(BrutalUI.FONT_SMALL_BOLD);
+        gbc.gridy = r++; gbc.insets = new Insets(10, 0, 3, 0); form.add(lName, gbc);
+        gbc.gridy = r++; gbc.insets = new Insets(0, 0, 6, 0); form.add(txtName, gbc);
+
+        JLabel lBio = new JLabel("Giới thiệu bản thân:");
+        lBio.setFont(BrutalUI.FONT_SMALL_BOLD);
+        gbc.gridy = r++; gbc.insets = new Insets(6, 0, 3, 0); form.add(lBio, gbc);
+        gbc.gridy = r++; gbc.insets = new Insets(0, 0, 10, 0); form.add(txtBio, gbc);
+
+        JPanel secRow = new JPanel(new BorderLayout(10, 0));
+        secRow.setOpaque(false);
+        JLabel lSec = new JLabel("Bảo mật tài khoản:");
+        lSec.setFont(BrutalUI.FONT_SMALL_BOLD);
+        secRow.add(lSec, BorderLayout.WEST);
+        secRow.add(btnChangePass, BorderLayout.EAST);
+        gbc.gridy = r++; form.add(secRow, gbc);
+
+        content.add(form, BorderLayout.CENTER);
+
+        // Footer buttons
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        footer.setOpaque(false);
+        BrutalUI.BrutalButton btnCancel = new BrutalUI.BrutalButton("Hủy", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnCancel.addActionListener(e -> dialog.dispose());
+
+        BrutalUI.BrutalButton btnSave = new BrutalUI.BrutalButton("Lưu thay đổi", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnSave.addActionListener(e -> {
             String bioText = txtBio.getText().trim();
             authService.sendUpdateProfile(
                     txtName.getText().trim(),
@@ -538,50 +617,106 @@ public class LobbyPanel extends JPanel {
                     selectedAvatar[0],
                     bioText
             );
-        }
+            dialog.dispose();
+        });
+
+        footer.add(btnCancel);
+        footer.add(btnSave);
+        content.add(footer, BorderLayout.SOUTH);
+
+        card.add(content, BorderLayout.CENTER);
+        wrapper.add(card, BorderLayout.CENTER);
+        dialog.add(wrapper, BorderLayout.CENTER);
+        dialog.setVisible(true);
     }
 
     /**
      * Hộp thoại đổi mật khẩu riêng biệt (Yêu cầu 1)
      */
-    private void showChangePasswordDialog() {
+    private void showChangePasswordDialog(Window owner) {
+        JDialog dialog = new JDialog(owner, "Đổi Mật Khẩu", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setSize(440, 380);
+        dialog.setResizable(false);
+        dialog.setLocationRelativeTo(owner);
+        dialog.getContentPane().setBackground(BrutalUI.COLOR_BG);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+
+        BrutalUI.CardPanel card = new BrutalUI.CardPanel(16, 4);
+        JPanel content = new JPanel(new BorderLayout(0, 14));
+        content.setOpaque(false);
+        content.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+
+        JLabel lblTitle = new JLabel("ĐỔI MẬT KHẨU");
+        lblTitle.setFont(BrutalUI.FONT_TITLE);
+        lblTitle.setForeground(BrutalUI.COLOR_BLACK);
+        content.add(lblTitle, BorderLayout.NORTH);
+
+        JPanel form = new JPanel(new GridLayout(6, 1, 0, 5));
+        form.setOpaque(false);
+
         JPasswordField txtCurPass = new JPasswordField(18);
         JPasswordField txtNewPass = new JPasswordField(18);
         JPasswordField txtConfirmPass = new JPasswordField(18);
+        styleBrutalField(txtCurPass);
+        styleBrutalField(txtNewPass);
+        styleBrutalField(txtConfirmPass);
 
-        JPanel panel = new JPanel(new GridLayout(3, 2, 8, 8));
-        panel.add(new JLabel("Mật khẩu hiện tại:"));
-        panel.add(txtCurPass);
-        panel.add(new JLabel("Mật khẩu mới:"));
-        panel.add(txtNewPass);
-        panel.add(new JLabel("Xác nhận mật khẩu mới:"));
-        panel.add(txtConfirmPass);
+        JLabel l1 = new JLabel("Mật khẩu hiện tại:");
+        l1.setFont(BrutalUI.FONT_SMALL_BOLD);
+        JLabel l2 = new JLabel("Mật khẩu mới:");
+        l2.setFont(BrutalUI.FONT_SMALL_BOLD);
+        JLabel l3 = new JLabel("Xác nhận mật khẩu mới:");
+        l3.setFont(BrutalUI.FONT_SMALL_BOLD);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Đổi Mật Khẩu", JOptionPane.OK_CANCEL_OPTION);
-        if (result == JOptionPane.OK_OPTION) {
+        form.add(l1); form.add(txtCurPass);
+        form.add(l2); form.add(txtNewPass);
+        form.add(l3); form.add(txtConfirmPass);
+        content.add(form, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        footer.setOpaque(false);
+        BrutalUI.BrutalButton btnCancel = new BrutalUI.BrutalButton("Hủy", BrutalUI.BrutalButton.Style.OUTLINE);
+        btnCancel.addActionListener(e -> dialog.dispose());
+
+        BrutalUI.BrutalButton btnConfirm = new BrutalUI.BrutalButton("Xác nhận", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnConfirm.addActionListener(e -> {
             String curPass = new String(txtCurPass.getPassword());
             String newPass = new String(txtNewPass.getPassword());
             String confirmPass = new String(txtConfirmPass.getPassword());
 
             if (curPass.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập mật khẩu hiện tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Vui lòng nhập mật khẩu hiện tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             if (newPass.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập mật khẩu mới!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Vui lòng nhập mật khẩu mới!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             if (newPass.length() < 6) {
-                JOptionPane.showMessageDialog(this, "Mật khẩu mới phải có tối thiểu 6 ký tự!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Mật khẩu mới phải có tối thiểu 6 ký tự!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             if (!newPass.equals(confirmPass)) {
-                JOptionPane.showMessageDialog(this, "Mật khẩu mới và xác nhận mật khẩu không trùng khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Mật khẩu mới và xác nhận mật khẩu không trùng khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
             authService.sendUpdateProfile(null, curPass, newPass, null, null);
-        }
+            dialog.dispose();
+        });
+
+        footer.add(btnCancel);
+        footer.add(btnConfirm);
+        content.add(footer, BorderLayout.SOUTH);
+
+        card.add(content, BorderLayout.CENTER);
+        wrapper.add(card, BorderLayout.CENTER);
+        dialog.add(wrapper, BorderLayout.CENTER);
+        dialog.setVisible(true);
     }
 
     private String getFileNameFromPath(String path) {
