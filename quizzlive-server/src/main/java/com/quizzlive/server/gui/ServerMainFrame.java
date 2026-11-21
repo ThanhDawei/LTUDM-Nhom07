@@ -10,6 +10,7 @@ import com.quizzlive.server.network.SocketServer;
 import com.quizzlive.shared.dto.LeaderboardDTO;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
@@ -23,6 +24,11 @@ public class ServerMainFrame extends JFrame {
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final MatchConfigDAO configDAO = new MatchConfigDAO();
     private final StatisticDAO statisticDAO = new StatisticDAO();
+
+    // Tab navigation
+    private final CardLayout contentCardLayout = new CardLayout();
+    private final JPanel contentCardPanel = new JPanel(contentCardLayout);
+    private final List<ServerBrutalUI.TabButton> tabButtons = new ArrayList<>();
 
     // UI Components
     private JLabel lblOnlineUsers;
@@ -49,201 +55,364 @@ public class ServerMainFrame extends JFrame {
     public ServerMainFrame(SocketServer server) {
         this.server = server;
         setTitle("Quizzlive Server - Bảng Quản Trị Hệ Thống (Nhóm 07 - Đề tài 09)");
-        setSize(1000, 700);
+        setSize(1140, 760);
+        setMinimumSize(new Dimension(980, 660));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        getContentPane().setBackground(ServerBrutalUI.COLOR_BG);
 
         initComponents();
         loadAllData();
     }
 
     private void initComponents() {
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(ServerBrutalUI.COLOR_BG);
 
-        tabbedPane.addTab("Trạng Thái & Người Dùng", createUsersPanel());
-        tabbedPane.addTab("Ngân Hàng Câu Hỏi", createQuestionsPanel());
-        tabbedPane.addTab("Cấu Hình Trận Đấu", createConfigPanel());
-        tabbedPane.addTab("Thống Kê & Báo Cáo", createStatsPanel());
+        // --- TOP NAVIGATION BAR (4 Tabs chuẩn Neo-Brutalist) ---
+        JPanel headerBar = new JPanel(new BorderLayout(16, 0));
+        headerBar.setBackground(Color.WHITE);
+        headerBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, ServerBrutalUI.COLOR_BLACK),
+                BorderFactory.createEmptyBorder(12, 20, 12, 20)
+        ));
 
-        getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        JPanel tabBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        tabBar.setOpaque(false);
+
+        String[] tabNames = {
+                "Trạng Thái & Người Dùng",
+                "Ngân Hàng Câu Hỏi",
+                "Cấu Hình Trận Đấu",
+                "Thống Kê & Báo Cáo"
+        };
+        String[] tabKeys = {"USERS", "QUESTIONS", "CONFIG", "STATS"};
+
+        for (int i = 0; i < tabNames.length; i++) {
+            final int idx = i;
+            final String key = tabKeys[i];
+            ServerBrutalUI.TabButton btnTab = new ServerBrutalUI.TabButton(tabNames[i], i == 0);
+            btnTab.addActionListener(e -> {
+                contentCardLayout.show(contentCardPanel, key);
+                setActiveTab(idx);
+            });
+            tabButtons.add(btnTab);
+            tabBar.add(btnTab);
+        }
+
+        JLabel lblCryptoStatus = ServerBrutalUI.createBadge(
+                "[BẢO MẬT] Mã hóa lai: RSA-2048 + AES-256 GCM",
+                ServerBrutalUI.COLOR_INFO_LIGHT,
+                ServerBrutalUI.COLOR_INFO_TEXT,
+                new Color(37, 99, 235)
+        );
+
+        headerBar.add(tabBar, BorderLayout.CENTER);
+        headerBar.add(lblCryptoStatus, BorderLayout.EAST);
+
+        // --- MAIN CONTENT AREA ---
+        contentCardPanel.setOpaque(false);
+        contentCardPanel.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        contentCardPanel.add(createUsersPanel(), "USERS");
+        contentCardPanel.add(createQuestionsPanel(), "QUESTIONS");
+        contentCardPanel.add(createConfigPanel(), "CONFIG");
+        contentCardPanel.add(createStatsPanel(), "STATS");
+
+        root.add(headerBar, BorderLayout.NORTH);
+        root.add(contentCardPanel, BorderLayout.CENTER);
+        getContentPane().add(root, BorderLayout.CENTER);
+    }
+
+    private void setActiveTab(int activeIdx) {
+        for (int i = 0; i < tabButtons.size(); i++) {
+            tabButtons.get(i).setActive(i == activeIdx);
+        }
     }
 
     // TAB 1: User & Server Status (Requirement 15)
     private JPanel createUsersPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel panel = new JPanel(new BorderLayout(0, 16));
+        panel.setOpaque(false);
 
-        // Top info bar
-        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 5));
-        topBar.setBackground(new Color(245, 247, 250));
-        lblOnlineUsers = new JLabel("Đang online: 0");
-        lblOnlineUsers.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblOnlineUsers.setForeground(new Color(39, 174, 96));
+        // Top info bar card
+        ServerBrutalUI.CardPanel topCard = new ServerBrutalUI.CardPanel(14, 4);
+        JPanel topBar = new JPanel(new BorderLayout(16, 0));
+        topBar.setOpaque(false);
 
-        lblTotalUsers = new JLabel("Tổng người dùng: 0");
-        lblTotalUsers.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        JPanel statsGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
+        statsGroup.setOpaque(false);
+        lblOnlineUsers = ServerBrutalUI.createBadge(
+                "Đang online: 0",
+                ServerBrutalUI.COLOR_SUCCESS_LIGHT,
+                ServerBrutalUI.COLOR_SUCCESS_TEXT,
+                ServerBrutalUI.COLOR_SUCCESS_BG
+        );
+        lblTotalUsers = ServerBrutalUI.createBadge(
+                "Tổng người dùng: 0",
+                ServerBrutalUI.COLOR_BG,
+                ServerBrutalUI.COLOR_BLACK,
+                ServerBrutalUI.COLOR_BLACK
+        );
+        statsGroup.add(lblOnlineUsers);
+        statsGroup.add(lblTotalUsers);
 
-        JButton btnRefreshUsers = new JButton("Làm mới danh sách");
-        btnRefreshUsers.setFocusPainted(false);
-        btnRefreshUsers.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JPanel btnGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        btnGroup.setOpaque(false);
+
+        JButton btnRefreshUsers = new ServerBrutalUI.BrutalButton("Làm mới danh sách", ServerBrutalUI.BrutalButton.Style.OUTLINE);
         btnRefreshUsers.addActionListener(e -> loadUsersData());
 
-        JButton btnCheckOtp = new JButton("Xem mã OTP (CSDL)");
-        btnCheckOtp.setFocusPainted(false);
-        btnCheckOtp.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCheckOtp.setBackground(new Color(41, 128, 185));
-        btnCheckOtp.setForeground(Color.WHITE);
+        JButton btnCheckOtp = new ServerBrutalUI.BrutalButton("Xem mã OTP (CSDL)", ServerBrutalUI.BrutalButton.Style.PRIMARY);
         btnCheckOtp.addActionListener(e -> viewUserOtpFromDb());
 
-        JButton btnBlock = new JButton("Khóa / Mở khóa người dùng");
-        btnBlock.setForeground(Color.RED);
+        JButton btnBlock = new ServerBrutalUI.BrutalButton("Khóa / Mở khóa người dùng", ServerBrutalUI.BrutalButton.Style.DANGER);
         btnBlock.addActionListener(e -> toggleBlockUser());
 
-        JButton btnDeleteUser = new JButton("Xóa tài khoản");
-        btnDeleteUser.setForeground(new Color(192, 57, 43));
+        JButton btnDeleteUser = new ServerBrutalUI.BrutalButton("Xóa tài khoản", ServerBrutalUI.BrutalButton.Style.DANGER);
         btnDeleteUser.addActionListener(e -> deleteSelectedUser());
 
-        JLabel lblCryptoStatus = new JLabel("[BẢO MẬT] Mã hóa lai: RSA-2048 + AES-256 GCM");
-        lblCryptoStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblCryptoStatus.setForeground(new Color(41, 128, 185));
+        btnGroup.add(btnRefreshUsers);
+        btnGroup.add(btnCheckOtp);
+        btnGroup.add(btnBlock);
+        btnGroup.add(btnDeleteUser);
 
-        topBar.add(lblOnlineUsers);
-        topBar.add(lblTotalUsers);
-        topBar.add(btnRefreshUsers);
-        topBar.add(btnCheckOtp);
-        topBar.add(btnBlock);
-        topBar.add(btnDeleteUser);
-        topBar.add(lblCryptoStatus);
+        topBar.add(statsGroup, BorderLayout.WEST);
+        topBar.add(btnGroup, BorderLayout.EAST);
+        topCard.add(topBar, BorderLayout.CENTER);
+        panel.add(topCard, BorderLayout.NORTH);
 
-        panel.add(topBar, BorderLayout.NORTH);
-
-        // User table
+        // User table card
+        ServerBrutalUI.CardPanel tableCard = new ServerBrutalUI.CardPanel(14, 4);
         String[] columns = {"Mã ID", "Tên đăng nhập", "Email", "Họ tên", "Ảnh", "Giới thiệu", "Trạng thái", "Online", "Ngày tạo"};
         userTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tblUsers = new JTable(userTableModel);
-        panel.add(new JScrollPane(tblUsers), BorderLayout.CENTER);
+        ServerBrutalUI.styleTable(tblUsers);
+        tblUsers.getColumnModel().getColumn(0).setMaxWidth(70);
+        tblUsers.getColumnModel().getColumn(6).setCellRenderer(new StatusCellRenderer());
+        tblUsers.getColumnModel().getColumn(7).setCellRenderer(new OnlineCellRenderer());
+        tableCard.add(ServerBrutalUI.wrapScrollTable(tblUsers), BorderLayout.CENTER);
+
+        panel.add(tableCard, BorderLayout.CENTER);
 
         return panel;
     }
 
     // TAB 2: Question Bank (Requirement 12)
     private JPanel createQuestionsPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel panel = new JPanel(new BorderLayout(0, 16));
+        panel.setOpaque(false);
 
-        // Filter bar
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 5));
+        // Filter bar card
+        ServerBrutalUI.CardPanel filterCard = new ServerBrutalUI.CardPanel(14, 4);
+        JPanel filterPanel = new JPanel(new BorderLayout(12, 0));
+        filterPanel.setOpaque(false);
+
+        JPanel leftFilters = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 2));
+        leftFilters.setOpaque(false);
+
         cbFilterTopic = new JComboBox<>(new String[]{"Tất cả chủ đề", "1. Khoa học Tự nhiên", "2. Lịch sử & Địa lý", "3. Công nghệ & Máy tính", "4. Tư duy IQ & Logic"});
         cbFilterDifficulty = new JComboBox<>(new String[]{"Tất cả độ khó", "EASY", "MEDIUM", "HARD"});
-        JButton btnFilter = new JButton("Lọc danh sách");
+        ServerBrutalUI.styleComboBox(cbFilterTopic);
+        ServerBrutalUI.styleComboBox(cbFilterDifficulty);
+
+        JButton btnFilter = new ServerBrutalUI.BrutalButton("Lọc danh sách", ServerBrutalUI.BrutalButton.Style.OUTLINE);
         btnFilter.addActionListener(e -> loadQuestionsData());
 
-        JButton btnAddQuestion = new JButton("+ Thêm câu hỏi mới");
-        btnAddQuestion.setBackground(new Color(41, 128, 185));
-        btnAddQuestion.setForeground(Color.WHITE);
+        JLabel lblTopic = new JLabel("Chủ đề:");
+        lblTopic.setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+        JLabel lblDiff = new JLabel("Độ khó:");
+        lblDiff.setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+
+        leftFilters.add(lblTopic);
+        leftFilters.add(cbFilterTopic);
+        leftFilters.add(lblDiff);
+        leftFilters.add(cbFilterDifficulty);
+        leftFilters.add(btnFilter);
+
+        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 2));
+        rightActions.setOpaque(false);
+
+        JButton btnAddQuestion = new ServerBrutalUI.BrutalButton("+ Thêm câu hỏi mới", ServerBrutalUI.BrutalButton.Style.PRIMARY);
         btnAddQuestion.addActionListener(e -> showAddQuestionDialog());
 
-        JButton btnDeleteQuestion = new JButton("Xóa câu hỏi");
-        btnDeleteQuestion.setForeground(Color.RED);
+        JButton btnDeleteQuestion = new ServerBrutalUI.BrutalButton("Xóa câu hỏi", ServerBrutalUI.BrutalButton.Style.DANGER);
         btnDeleteQuestion.addActionListener(e -> deleteSelectedQuestion());
 
-        filterPanel.add(new JLabel("Chủ đề:"));
-        filterPanel.add(cbFilterTopic);
-        filterPanel.add(new JLabel("Độ khó:"));
-        filterPanel.add(cbFilterDifficulty);
-        filterPanel.add(btnFilter);
-        filterPanel.add(btnAddQuestion);
-        filterPanel.add(btnDeleteQuestion);
+        rightActions.add(btnAddQuestion);
+        rightActions.add(btnDeleteQuestion);
 
-        panel.add(filterPanel, BorderLayout.NORTH);
+        filterPanel.add(leftFilters, BorderLayout.WEST);
+        filterPanel.add(rightActions, BorderLayout.EAST);
+        filterCard.add(filterPanel, BorderLayout.CENTER);
+        panel.add(filterCard, BorderLayout.NORTH);
 
-        // Questions table
+        // Questions table card
+        ServerBrutalUI.CardPanel tableCard = new ServerBrutalUI.CardPanel(14, 4);
         String[] qCols = {"ID", "Chủ đề", "Loại", "Độ khó", "Nội dung câu hỏi", "Đáp án đúng", "Hình ảnh"};
         questionTableModel = new DefaultTableModel(qCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tblQuestions = new JTable(questionTableModel);
-        panel.add(new JScrollPane(tblQuestions), BorderLayout.CENTER);
+        ServerBrutalUI.styleTable(tblQuestions);
+        tblQuestions.getColumnModel().getColumn(0).setMaxWidth(60);
+        tblQuestions.getColumnModel().getColumn(3).setCellRenderer(new DifficultyCellRenderer());
+        tableCard.add(ServerBrutalUI.wrapScrollTable(tblQuestions), BorderLayout.CENTER);
+
+        panel.add(tableCard, BorderLayout.CENTER);
 
         return panel;
     }
 
     // TAB 3: Match Configuration (Requirement 13)
     private JPanel createConfigPanel() {
+        JPanel wrapper = new JPanel(new GridBagLayout());
+        wrapper.setOpaque(false);
+
+        ServerBrutalUI.CardPanel card = new ServerBrutalUI.CardPanel(16, 5);
+        card.setPreferredSize(new Dimension(620, 420));
+
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(10, 8, 10, 8);
         gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel lblHeader = new JLabel("Cấu Hình Tham Số Trận Đấu");
+        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblHeader.setForeground(ServerBrutalUI.COLOR_BLACK);
 
         spinQuestionCount = new JSpinner(new SpinnerNumberModel(5, 3, 20, 1));
         spinTimePerQuestion = new JSpinner(new SpinnerNumberModel(10, 5, 60, 1));
         spinBaseScore = new JSpinner(new SpinnerNumberModel(100, 10, 500, 10));
-        chkSpeedBonus = new JCheckBox("Bật thưởng điểm theo thời gian trả lời nhanh (Speed Bonus)", true);
+        styleSpinner(spinQuestionCount);
+        styleSpinner(spinTimePerQuestion);
+        styleSpinner(spinBaseScore);
 
-        gbc.gridx = 0; gbc.gridy = 0;
-        panel.add(new JLabel("Số câu hỏi mỗi trận đấu:"), gbc);
-        gbc.gridx = 1;
+        chkSpeedBonus = new JCheckBox("Bật thưởng điểm theo thời gian trả lời nhanh (Speed Bonus)", true);
+        chkSpeedBonus.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        chkSpeedBonus.setOpaque(false);
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        panel.add(lblHeader, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.7;
+        JLabel l1 = new JLabel("Số câu hỏi mỗi trận đấu:");
+        l1.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        panel.add(l1, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.3;
         panel.add(spinQuestionCount, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1;
-        panel.add(new JLabel("Thời gian tối đa mỗi câu (giây):"), gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.7;
+        JLabel l2 = new JLabel("Thời gian tối đa mỗi câu (giây):");
+        l2.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        panel.add(l2, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.3;
         panel.add(spinTimePerQuestion, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2;
-        panel.add(new JLabel("Điểm cơ bản mỗi câu đúng:"), gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.7;
+        JLabel l3 = new JLabel("Điểm cơ bản mỗi câu đúng:");
+        l3.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        panel.add(l3, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.3;
         panel.add(spinBaseScore, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
         panel.add(chkSpeedBonus, gbc);
 
-        JButton btnSaveConfig = new JButton("Lưu cấu hình trận đấu");
-        btnSaveConfig.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnSaveConfig.setBackground(new Color(39, 174, 96));
-        btnSaveConfig.setForeground(Color.WHITE);
+        JButton btnSaveConfig = new ServerBrutalUI.BrutalButton("Lưu cấu hình trận đấu", ServerBrutalUI.BrutalButton.Style.SUCCESS);
+        btnSaveConfig.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        btnSaveConfig.setPreferredSize(new Dimension(0, 44));
         btnSaveConfig.addActionListener(e -> saveMatchConfig());
 
-        gbc.gridy = 4;
+        gbc.gridy = 5;
+        gbc.insets = new Insets(18, 8, 6, 8);
         panel.add(btnSaveConfig, gbc);
 
-        return panel;
+        card.add(panel, BorderLayout.CENTER);
+        wrapper.add(card);
+        return wrapper;
+    }
+
+    private void styleSpinner(JSpinner spinner) {
+        spinner.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        spinner.setBorder(BorderFactory.createLineBorder(ServerBrutalUI.COLOR_BLACK, 2));
+        spinner.setPreferredSize(new Dimension(110, 36));
     }
 
     // TAB 4: Statistics & Reports (Requirement 16)
     private JPanel createStatsPanel() {
-        JPanel panel = new JPanel(new GridLayout(3, 1, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(3, 1, 0, 16));
+        panel.setOpaque(false);
 
-        // Sub-panel 1: Top Winners
-        JPanel pnl1 = new JPanel(new BorderLayout());
-        pnl1.setBorder(BorderFactory.createTitledBorder("Top Người Dùng Thắng Nhiều Nhất"));
         tblTopWinners = new JTable(new DefaultTableModel(new String[]{"Hạng", "User", "Họ tên", "Số trận thắng", "Tổng trận", "Điểm IQ"}, 0));
-        pnl1.add(new JScrollPane(tblTopWinners), BorderLayout.CENTER);
-
-        // Sub-panel 2: Top Streaks
-        JPanel pnl2 = new JPanel(new BorderLayout());
-        pnl2.setBorder(BorderFactory.createTitledBorder("Top Chuỗi Thắng Dài Nhất"));
         tblTopStreaks = new JTable(new DefaultTableModel(new String[]{"Hạng", "User", "Họ tên", "Chuỗi thắng dài nhất", "Chuỗi hiện tại"}, 0));
-        pnl2.add(new JScrollPane(tblTopStreaks), BorderLayout.CENTER);
-
-        // Sub-panel 3: Most Played
-        JPanel pnl3 = new JPanel(new BorderLayout());
-        pnl3.setBorder(BorderFactory.createTitledBorder("Top Người Dùng Tham Gia Nhiều Trận Nhất"));
         tblMostPlayed = new JTable(new DefaultTableModel(new String[]{"Hạng", "User", "Họ tên", "Tổng số trận", "Thắng", "Tỉ lệ thắng (%)"}, 0));
-        pnl3.add(new JScrollPane(tblMostPlayed), BorderLayout.CENTER);
 
-        panel.add(pnl1);
-        panel.add(pnl2);
-        panel.add(pnl3);
+        panel.add(createStatCard("Top Người Dùng Thắng Nhiều Nhất", tblTopWinners));
+        panel.add(createStatCard("Top Chuỗi Thắng Dài Nhất", tblTopStreaks));
+        panel.add(createStatCard("Top Người Dùng Tham Gia Nhiều Trận Nhất", tblMostPlayed));
 
         return panel;
+    }
+
+    private ServerBrutalUI.CardPanel createStatCard(String title, JTable table) {
+        ServerBrutalUI.CardPanel card = new ServerBrutalUI.CardPanel(14, 4);
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(ServerBrutalUI.FONT_BODY_BOLD);
+        lblTitle.setForeground(ServerBrutalUI.COLOR_BLACK);
+        lblTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        ServerBrutalUI.styleTable(table);
+        card.add(lblTitle, BorderLayout.NORTH);
+        card.add(ServerBrutalUI.wrapScrollTable(table), BorderLayout.CENTER);
+        return card;
+    }
+
+    private static class StatusCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String s = value != null ? value.toString() : "";
+            setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+            if (!isSelected) {
+                setForeground("ACTIVE".equalsIgnoreCase(s) ? ServerBrutalUI.COLOR_SUCCESS_TEXT : ServerBrutalUI.COLOR_DANGER_TEXT);
+            }
+            return this;
+        }
+    }
+
+    private static class OnlineCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String s = value != null ? value.toString() : "";
+            setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+            if (!isSelected) {
+                setForeground("Online".equalsIgnoreCase(s) ? ServerBrutalUI.COLOR_SUCCESS_TEXT : ServerBrutalUI.COLOR_MUTED);
+            }
+            return this;
+        }
+    }
+
+    private static class DifficultyCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String s = value != null ? value.toString() : "";
+            setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+            if (!isSelected) {
+                if ("EASY".equalsIgnoreCase(s)) setForeground(ServerBrutalUI.COLOR_SUCCESS_TEXT);
+                else if ("HARD".equalsIgnoreCase(s)) setForeground(ServerBrutalUI.COLOR_DANGER_TEXT);
+                else setForeground(ServerBrutalUI.COLOR_AMBER_TEXT);
+            }
+            return this;
+        }
     }
 
     private void loadAllData() {
@@ -407,15 +576,23 @@ public class ServerMainFrame extends JFrame {
 
     private void showAddQuestionDialog() {
         JDialog dialog = new JDialog(this, "Thêm Câu Hỏi Mới", true);
-        dialog.setSize(650, 600);
+        dialog.setSize(680, 640);
         dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setLayout(new BorderLayout(12, 12));
+        dialog.getContentPane().setBackground(ServerBrutalUI.COLOR_BG);
 
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        formPanel.setBackground(Color.WHITE);
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(16, 18, 10, 18),
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(ServerBrutalUI.COLOR_BLACK, 2),
+                        BorderFactory.createEmptyBorder(16, 20, 16, 20)
+                )
+        ));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(7, 8, 7, 8);
 
         JComboBox<String> cbTopic = new JComboBox<>(new String[]{
                 "1. Khoa học Tự nhiên",
@@ -425,12 +602,23 @@ public class ServerMainFrame extends JFrame {
         });
         JComboBox<String> cbType = new JComboBox<>(new String[]{"STANDARD", "IQ_TEST"});
         JComboBox<String> cbDiff = new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD"});
+        ServerBrutalUI.styleComboBox(cbTopic);
+        ServerBrutalUI.styleComboBox(cbType);
+        ServerBrutalUI.styleComboBox(cbDiff);
+
         JTextField txtContent = new JTextField();
         JTextField txtAnsA = new JTextField();
         JTextField txtAnsB = new JTextField();
         JTextField txtAnsC = new JTextField();
         JTextField txtAnsD = new JTextField();
+        ServerBrutalUI.styleTextField(txtContent);
+        ServerBrutalUI.styleTextField(txtAnsA);
+        ServerBrutalUI.styleTextField(txtAnsB);
+        ServerBrutalUI.styleTextField(txtAnsC);
+        ServerBrutalUI.styleTextField(txtAnsD);
+
         JComboBox<String> cbCorrect = new JComboBox<>(new String[]{"A", "B", "C", "D"});
+        ServerBrutalUI.styleComboBox(cbCorrect);
 
         // Panel chọn hình ảnh Base64 cho câu hỏi IQ_TEST
         JLabel lblImage = new JLabel("Hình ảnh câu hỏi (Base64):");
@@ -438,7 +626,8 @@ public class ServerMainFrame extends JFrame {
         lblImage.setForeground(new Color(37, 99, 235));
 
         JPanel pnlImageChooser = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        JButton btnBrowseImg = new JButton("Chọn file ảnh...");
+        pnlImageChooser.setOpaque(false);
+        JButton btnBrowseImg = new ServerBrutalUI.BrutalButton("Chọn file ảnh...", ServerBrutalUI.BrutalButton.Style.OUTLINE);
         JLabel lblImgPreview = new JLabel();
         JLabel lblImgStatus = new JLabel("Chưa chọn ảnh");
         lblImgStatus.setFont(new Font("Segoe UI", Font.ITALIC, 11));
@@ -528,11 +717,9 @@ public class ServerMainFrame extends JFrame {
         // Khởi tạo ban đầu ẩn/hiện trường ảnh
         toggleImageField.run();
 
-        JButton btnSave = new JButton("Lưu Câu Hỏi Vào CSDL");
+        JButton btnSave = new ServerBrutalUI.BrutalButton("Lưu Câu Hỏi Vào CSDL", ServerBrutalUI.BrutalButton.Style.PRIMARY);
         btnSave.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnSave.setBackground(new Color(37, 99, 235));
-        btnSave.setForeground(Color.WHITE);
-        btnSave.setPreferredSize(new Dimension(0, 42));
+        btnSave.setPreferredSize(new Dimension(0, 44));
 
         btnSave.addActionListener(e -> {
             if (txtContent.getText().trim().isEmpty() || txtAnsA.getText().trim().isEmpty() || txtAnsB.getText().trim().isEmpty()) {
@@ -576,7 +763,8 @@ public class ServerMainFrame extends JFrame {
         });
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 15, 20));
+        bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 18, 16, 18));
         bottomPanel.add(btnSave, BorderLayout.CENTER);
 
         dialog.add(formPanel, BorderLayout.CENTER);
