@@ -43,32 +43,41 @@ public class AvatarUtil {
     }
 
     /**
-     * Sao chép file ảnh từ máy người dùng vào thư mục lưu trữ data/avatars
+     * Chuyển ảnh người dùng chọn thành chuỗi Base64 Data URI (tối đa 256x256)
+     * để lưu vào CSDL Server và đồng bộ hiển thị cho mọi Client khác.
      */
     public static String saveCustomAvatar(File srcFile, String prefix) {
         if (srcFile == null || !srcFile.exists()) {
             return "avatar1.png";
         }
         try {
-            File avatarsDir = getAvatarsDirectory();
-            String origName = srcFile.getName();
-            String ext = "png";
-            int dotIdx = origName.lastIndexOf('.');
-            if (dotIdx > 0 && dotIdx < origName.length() - 1) {
-                ext = origName.substring(dotIdx + 1).toLowerCase();
+            BufferedImage img = ImageIO.read(srcFile);
+            if (img != null) {
+                int maxDim = 256;
+                int w = img.getWidth();
+                int h = img.getHeight();
+                if (w > maxDim || h > maxDim) {
+                    double scale = Math.min((double) maxDim / w, (double) maxDim / h);
+                    int nw = Math.max(1, (int) Math.round(w * scale));
+                    int nh = Math.max(1, (int) Math.round(h * scale));
+                    BufferedImage scaled = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
+                    Graphics2D g2 = scaled.createGraphics();
+                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g2.drawImage(img, 0, 0, nw, nh, null);
+                    g2.dispose();
+                    img = scaled;
+                }
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                ImageIO.write(img, "png", baos);
+                String b64 = java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
+                return "data:image/png;base64," + b64;
             }
-            String baseName = (dotIdx > 0 ? origName.substring(0, dotIdx) : origName)
-                    .replaceAll("[^a-zA-Z0-9_\\-]", "_");
-            if (baseName.length() > 25) {
-                baseName = baseName.substring(0, 25);
-            }
-            String destFileName = (prefix != null ? prefix + "_" : "") + System.currentTimeMillis() + "_" + baseName + "." + ext;
-            File destFile = new File(avatarsDir, destFileName);
-            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return "data/avatars/" + destFileName;
+            String fallback = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(srcFile);
+            return fallback != null ? fallback : "avatar1.png";
         } catch (Exception e) {
-            System.err.println("[AvatarUtil] Lỗi lưu avatar tùy chọn: " + e.getMessage());
-            return srcFile.getAbsolutePath().replace('\\', '/');
+            System.err.println("[AvatarUtil] Lỗi mã hóa avatar Base64: " + e.getMessage());
+            String fallback = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(srcFile);
+            return fallback != null ? fallback : "avatar1.png";
         }
     }
 
@@ -80,11 +89,13 @@ public class AvatarUtil {
             avatarName = "avatar1.png";
         }
         avatarName = avatarName.trim();
-        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) chưa có đuôi định dạng ảnh
-        String lower = avatarName.toLowerCase();
-        if (!avatarName.contains("/") && !avatarName.contains("\\")) {
-            if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
-                avatarName = avatarName + ".png";
+        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) và không phải Base64
+        if (!com.quizzlive.shared.util.ImageBase64Util.isBase64Image(avatarName)) {
+            String lower = avatarName.toLowerCase();
+            if (!avatarName.contains("/") && !avatarName.contains("\\")) {
+                if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
+                    avatarName = avatarName + ".png";
+                }
             }
         }
 

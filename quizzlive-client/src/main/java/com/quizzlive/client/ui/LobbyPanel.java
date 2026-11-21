@@ -721,6 +721,7 @@ public class LobbyPanel extends JPanel {
 
     private String getFileNameFromPath(String path) {
         if (path == null || path.isEmpty()) return "Mặc định (avatar1.png)";
+        if (com.quizzlive.shared.util.ImageBase64Util.isBase64Image(path)) return "Ảnh đại diện tùy chọn (Base64)";
         int idx = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
         return idx >= 0 ? path.substring(idx + 1) : path;
     }
