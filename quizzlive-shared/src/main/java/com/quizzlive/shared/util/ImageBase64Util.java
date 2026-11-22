@@ -1,8 +1,10 @@
 package com.quizzlive.shared.util;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -72,6 +74,44 @@ public class ImageBase64Util {
 
         // Nếu không đọc được file, trả về nguyên bản chuỗi
         return trimmed;
+    }
+
+    /**
+     * Kiểm tra file có phải ảnh thật (qua ImageIO.read), vẽ lại thành ảnh PNG sạch
+     * để loại bỏ metadata/payload ẩn/đuôi file giả mạo, rồi mã hóa Base64 Data URI.
+     * Trả về null nếu file không phải hình ảnh hợp lệ.
+     */
+    public static String sanitizeAndEncodeImage(File file, int maxDimension) {
+        if (file == null || !file.exists() || !file.isFile()) {
+            return null;
+        }
+        try {
+            BufferedImage src = ImageIO.read(file);
+            if (src == null || src.getWidth() <= 0 || src.getHeight() <= 0) {
+                return null;
+            }
+            int w = src.getWidth();
+            int h = src.getHeight();
+            int nw = w;
+            int nh = h;
+            if (maxDimension > 0 && (w > maxDimension || h > maxDimension)) {
+                double scale = Math.min((double) maxDimension / w, (double) maxDimension / h);
+                nw = Math.max(1, (int) Math.round(w * scale));
+                nh = Math.max(1, (int) Math.round(h * scale));
+            }
+            BufferedImage cleanImg = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2 = cleanImg.createGraphics();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.drawImage(src, 0, 0, nw, nh, null);
+            g2.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(cleanImg, "png", baos);
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) {
+            System.err.println("[ImageBase64Util] Ảnh không hợp lệ hoặc bị hỏng: " + e.getMessage());
+            return null;
+        }
     }
 
     /**

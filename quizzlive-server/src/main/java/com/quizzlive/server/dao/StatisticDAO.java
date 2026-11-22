@@ -162,33 +162,52 @@ public class StatisticDAO {
     public void saveMatchRecord(long matchId, String matchCode, long p1Id, long p2Id,
                                 int p1Score, int p2Score, Long winnerId,
                                 Integer topicId, String difficulty) {
-        String sqlTran = "INSERT INTO TRAN_DAU (MaTran, MaTranCode, LoaiTran, MaChuDe, DoKho, TrangThai, ThoiGianBatDau, ThoiGianKetThuc, NguoiThang) " +
-                "VALUES (?, ?, 'RANKED', ?, ?, 'FINISHED', ?, ?, ?)";
+        saveMatchRecord(matchId, matchCode, p1Id, p2Id, p1Score, p2Score, winnerId, topicId, difficulty, null);
+    }
+
+    public void saveMatchRecord(long matchId, String matchCode, long p1Id, long p2Id,
+                                int p1Score, int p2Score, Long winnerId,
+                                Integer topicId, String difficulty, Long tournamentId) {
+        // Không chèn cứng MaTran để tránh trùng khóa chính sau khi restart Server (dùng AUTO_INCREMENT / SERIAL)
+        String sqlTran = "INSERT INTO TRAN_DAU (MaTranCode, LoaiTran, MaChuDe, DoKho, MaGiai, TrangThai, ThoiGianBatDau, ThoiGianKetThuc, NguoiThang) " +
+                "VALUES (?, ?, ?, ?, ?, 'FINISHED', ?, ?, ?)";
         String sqlNguoiChoi = "INSERT INTO NGUOI_CHOI_TRAN (MaTran, MaNguoiDung, ViTri, Diem, XepHang, ThoiGianHoanThanh) VALUES (?, ?, ?, ?, ?, ?)";
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Timestamp startTime = new Timestamp(System.currentTimeMillis() - 60000);
+        // Đảm bảo MaTranCode (VARCHAR 20) luôn duy nhất giữa các lần khởi động lại Server
+        String uniqueCode = "M_" + (System.currentTimeMillis() / 1000L) + "_" + (matchId % 1000);
+        String matchType = (tournamentId != null && tournamentId > 0) ? "TOURNAMENT" : "RANKED";
 
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
-            try (PreparedStatement ps = conn.prepareStatement(sqlTran)) {
-                ps.setLong(1, matchId);
-                ps.setString(2, matchCode != null ? matchCode : "MATCH_" + matchId);
+            long dbMatchId = matchId;
+            try (PreparedStatement ps = conn.prepareStatement(sqlTran, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, uniqueCode);
+                ps.setString(2, matchType);
                 if (topicId != null && topicId > 0) ps.setInt(3, topicId);
                 else ps.setNull(3, Types.INTEGER);
                 ps.setString(4, difficulty != null ? difficulty : "MEDIUM");
-                ps.setTimestamp(5, startTime);
-                ps.setTimestamp(6, now);
-                if (winnerId != null) ps.setLong(7, winnerId);
-                else ps.setNull(7, Types.BIGINT);
+                if (tournamentId != null && tournamentId > 0) ps.setLong(5, tournamentId);
+                else ps.setNull(5, Types.BIGINT);
+                ps.setTimestamp(6, startTime);
+                ps.setTimestamp(7, now);
+                if (winnerId != null) ps.setLong(8, winnerId);
+                else ps.setNull(8, Types.BIGINT);
                 ps.executeUpdate();
+
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        dbMatchId = keys.getLong(1);
+                    }
+                }
             }
 
             int p1Rank = (winnerId != null && winnerId == p1Id) ? 1 : ((winnerId != null && winnerId == p2Id) ? 2 : 0);
             int p2Rank = (winnerId != null && winnerId == p2Id) ? 1 : ((winnerId != null && winnerId == p1Id) ? 2 : 0);
 
             try (PreparedStatement ps1 = conn.prepareStatement(sqlNguoiChoi)) {
-                ps1.setLong(1, matchId);
+                ps1.setLong(1, dbMatchId);
                 ps1.setLong(2, p1Id);
                 ps1.setInt(3, 1);
                 ps1.setInt(4, p1Score);
@@ -198,7 +217,7 @@ public class StatisticDAO {
             }
 
             try (PreparedStatement ps2 = conn.prepareStatement(sqlNguoiChoi)) {
-                ps2.setLong(1, matchId);
+                ps2.setLong(1, dbMatchId);
                 ps2.setLong(2, p2Id);
                 ps2.setInt(3, 2);
                 ps2.setInt(4, p2Score);

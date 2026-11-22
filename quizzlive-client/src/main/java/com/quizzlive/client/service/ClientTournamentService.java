@@ -31,4 +31,8 @@ public class ClientTournamentService {
     public void requestTournamentStandings(long tournamentId) {
         socketClient.sendPacket(new Packet(OpCode.TOURNAMENT_STANDINGS_REQ, "{\"tournamentId\":" + tournamentId + "}"));
     }
+
+    public void playTournamentMatch(long tournamentId) {
+        socketClient.sendPacket(new Packet(OpCode.TOURNAMENT_PLAY_REQ, "{\"tournamentId\":" + tournamentId + "}"));
+    }
 }

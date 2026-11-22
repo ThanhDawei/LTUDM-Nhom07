@@ -34,20 +34,18 @@ public class MainClientFrame extends JFrame {
     public MainClientFrame() {
         setTitle("QuizzLive - Tranh Tài Kiến Thức (Nhóm 07 - Đề tài 09)");
         setSize(1000, 700);
-        setMinimumSize(new Dimension(850, 600));
+        setMinimumSize(new Dimension(640, 560));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                int confirm = JOptionPane.showConfirmDialog(
+                if (com.quizzlive.client.util.BrutalUI.showConfirm(
                         MainClientFrame.this,
                         "Bạn có chắc muốn thoát ứng dụng?",
-                        "Xác nhận thoát",
-                        JOptionPane.YES_NO_OPTION
-                );
-                if (confirm == JOptionPane.YES_OPTION) {
+                        "Xác nhận thoát"
+                )) {
                     SocketClient.getInstance().disconnect();
                     System.exit(0);
                 }

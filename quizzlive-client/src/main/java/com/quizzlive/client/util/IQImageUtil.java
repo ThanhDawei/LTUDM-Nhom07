@@ -158,7 +158,7 @@ public class IQImageUtil {
             if (i < 3) {
                 g2.setColor(new Color(52, 152, 219));
                 g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                g2.drawString("➜", bx + boxW + 2, cy + 5);
+                g2.drawString("->", bx + boxW + 2, cy + 5);
             }
         }
     }
@@ -265,7 +265,7 @@ public class IQImageUtil {
 
             if (i < samples.length - 1) {
                 g2.setColor(new Color(189, 195, 199));
-                g2.drawString("➜", x + 62, cy + 18);
+                g2.drawString("->", x + 62, cy + 18);
             }
         }
     }
@@ -276,7 +276,7 @@ public class IQImageUtil {
 
         g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
         g2.setColor(new Color(41, 128, 185));
-        g2.drawString("🧩 BÀI TOÁN TƯ DUY LOGIC & TRÍ TUỆ HÌNH HỌC", (width - 320) / 2, cy - 15);
+        g2.drawString("BÀI TOÁN TƯ DUY LOGIC & TRÍ TUỆ HÌNH HỌC", (width - 320) / 2, cy - 15);
 
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         g2.setColor(new Color(127, 140, 141));
@@ -288,7 +288,7 @@ public class IQImageUtil {
 
         g2.setFont(new Font("Segoe UI", Font.BOLD, 16));
         g2.setColor(new Color(230, 126, 34));
-        g2.drawString("💡 [ Lập luận logic ] ➜ [ Suy đoán ] ➜ [ Chọn phương án đúng ]", (width - 440) / 2, cy + 32);
+        g2.drawString("[ Lập luận logic ] -> [ Suy đoán ] -> [ Chọn phương án đúng ]", (width - 440) / 2, cy + 32);
     }
 
     private static void drawCompletedGraphic(Graphics2D g2, int width, int height) {
@@ -297,7 +297,7 @@ public class IQImageUtil {
 
         g2.setFont(new Font("Segoe UI", Font.BOLD, 22));
         g2.setColor(new Color(212, 175, 55));
-        g2.drawString("🏆 HOÀN THÀNH TẤT CẢ CÂU ĐỐ IQ!", (width - 360) / 2, cy - 5);
+        g2.drawString("HOÀN THÀNH TẤT CẢ CÂU ĐỐ IQ!", (width - 360) / 2, cy - 5);
 
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         g2.setColor(new Color(39, 174, 96));

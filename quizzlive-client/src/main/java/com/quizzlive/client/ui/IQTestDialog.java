@@ -73,7 +73,7 @@ public class IQTestDialog extends JDialog {
 
         JPanel headerTop = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         headerTop.setOpaque(false);
-        JLabel badge = BrutalUI.createBadge("🧠 TEST IQ", new Color(254, 240, 138), BrutalUI.COLOR_BLACK);
+        JLabel badge = BrutalUI.createBadge("TEST IQ", new Color(254, 240, 138), BrutalUI.COLOR_BLACK);
         lblTitle = new JLabel("Bài Test IQ Trong Ngày (5 câu/ngày)");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitle.setForeground(BrutalUI.COLOR_BLACK);
@@ -172,7 +172,7 @@ public class IQTestDialog extends JDialog {
         btnClose.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnClose.addActionListener(e -> dispose());
 
-        btnSubmit = new BrutalUI.BrutalButton("Nộp & Chuyển câu tiếp ➡️", BrutalUI.BrutalButton.Style.PRIMARY);
+        btnSubmit = new BrutalUI.BrutalButton("Nộp & Chuyển câu tiếp >>", BrutalUI.BrutalButton.Style.PRIMARY);
         btnSubmit.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnSubmit.addActionListener(e -> handleSubmit());
 
@@ -252,7 +252,7 @@ public class IQTestDialog extends JDialog {
             this.currentQuestionId = question.questionId;
 
             if (question.isDailyCompleted || question.questionId == -1L) {
-                if (lblTitle != null) lblTitle.setText("🧠 BÀI TEST IQ TRONG NGÀY (5 CÂU/NGÀY)");
+                if (lblTitle != null) lblTitle.setText("BÀI TEST IQ TRONG NGÀY (5 CÂU/NGÀY)");
                 if (lblMeta != null) {
                     lblMeta.setText("Trạng thái: " + (question.dailyMessage != null ? question.dailyMessage : "Đã hoàn thành 5/5 câu hỏi hôm nay"));
                 }
@@ -303,12 +303,12 @@ public class IQTestDialog extends JDialog {
             String topicStr = question.topicName != null ? question.topicName : "Tư duy IQ & Logic";
             String diffStr = question.difficulty != null ? question.difficulty : "MEDIUM";
             if (lblMeta != null) {
-                lblMeta.setText("📌 Câu " + idx + "/" + max + " trong ngày • Mã #" + question.questionId + " | Chủ đề: " + topicStr + " | Cấp độ: " + diffStr);
+                lblMeta.setText("Câu " + idx + "/" + max + " trong ngày - Mã #" + question.questionId + " | Chủ đề: " + topicStr + " | Cấp độ: " + diffStr);
             }
 
             if (btnSubmit != null) {
                 btnSubmit.setEnabled(true);
-                btnSubmit.setText("Nộp & Chuyển câu tiếp ➡️");
+                btnSubmit.setText("Nộp & Chuyển câu tiếp >>");
             }
             if (bgOptions != null) bgOptions.clearSelection();
 
@@ -384,7 +384,7 @@ public class IQTestDialog extends JDialog {
             lblResult.setForeground(result.isCorrect ? new Color(22, 163, 74) : new Color(220, 38, 38));
             lblResult.setText(result.message);
         } else {
-            lblTitle.setText("🎉 ĐÃ HOÀN THÀNH TEST IQ HÔM NAY (5/5 CÂU)");
+            lblTitle.setText("ĐÃ HOÀN THÀNH TEST IQ HÔM NAY (5/5 CÂU)");
             lblResult.setForeground(new Color(22, 163, 74));
             lblResult.setText("<html><b style='color:#16a34a;'>Đã kết toán điểm IQ:</b> Đúng " + result.correctCount + "/5, Sai "
                     + result.wrongCount + "/5 (Cộng +" + String.format("%.1f", result.deltaIq) + " IQ). Điểm mới: <b>"

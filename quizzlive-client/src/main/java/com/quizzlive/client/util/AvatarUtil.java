@@ -43,33 +43,11 @@ public class AvatarUtil {
     }
 
     /**
-     * Sao chép file ảnh từ máy người dùng vào thư mục lưu trữ data/avatars
+     * Kiểm tra ảnh thật, vẽ lại thành PNG sạch (tối đa 256x256) và mã hóa Base64 Data URI.
+     * Trả về null nếu file không phải hình ảnh hợp lệ.
      */
     public static String saveCustomAvatar(File srcFile, String prefix) {
-        if (srcFile == null || !srcFile.exists()) {
-            return "avatar1.png";
-        }
-        try {
-            File avatarsDir = getAvatarsDirectory();
-            String origName = srcFile.getName();
-            String ext = "png";
-            int dotIdx = origName.lastIndexOf('.');
-            if (dotIdx > 0 && dotIdx < origName.length() - 1) {
-                ext = origName.substring(dotIdx + 1).toLowerCase();
-            }
-            String baseName = (dotIdx > 0 ? origName.substring(0, dotIdx) : origName)
-                    .replaceAll("[^a-zA-Z0-9_\\-]", "_");
-            if (baseName.length() > 25) {
-                baseName = baseName.substring(0, 25);
-            }
-            String destFileName = (prefix != null ? prefix + "_" : "") + System.currentTimeMillis() + "_" + baseName + "." + ext;
-            File destFile = new File(avatarsDir, destFileName);
-            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return "data/avatars/" + destFileName;
-        } catch (Exception e) {
-            System.err.println("[AvatarUtil] Lỗi lưu avatar tùy chọn: " + e.getMessage());
-            return srcFile.getAbsolutePath().replace('\\', '/');
-        }
+        return com.quizzlive.shared.util.ImageBase64Util.sanitizeAndEncodeImage(srcFile, 256);
     }
 
     /**
@@ -80,11 +58,13 @@ public class AvatarUtil {
             avatarName = "avatar1.png";
         }
         avatarName = avatarName.trim();
-        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) chưa có đuôi định dạng ảnh
-        String lower = avatarName.toLowerCase();
-        if (!avatarName.contains("/") && !avatarName.contains("\\")) {
-            if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
-                avatarName = avatarName + ".png";
+        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) và không phải Base64
+        if (!com.quizzlive.shared.util.ImageBase64Util.isBase64Image(avatarName)) {
+            String lower = avatarName.toLowerCase();
+            if (!avatarName.contains("/") && !avatarName.contains("\\")) {
+                if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
+                    avatarName = avatarName + ".png";
+                }
             }
         }
 
@@ -211,27 +191,27 @@ public class AvatarUtil {
             case "avatar2.png":
                 c1 = new Color(142, 36, 170); // Tím
                 c2 = new Color(233, 30, 99);  // Hồng
-                symbol = "👑";
+                symbol = "P2";
                 break;
             case "avatar3.png":
                 c1 = new Color(239, 108, 0);  // Cam đậm
                 c2 = new Color(255, 179, 0);  // Vàng
-                symbol = "⚡";
+                symbol = "P3";
                 break;
             case "avatar4.png":
                 c1 = new Color(46, 125, 50);  // Xanh lá đậm
                 c2 = new Color(0, 150, 136);  // Ngọc bích
-                symbol = "⭐";
+                symbol = "P4";
                 break;
             case "avatar5.png":
                 c1 = new Color(198, 40, 40);  // Đỏ ruby
                 c2 = new Color(255, 112, 67); // Cam đỏ
-                symbol = "🏆";
+                symbol = "P5";
                 break;
             default: // avatar1.png
                 c1 = new Color(21, 101, 192); // Xanh dương
                 c2 = new Color(0, 180, 216);  // Cyan
-                symbol = "🎓";
+                symbol = "P1";
                 break;
         }
 
@@ -246,18 +226,9 @@ public class AvatarUtil {
         g2.drawOval(2, 2, size - 5, size - 5);
 
         // Vẽ biểu tượng icon trung tâm
-        int fontSize = (int) (size * 0.48);
-        Font font = new Font("Segoe UI Emoji", Font.PLAIN, fontSize);
+        Font font = new Font("Segoe UI", Font.BOLD, (int) (size * 0.42));
         g2.setFont(font);
         FontMetrics fm = g2.getFontMetrics();
-
-        // Nếu font không hỗ trợ emoji thì vẽ chữ A1-A5
-        if (font.canDisplayUpTo(symbol) != -1) {
-            font = new Font("Segoe UI", Font.BOLD, (int) (size * 0.42));
-            g2.setFont(font);
-            fm = g2.getFontMetrics();
-            symbol = name.replace("avatar", "P").replace(".png", "");
-        }
 
         int x = (size - fm.stringWidth(symbol)) / 2;
         int y = ((size - fm.getHeight()) / 2) + fm.getAscent();

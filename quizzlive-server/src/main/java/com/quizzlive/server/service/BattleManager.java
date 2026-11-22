@@ -32,6 +32,14 @@ public class BattleManager {
         return room;
     }
 
+    public BattleRoom createTournamentBattle(ClientSession p1, ClientSession p2, long tournamentId) {
+        long matchId = matchIdGenerator.incrementAndGet();
+        BattleRoom room = new BattleRoom(matchId, p1, p2, null, "MEDIUM", tournamentId);
+        activeRooms.put(matchId, room);
+        room.start();
+        return room;
+    }
+
     /**
      * Kiểm tra xem người chơi có đang trong trận đấu 1v1 chưa kết thúc hay không
      */
@@ -59,20 +67,43 @@ public class BattleManager {
     }
 
     /**
+     * Xóa phòng đấu khỏi danh sách active
+     */
+    public void removeBattle(long matchId) {
+        activeRooms.remove(matchId);
+    }
+
+    /**
      * Xử lý khi người chơi bấm nút Đầu Hàng
      */
     public void handleSurrender(long userId, long matchId) {
         BattleRoom room = activeRooms.get(matchId);
+        if (room == null) {
+            for (BattleRoom r : activeRooms.values()) {
+                if ((r.getPlayer1() != null && r.getPlayer1().getUserId() != null && r.getPlayer1().getUserId() == userId) ||
+                    (r.getPlayer2() != null && r.getPlayer2().getUserId() != null && r.getPlayer2().getUserId() == userId)) {
+                    room = r;
+                    break;
+                }
+            }
+        }
         if (room != null) {
+            activeRooms.remove(room.getMatchId());
             room.handleSurrender(userId);
-            activeRooms.remove(matchId);
         }
     }
 
     /**
-     * TODO: Xử lý ngắt kết nối
+     * Xử lý khi người chơi mất kết nối đột ngột
      */
     public void handleUserDisconnected(long userId) {
-        // TODO: Xóa người chơi khỏi phòng và xử lý thắng thua do bỏ cuộc
+        for (BattleRoom room : activeRooms.values()) {
+            if ((room.getPlayer1() != null && room.getPlayer1().getUserId() != null && room.getPlayer1().getUserId() == userId) ||
+                (room.getPlayer2() != null && room.getPlayer2().getUserId() != null && room.getPlayer2().getUserId() == userId)) {
+                activeRooms.remove(room.getMatchId());
+                room.handleDisconnect(userId);
+                break;
+            }
+        }
     }
 }
