@@ -31,6 +31,14 @@ public class BattlePanel extends JPanel {
     private boolean answerSubmitted = false;
     private Long selectedAnswerId = null;
 
+    // Thông tin bổ trợ cho màn hình kết quả trận
+    private String currentTopicName = "Đa Lĩnh Vực";
+    private String currentDifficulty = "Trung Bình";
+    private String currentOpponentName = "Đối thủ";
+    private String currentOpponentAvatar = "avatar2.png";
+    private int myCorrectCount = 0;
+    private int oppCorrectCount = 0;
+
     // --- UI HEADER COMPONENTS ---
     private JLabel lblPlayer1Badge;
     private JLabel lblPlayer1Name;
@@ -245,10 +253,21 @@ public class BattlePanel extends JPanel {
             );
             if (confirm == JOptionPane.YES_OPTION) {
                 if (questionTimer != null) questionTimer.stop();
+                long mId = currentMatchId;
+                String topic = currentTopicName;
+                String diff = currentDifficulty;
+                String oppName = currentOpponentName;
+                String oppAvatar = currentOpponentAvatar;
+
                 battleService.surrender(currentMatchId);
                 resetBattleView();
-                JOptionPane.showMessageDialog(this, "Bạn đã đầu hàng và bị xử thua trận đấu này!", "Đầu Hàng", JOptionPane.INFORMATION_MESSAGE);
-                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+
+                if (mainFrame != null && mainFrame.getMatchResultPanel() != null) {
+                    mainFrame.getMatchResultPanel().displaySurrenderLose(mId, topic, diff, oppName, oppAvatar);
+                    mainFrame.showPanel(MainClientFrame.CARD_RESULT);
+                } else {
+                    mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+                }
             }
         });
         bottomPanel.add(btnSurrender, BorderLayout.EAST);
@@ -386,10 +405,16 @@ public class BattlePanel extends JPanel {
         if (me != null) {
             lblPlayer1Name.setText(me.username != null ? me.username + " (Bạn)" : "Bạn");
             lblPlayer1Score.setText(me.totalScore + " điểm");
+            if (me.isCorrect) {
+                myCorrectCount++;
+            }
         }
         if (opponent != null) {
             lblPlayer2Name.setText(opponent.username != null ? opponent.username + " (Đối thủ)" : "Đối thủ");
             lblPlayer2Score.setText(opponent.totalScore + " điểm");
+            if (opponent.isCorrect) {
+                oppCorrectCount++;
+            }
         }
 
         // 2. Tô xanh đáp án đúng
@@ -416,38 +441,35 @@ public class BattlePanel extends JPanel {
      */
     public void renderFinalResult(BattleDTO.FinalResultNotify result) {
         if (questionTimer != null) questionTimer.stop();
+        this.isBattleActive = false;
 
-        Long myUserId = mainFrame.getCurrentUserId();
-        boolean isMePlayer1 = (myUserId != null && result.player1 != null && myUserId.equals(result.player1.userId));
-        BattleDTO.PlayerRoundInfo me = isMePlayer1 ? result.player1 : result.player2;
-        BattleDTO.PlayerRoundInfo opponent = isMePlayer1 ? result.player2 : result.player1;
+        long mId = currentMatchId > 0 ? currentMatchId : result.matchId;
+        String topic = currentTopicName;
+        String diff = currentDifficulty;
+        String oppName = currentOpponentName;
+        String oppAvatar = currentOpponentAvatar;
+        int myCorrect = myCorrectCount;
+        int oppCorrect = oppCorrectCount;
 
-        int myScore = (me != null) ? me.totalScore : 0;
-        int oppScore = (opponent != null) ? opponent.totalScore : 0;
-
-        String title;
-        String message;
-        int messageType;
-
-        if (result.isDraw) {
-            title = "KẾT QUẢ: HÒA!";
-            message = "Trận đấu kết thúc với tỉ số hòa!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.INFORMATION_MESSAGE;
-        } else if (result.winnerUserId != null && myUserId != null && result.winnerUserId.equals(myUserId)) {
-            title = "CHIẾN THẮNG!";
-            message = "Chúc mừng! Bạn đã giành chiến thắng xuất sắc!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.INFORMATION_MESSAGE;
-        } else {
-            title = "THẤT BẠI!";
-            message = "Bạn đã thua trận đấu này!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.WARNING_MESSAGE;
-        }
-
-        JOptionPane.showMessageDialog(this, message, title, messageType);
-        // Dọn dẹp sạch sẽ giao diện trận đấu ngay khi rời phòng đấu
+        // Dọn dẹp giao diện trận đấu
         resetBattleView();
-        // Quay về phòng chờ
-        mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+
+        // Hiển thị trực quan qua MatchResultPanel (Neo-Brutalist)
+        if (mainFrame != null && mainFrame.getMatchResultPanel() != null) {
+            mainFrame.getMatchResultPanel().displayResult(
+                    result,
+                    mId,
+                    topic,
+                    diff,
+                    oppName,
+                    oppAvatar,
+                    myCorrect,
+                    oppCorrect
+            );
+            mainFrame.showPanel(MainClientFrame.CARD_RESULT);
+        } else {
+            mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+        }
     }
 
     /**
@@ -463,6 +485,18 @@ public class BattlePanel extends JPanel {
         this.currentOptions = null;
         this.answerSubmitted = false;
         this.selectedAnswerId = null;
+        this.myCorrectCount = 0;
+        this.oppCorrectCount = 0;
+
+        // Lưu thông tin trận đấu để hiển thị ở MatchResultPanel
+        if (notify != null) {
+            this.currentTopicName = (notify.topicName != null && !notify.topicName.trim().isEmpty()) ? notify.topicName : "Đa Lĩnh Vực";
+            this.currentDifficulty = formatDifficultyDisplay(notify.difficulty);
+            this.currentOpponentName = (notify.opponentFullName != null && !notify.opponentFullName.trim().isEmpty())
+                    ? notify.opponentFullName : (notify.opponentUsername != null ? notify.opponentUsername : "Đối thủ");
+            this.currentOpponentAvatar = (notify.opponentAvatar != null && !notify.opponentAvatar.trim().isEmpty())
+                    ? notify.opponentAvatar : "avatar2.png";
+        }
 
         // 1. Đặt điểm số 2 bên về 0
         lblPlayer1Score.setText("0 điểm");
@@ -630,5 +664,29 @@ public class BattlePanel extends JPanel {
 
     public long getCurrentMatchId() {
         return currentMatchId;
+    }
+
+    public String getCurrentTopicName() {
+        return currentTopicName;
+    }
+
+    public String getCurrentDifficulty() {
+        return currentDifficulty;
+    }
+
+    public String getCurrentOpponentName() {
+        return currentOpponentName;
+    }
+
+    public String getCurrentOpponentAvatar() {
+        return currentOpponentAvatar;
+    }
+
+    public int getMyCorrectCount() {
+        return myCorrectCount;
+    }
+
+    public int getOppCorrectCount() {
+        return oppCorrectCount;
     }
 }

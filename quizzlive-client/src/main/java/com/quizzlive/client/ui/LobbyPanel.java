@@ -678,4 +678,12 @@ public class LobbyPanel extends JPanel {
         IQTestDialog dlg = new IQTestDialog(mainFrame);
         dlg.setVisible(true);
     }
+
+    public String getCurrentAvatar() {
+        return currentAvatar != null ? currentAvatar : "avatar1.png";
+    }
+
+    public void startMatchmakingAction() {
+        startFindingMatch();
+    }
 }

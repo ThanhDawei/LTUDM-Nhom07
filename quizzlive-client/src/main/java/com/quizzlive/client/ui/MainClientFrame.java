@@ -19,6 +19,7 @@ public class MainClientFrame extends JFrame {
     public static final String CARD_BATTLE = "BATTLE";
     public static final String CARD_LEADERBOARD = "LEADERBOARD";
     public static final String CARD_TOURNAMENT = "TOURNAMENT";
+    public static final String CARD_RESULT = "RESULT";
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel mainCardPanel = new JPanel(cardLayout);
@@ -30,6 +31,7 @@ public class MainClientFrame extends JFrame {
     private BattlePanel battlePanel;
     private LeaderboardPanel leaderboardPanel;
     private TournamentPanel tournamentPanel;
+    private MatchResultPanel matchResultPanel;
 
     public MainClientFrame() {
         setTitle("QuizzLive - Tranh Tài Kiến Thức (Nhóm 07 - Đề tài 09)");
@@ -65,6 +67,7 @@ public class MainClientFrame extends JFrame {
         battlePanel = new BattlePanel(this);
         leaderboardPanel = new LeaderboardPanel(this);
         tournamentPanel = new TournamentPanel(this);
+        matchResultPanel = new MatchResultPanel(this);
 
         mainCardPanel.add(loginPanel, CARD_LOGIN);
         mainCardPanel.add(registerPanel, CARD_REGISTER);
@@ -73,6 +76,7 @@ public class MainClientFrame extends JFrame {
         mainCardPanel.add(battlePanel, CARD_BATTLE);
         mainCardPanel.add(leaderboardPanel, CARD_LEADERBOARD);
         mainCardPanel.add(tournamentPanel, CARD_TOURNAMENT);
+        mainCardPanel.add(matchResultPanel, CARD_RESULT);
 
         add(mainCardPanel);
 
@@ -92,6 +96,7 @@ public class MainClientFrame extends JFrame {
     public BattlePanel getBattlePanel() { return battlePanel; }
     public LeaderboardPanel getLeaderboardPanel() { return leaderboardPanel; }
     public TournamentPanel getTournamentPanel() { return tournamentPanel; }
+    public MatchResultPanel getMatchResultPanel() { return matchResultPanel; }
 
     private IQTestDialog activeIQDialog;
     public IQTestDialog getActiveIQDialog() { return activeIQDialog; }

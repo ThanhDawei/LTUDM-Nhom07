@@ -205,12 +205,24 @@ public class ClientPacketHandler implements NetworkListener {
             }
 
             case BATTLE_OPPONENT_DISCONNECTED: {
+                long mId = mainFrame.getBattlePanel().getCurrentMatchId();
+                String topic = mainFrame.getBattlePanel().getCurrentTopicName();
+                String diff = mainFrame.getBattlePanel().getCurrentDifficulty();
+                String oppName = mainFrame.getBattlePanel().getCurrentOpponentName();
+                String oppAvatar = mainFrame.getBattlePanel().getCurrentOpponentAvatar();
+
                 mainFrame.getBattlePanel().resetBattleView();
-                mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
                 com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
                 String msg = (obj != null && obj.has("message")) ? obj.get("message").getAsString()
                         : "Đối thủ đã rời khỏi trận đấu hoặc đầu hàng. Bạn được xử thắng!";
-                JOptionPane.showMessageDialog(mainFrame, msg, "Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
+
+                if (mainFrame.getMatchResultPanel() != null) {
+                    mainFrame.getMatchResultPanel().displayOpponentDisconnected(mId, topic, diff, oppName, oppAvatar, msg);
+                    mainFrame.showPanel(MainClientFrame.CARD_RESULT);
+                } else {
+                    mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
+                    JOptionPane.showMessageDialog(mainFrame, msg, "Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
+                }
                 break;
             }
 
