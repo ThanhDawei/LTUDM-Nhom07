@@ -43,33 +43,11 @@ public class AvatarUtil {
     }
 
     /**
-     * Sao chép file ảnh từ máy người dùng vào thư mục lưu trữ data/avatars
+     * Kiểm tra ảnh thật, vẽ lại thành PNG sạch (tối đa 256x256) và mã hóa Base64 Data URI.
+     * Trả về null nếu file không phải hình ảnh hợp lệ.
      */
     public static String saveCustomAvatar(File srcFile, String prefix) {
-        if (srcFile == null || !srcFile.exists()) {
-            return "avatar1.png";
-        }
-        try {
-            File avatarsDir = getAvatarsDirectory();
-            String origName = srcFile.getName();
-            String ext = "png";
-            int dotIdx = origName.lastIndexOf('.');
-            if (dotIdx > 0 && dotIdx < origName.length() - 1) {
-                ext = origName.substring(dotIdx + 1).toLowerCase();
-            }
-            String baseName = (dotIdx > 0 ? origName.substring(0, dotIdx) : origName)
-                    .replaceAll("[^a-zA-Z0-9_\\-]", "_");
-            if (baseName.length() > 25) {
-                baseName = baseName.substring(0, 25);
-            }
-            String destFileName = (prefix != null ? prefix + "_" : "") + System.currentTimeMillis() + "_" + baseName + "." + ext;
-            File destFile = new File(avatarsDir, destFileName);
-            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return "data/avatars/" + destFileName;
-        } catch (Exception e) {
-            System.err.println("[AvatarUtil] Lỗi lưu avatar tùy chọn: " + e.getMessage());
-            return srcFile.getAbsolutePath().replace('\\', '/');
-        }
+        return com.quizzlive.shared.util.ImageBase64Util.sanitizeAndEncodeImage(srcFile, 256);
     }
 
     /**
@@ -80,11 +58,13 @@ public class AvatarUtil {
             avatarName = "avatar1.png";
         }
         avatarName = avatarName.trim();
-        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) chưa có đuôi định dạng ảnh
-        String lower = avatarName.toLowerCase();
-        if (!avatarName.contains("/") && !avatarName.contains("\\")) {
-            if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
-                avatarName = avatarName + ".png";
+        // Chỉ thêm đuôi .png nếu là tên đơn giản (như avatar1, avatar2) và không phải Base64
+        if (!com.quizzlive.shared.util.ImageBase64Util.isBase64Image(avatarName)) {
+            String lower = avatarName.toLowerCase();
+            if (!avatarName.contains("/") && !avatarName.contains("\\")) {
+                if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif") && !lower.endsWith(".bmp")) {
+                    avatarName = avatarName + ".png";
+                }
             }
         }
 

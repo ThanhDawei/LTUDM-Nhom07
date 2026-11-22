@@ -3,6 +3,7 @@ package com.quizzlive.client.handler;
 import com.google.gson.reflect.TypeToken;
 import com.quizzlive.client.network.NetworkListener;
 import com.quizzlive.client.ui.MainClientFrame;
+import com.quizzlive.client.util.BrutalUI;
 import com.quizzlive.shared.dto.*;
 import com.quizzlive.shared.protocol.OpCode;
 import com.quizzlive.shared.protocol.Packet;
@@ -99,9 +100,9 @@ public class ClientPacketHandler implements NetworkListener {
             case RESEND_OTP_RESP: {
                 AuthDTO.AuthResponse resp = JsonUtil.fromJson(json, AuthDTO.AuthResponse.class);
                 if (resp != null) {
-                    JOptionPane.showMessageDialog(mainFrame, resp.message,
+                    BrutalUI.showMessage(mainFrame, resp.message,
                             resp.success ? "Gửi lại OTP" : "Lỗi",
-                            resp.success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                            resp.success ? BrutalUI.MsgType.SUCCESS : BrutalUI.MsgType.WARNING);
                 }
                 break;
             }
@@ -111,9 +112,9 @@ public class ClientPacketHandler implements NetworkListener {
                 if (resp != null) {
                     if (resp.success) {
                         mainFrame.getLobbyPanel().updateUserInfo(resp);
-                        JOptionPane.showMessageDialog(mainFrame, resp.message, "Cập nhật hồ sơ", JOptionPane.INFORMATION_MESSAGE);
+                        BrutalUI.showMessage(mainFrame, resp.message, "Cập nhật hồ sơ", BrutalUI.MsgType.SUCCESS);
                     } else {
-                        JOptionPane.showMessageDialog(mainFrame, resp.message, "Lỗi cập nhật", JOptionPane.ERROR_MESSAGE);
+                        BrutalUI.showMessage(mainFrame, resp.message, "Lỗi cập nhật", BrutalUI.MsgType.ERROR);
                     }
                 }
                 break;
@@ -161,7 +162,7 @@ public class ClientPacketHandler implements NetworkListener {
             case CHALLENGE_RESP: {
                 ChallengeDTO.ChallengeResponse resp = JsonUtil.fromJson(json, ChallengeDTO.ChallengeResponse.class);
                 if (resp != null) {
-                    JOptionPane.showMessageDialog(mainFrame, resp.message, "Phản hồi thách đấu", JOptionPane.INFORMATION_MESSAGE);
+                    BrutalUI.showMessage(mainFrame, resp.message, "Phản hồi thách đấu", BrutalUI.MsgType.INFO);
                 }
                 break;
             }
@@ -215,13 +216,12 @@ public class ClientPacketHandler implements NetworkListener {
                 com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
                 String msg = (obj != null && obj.has("message")) ? obj.get("message").getAsString()
                         : "Đối thủ đã rời khỏi trận đấu hoặc đầu hàng. Bạn được xử thắng!";
-
                 if (mainFrame.getMatchResultPanel() != null) {
                     mainFrame.getMatchResultPanel().displayOpponentDisconnected(mId, topic, diff, oppName, oppAvatar, msg);
                     mainFrame.showPanel(MainClientFrame.CARD_RESULT);
                 } else {
                     mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
-                    JOptionPane.showMessageDialog(mainFrame, msg, "Chiến Thắng", JOptionPane.INFORMATION_MESSAGE);
+                    BrutalUI.showMessage(mainFrame, msg, "Chiến Thắng", BrutalUI.MsgType.SUCCESS);
                 }
                 break;
             }
@@ -262,11 +262,11 @@ public class ClientPacketHandler implements NetworkListener {
                 boolean success = obj != null && obj.has("success") && obj.get("success").getAsBoolean();
                 String message = (obj != null && obj.has("message")) ? obj.get("message").getAsString() : "Thông báo từ giải đấu";
                 if (success) {
-                    JOptionPane.showMessageDialog(mainFrame, message, "Đăng Ký Giải Đấu", JOptionPane.INFORMATION_MESSAGE);
+                    BrutalUI.showMessage(mainFrame, message, "Đăng Ký Giải Đấu", BrutalUI.MsgType.SUCCESS);
                     // Tự động tải lại danh sách giải đấu để cập nhật số lượng thí sinh
                     new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
                 } else {
-                    JOptionPane.showMessageDialog(mainFrame, message, "Thông Báo Giải Đấu", JOptionPane.WARNING_MESSAGE);
+                    BrutalUI.showMessage(mainFrame, message, "Thông Báo Giải Đấu", BrutalUI.MsgType.WARNING);
                 }
                 break;
             }
@@ -276,6 +276,39 @@ public class ClientPacketHandler implements NetworkListener {
                 if (detail != null && detail.standings != null) {
                     mainFrame.getTournamentPanel().renderStandings(detail.standings);
                 }
+                break;
+            }
+
+            case TOURNAMENT_PLAY_RESP: {
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                String status = (obj != null && obj.has("status")) ? obj.get("status").getAsString() : "";
+                String message = (obj != null && obj.has("message")) ? obj.get("message").getAsString() : "Thông báo đấu giải";
+                if ("WAITING".equals(status)) {
+                    BrutalUI.showMessage(mainFrame, message, "Đang Chờ Đối Thủ Giải Đấu", BrutalUI.MsgType.INFO);
+                } else if (!"MATCHED".equals(status)) {
+                    BrutalUI.showMessage(mainFrame, message, "Thông Báo Giải Đấu", BrutalUI.MsgType.WARNING);
+                }
+                break;
+            }
+
+            case TOURNAMENT_ENDED_NOTIFY: {
+                TournamentDTO.TournamentDetailResponse detail = JsonUtil.fromJson(json, TournamentDTO.TournamentDetailResponse.class);
+                String tourTitle = (detail != null && detail.tournament != null && detail.tournament.title != null)
+                        ? detail.tournament.title : "Giải đấu";
+                String winnerInfo = "";
+                if (detail != null && detail.standings != null && !detail.standings.isEmpty()) {
+                    TournamentDTO.StandingItem top1 = detail.standings.get(0);
+                    winnerInfo = "\nQuán quân: " + top1.username + " (" + top1.points + " điểm)";
+                    mainFrame.getTournamentPanel().renderStandings(detail.standings);
+                }
+                new com.quizzlive.client.service.ClientTournamentService().requestTournamentList();
+                mainFrame.showPanel(MainClientFrame.CARD_TOURNAMENT);
+                BrutalUI.showMessage(
+                        mainFrame,
+                        "Giải đấu [" + tourTitle + "] đã kết thúc tổng kết!" + winnerInfo + "\n\nVui lòng xem Bảng Xếp Hạng chung cuộc trên màn hình.",
+                        "Giải Đấu Đã Kết Thúc",
+                        BrutalUI.MsgType.SUCCESS
+                );
                 break;
             }
 

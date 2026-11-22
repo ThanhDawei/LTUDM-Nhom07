@@ -42,6 +42,7 @@ public class MatchmakingWaitingPanel extends JPanel {
     private JLabel lblIqTitle;
     private JLabel lblIqMeta;
     private JPanel pnlIqQuestionBox;
+    private JScrollPane scrollIqText;
     private JLabel lblIqQuestionText;
     private JPanel pnlIqImageContainer;
     private JLabel lblIqImage;
@@ -177,12 +178,30 @@ public class MatchmakingWaitingPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 14, 12, 14)
         ));
 
-        // Text câu hỏi
+        // Text câu hỏi (Bọc trong Scrollable + JScrollPane để tự xuống dòng theo chiều ngang và cuộn dọc khi thu nhỏ)
         lblIqQuestionText = new JLabel("Đang nạp câu hỏi IQ...");
         lblIqQuestionText.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblIqQuestionText.setForeground(BrutalUI.COLOR_BLACK);
         lblIqQuestionText.setVerticalAlignment(SwingConstants.TOP);
-        pnlIqQuestionBox.add(lblIqQuestionText, BorderLayout.NORTH);
+
+        class WidthTrackingPanel extends JPanel implements Scrollable {
+            WidthTrackingPanel() { super(new BorderLayout()); setBackground(Color.WHITE); }
+            @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+            @Override public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) { return 16; }
+            @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) { return 48; }
+            @Override public boolean getScrollableTracksViewportWidth() { return true; }
+            @Override public boolean getScrollableTracksViewportHeight() { return false; }
+        }
+        WidthTrackingPanel textTrackPanel = new WidthTrackingPanel();
+        textTrackPanel.add(lblIqQuestionText, BorderLayout.CENTER);
+
+        scrollIqText = new JScrollPane(textTrackPanel);
+        scrollIqText.setBorder(null);
+        scrollIqText.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollIqText.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollIqText.getViewport().setBackground(Color.WHITE);
+        scrollIqText.getVerticalScrollBar().setUnitIncrement(16);
+        pnlIqQuestionBox.add(scrollIqText, BorderLayout.NORTH);
 
         // Khung ảnh quy luật IQ (chỉ hiển thị khi câu hỏi có ảnh)
         pnlIqImageContainer = new JPanel(new BorderLayout());
@@ -384,7 +403,7 @@ public class MatchmakingWaitingPanel extends JPanel {
         stopCountdown();
         JOptionPane.showMessageDialog(this,
                 "Hết thời gian 60 giây chưa tìm thấy đối thủ phù hợp!\nĐưa người chơi về phòng chờ.",
-                "Thông báo ghép cặp (YC 2)", JOptionPane.INFORMATION_MESSAGE);
+                "Thông báo ghép cặp", JOptionPane.INFORMATION_MESSAGE);
         mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
     }
 
@@ -441,7 +460,7 @@ public class MatchmakingWaitingPanel extends JPanel {
                 }
                 
                 if (pnlIqQuestionBox != null) {
-                    pnlIqQuestionBox.remove(lblIqQuestionText);
+                    pnlIqQuestionBox.remove(scrollIqText);
                     pnlIqQuestionBox.remove(pnlIqImageContainer);
                 }
                 if (pnlIqImageContainer != null) pnlIqImageContainer.setVisible(false);
@@ -451,10 +470,10 @@ public class MatchmakingWaitingPanel extends JPanel {
                 }
 
                 if (lblIqQuestionText != null) {
-                    lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 14px; font-weight: bold; color: #16a34a; line-height: 1.5; padding: 16px; text-align: center;'>"
+                    lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 12px; font-weight: bold; color: #16a34a; line-height: 1.4; padding: 12px; text-align: center;'>"
                             + (question.content != null ? question.content.replace("\n", "<br>") : "Hôm nay bạn đã hoàn thành đủ 5 câu hỏi IQ. Hãy quay lại vào ngày mai!")
                             + "</div></html>");
-                    if (pnlIqQuestionBox != null) pnlIqQuestionBox.add(lblIqQuestionText, BorderLayout.CENTER);
+                    if (pnlIqQuestionBox != null) pnlIqQuestionBox.add(scrollIqText, BorderLayout.CENTER);
                 }
 
                 if (lblIqResult != null) {
@@ -518,14 +537,15 @@ public class MatchmakingWaitingPanel extends JPanel {
             // Logic hiển thị: Nếu câu hỏi không có ảnh thì CHỈ hiển thị nội dung; Nếu có ảnh thì hiển thị CẢ 2 (nội dung + ảnh)
             boolean hasImage = (question.imageUrl != null && !question.imageUrl.trim().isEmpty());
             if (pnlIqQuestionBox != null) {
-                pnlIqQuestionBox.remove(lblIqQuestionText);
+                pnlIqQuestionBox.remove(scrollIqText);
                 pnlIqQuestionBox.remove(pnlIqImageContainer);
 
                 if (hasImage) {
                     if (lblIqQuestionText != null) {
-                        lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 13px; font-weight: bold; color: #2c3e50; line-height: 1.4;'>"
+                        lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 12px; font-weight: bold; color: #2c3e50; line-height: 1.4;'>"
                                 + (question.content != null ? question.content : "") + "</div></html>");
-                        pnlIqQuestionBox.add(lblIqQuestionText, BorderLayout.NORTH);
+                        scrollIqText.setPreferredSize(new Dimension(0, 72));
+                        pnlIqQuestionBox.add(scrollIqText, BorderLayout.NORTH);
                     }
                     if (pnlIqImageContainer != null) {
                         pnlIqImageContainer.setVisible(true);
@@ -534,9 +554,10 @@ public class MatchmakingWaitingPanel extends JPanel {
                     }
                 } else {
                     if (lblIqQuestionText != null) {
-                        lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 15px; font-weight: bold; color: #1e293b; line-height: 1.6; padding: 12px;'>"
+                        lblIqQuestionText.setText("<html><div style='font-family: Segoe UI; font-size: 12px; font-weight: bold; color: #1e293b; line-height: 1.45; padding: 6px;'>"
                                 + (question.content != null ? question.content : "") + "</div></html>");
-                        pnlIqQuestionBox.add(lblIqQuestionText, BorderLayout.CENTER);
+                        scrollIqText.setPreferredSize(null);
+                        pnlIqQuestionBox.add(scrollIqText, BorderLayout.CENTER);
                     }
                     if (pnlIqImageContainer != null) {
                         pnlIqImageContainer.setVisible(false);

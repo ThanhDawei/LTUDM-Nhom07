@@ -124,9 +124,14 @@ public class RegisterPanel extends JPanel {
             int ret = chooser.showOpenDialog(RegisterPanel.this);
             if (ret == JFileChooser.APPROVE_OPTION) {
                 java.io.File file = chooser.getSelectedFile();
-                selectedAvatar = AvatarUtil.saveCustomAvatar(file, "reg_avatar");
-                lblAvatarFileName.setText(file.getName());
-                lblRegAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar, 30));
+                String sanitized = AvatarUtil.saveCustomAvatar(file, "reg_avatar");
+                if (sanitized != null) {
+                    selectedAvatar = sanitized;
+                    lblAvatarFileName.setText(file.getName());
+                    lblRegAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar, 30));
+                } else {
+                    JOptionPane.showMessageDialog(RegisterPanel.this, "File được chọn không phải hình ảnh hợp lệ hoặc bị hỏng!", "Lỗi ảnh", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 

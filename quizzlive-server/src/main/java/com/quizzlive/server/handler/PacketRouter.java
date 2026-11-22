@@ -176,6 +176,35 @@ public class PacketRouter {
                 session.sendPacket(new Packet(OpCode.TOURNAMENT_STANDINGS_RESP, JsonUtil.toJson(detail)));
                 break;
             }
+            case TOURNAMENT_PLAY_REQ: {
+                com.google.gson.JsonObject obj = JsonUtil.fromJson(json, com.google.gson.JsonObject.class);
+                long tournamentId = (obj != null && obj.has("tournamentId")) ? obj.get("tournamentId").getAsLong() : 1L;
+                String status = tournamentService.joinTournamentBattleQueue(tournamentId, session);
+                String msg;
+                switch (status) {
+                    case "FINISHED":
+                        msg = "Giải đấu này đã kết thúc tổng kết! Vui lòng xem Bảng Xếp Hạng chung cuộc.";
+                        break;
+                    case "NOT_REGISTERED":
+                        msg = "Bạn cần Đăng Ký Tham Gia giải đấu này trước khi thi đấu!";
+                        break;
+                    case "IN_BATTLE":
+                        msg = "Bạn đang ở trong một trận đấu khác!";
+                        break;
+                    case "WAITING":
+                        msg = "Đã vào hàng chờ đấu giải! Đang chờ một thí sinh khác cùng giải bấm Đấu Trận Giải...";
+                        break;
+                    case "MATCHED":
+                        msg = "Đã ghép cặp đấu giải thành công!";
+                        break;
+                    default:
+                        msg = "Không thể tham gia đấu giải lúc này!";
+                        break;
+                }
+                session.sendPacket(new Packet(OpCode.TOURNAMENT_PLAY_RESP,
+                        "{\"status\":\"" + status + "\",\"message\":\"" + msg + "\"}"));
+                break;
+            }
             // --- 7. BẢNG XẾP HẠNG & LỊCH SỬ (Yêu cầu 10) ---
             case LEADERBOARD_REQ: {
                 Long currentUserId = session.getUserId();

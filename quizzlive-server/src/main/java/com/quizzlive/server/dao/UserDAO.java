@@ -72,7 +72,7 @@ public class UserDAO {
     public Long createUser(String username, String salt, String hash, String email, String fullName, String avatar, String bio) {
         String sqlNextId = "SELECT COALESCE(MAX(MaNguoiDung), 0) + 1 AS NextId FROM NGUOI_DUNG";
         String sqlUser = "INSERT INTO NGUOI_DUNG (MaNguoiDung, TenDangNhap, Salt, Hash, Email, TrangThai, TrangThaiOnline, NgayTao) VALUES (?, ?, ?, ?, ?, 'PENDING', FALSE, ?)";
-        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu) VALUES (?, ?, ?, ?)";
+        String sqlProfile = "INSERT INTO HO_SO_NGUOI_DUNG (MaNguoiDung, HoTen, AnhDaiDien, GioiThieu, DiemIQ) VALUES (?, ?, ?, ?, 100.00)";
 
         Connection conn = null;
         try {
