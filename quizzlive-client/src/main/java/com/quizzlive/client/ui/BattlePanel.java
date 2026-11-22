@@ -171,16 +171,24 @@ public class BattlePanel extends JPanel {
         questionCard.add(topicHeader, BorderLayout.NORTH);
 
         txtQuestion = new JTextArea("Đang tải nội dung câu hỏi...");
-        txtQuestion.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        txtQuestion.setFont(new Font("Segoe UI", Font.BOLD, 16));
         txtQuestion.setForeground(BrutalUI.COLOR_BLACK);
         txtQuestion.setWrapStyleWord(true);
         txtQuestion.setLineWrap(true);
         txtQuestion.setEditable(false);
         txtQuestion.setOpaque(false);
         txtQuestion.setFocusable(false);
-        txtQuestion.setAlignmentX(Component.CENTER_ALIGNMENT);
-        txtQuestion.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-        questionCard.add(txtQuestion, BorderLayout.CENTER);
+        txtQuestion.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+        JScrollPane scrollQuestion = new JScrollPane(txtQuestion);
+        scrollQuestion.setBorder(null);
+        scrollQuestion.setOpaque(false);
+        scrollQuestion.getViewport().setOpaque(false);
+        scrollQuestion.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollQuestion.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollQuestion.setPreferredSize(new Dimension(0, 120));
+        scrollQuestion.getVerticalScrollBar().setUnitIncrement(16);
+        questionCard.add(scrollQuestion, BorderLayout.CENTER);
 
         lblQuestionImage = new JLabel("", SwingConstants.CENTER);
         lblQuestionImage.setPreferredSize(new Dimension(280, 120));

@@ -182,24 +182,51 @@ public class LobbyPanel extends JPanel {
         navCenterWrapper.add(navActions);
         topPanel.add(navCenterWrapper, BorderLayout.EAST);
 
+        // Tự động xuống 2 dòng khi thu nhỏ cửa sổ (< 940px) để chia đôi màn hình không bị đè chữ
+        final boolean[] isCompactHeader = {false};
+        Runnable applyResponsive = () -> {
+            boolean compact = getWidth() > 0 && getWidth() < 940;
+            if (compact != isCompactHeader[0]) {
+                isCompactHeader[0] = compact;
+                topPanel.removeAll();
+                if (compact) {
+                    topPanel.setLayout(new BorderLayout(0, 10));
+                    ((FlowLayout) navActions.getLayout()).setAlignment(FlowLayout.LEFT);
+                    topPanel.add(brandAndUserBox, BorderLayout.NORTH);
+                    topPanel.add(navCenterWrapper, BorderLayout.SOUTH);
+                } else {
+                    topPanel.setLayout(new BorderLayout(15, 0));
+                    ((FlowLayout) navActions.getLayout()).setAlignment(FlowLayout.RIGHT);
+                    topPanel.add(brandAndUserBox, BorderLayout.WEST);
+                    topPanel.add(navCenterWrapper, BorderLayout.EAST);
+                }
+                topPanel.revalidate();
+                topPanel.repaint();
+            }
+        };
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) { applyResponsive.run(); }
+            @Override public void componentShown(java.awt.event.ComponentEvent e) { applyResponsive.run(); }
+        });
+
         add(topPanel, BorderLayout.NORTH);
 
         // =========================================================================
         // 2. CENTER CONTENT: Cột Trái (Task 2 & 4 Tìm Trận) + Cột Phải (Task 3 Online)
         // =========================================================================
-        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 16, 0));
         centerPanel.setOpaque(false);
 
         // --- CỘT TRÁI: Tìm Trận Đấu Nhanh (Ghép Tự Động 60s & Chọn Chủ Đề) ---
         BrutalUI.CardPanel matchCard = new BrutalUI.CardPanel(16, 4);
         matchCard.setLayout(new BorderLayout(14, 14));
-        matchCard.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
+        matchCard.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
 
         // Header Match Card
-        JPanel matchHeader = new JPanel(new BorderLayout());
+        JPanel matchHeader = new JPanel(new BorderLayout(8, 0));
         matchHeader.setOpaque(false);
 
-        JLabel lblMatchTitle = new JLabel("Tìm Trận Đấu Nhanh (Ghép Tự Động)");
+        JLabel lblMatchTitle = new JLabel("Tìm Trận Đấu Nhanh");
         lblMatchTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblMatchTitle.setForeground(BrutalUI.COLOR_BLACK);
 
@@ -263,21 +290,21 @@ public class LobbyPanel extends JPanel {
 
         centerPanel.add(matchCard);
 
-        // --- CỘT PHẢI: Danh Sách Online & Thách Đấu Bạn Bè (Yêu cầu 3) ---
+        // --- CỘT PHẢI: Danh Sách Online & Thách Đấu Bạn Bè ---
         BrutalUI.CardPanel onlineCard = new BrutalUI.CardPanel(16, 4);
         onlineCard.setLayout(new BorderLayout(14, 14));
-        onlineCard.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
+        onlineCard.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
 
         // Header Online Card
-        JPanel onlineHeader = new JPanel(new BorderLayout(10, 0));
+        JPanel onlineHeader = new JPanel(new BorderLayout(8, 0));
         onlineHeader.setOpaque(false);
 
-        JPanel onlineTitleGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel onlineTitleGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         onlineTitleGroup.setOpaque(false);
         JLabel dotOnline = new JLabel("●");
         dotOnline.setFont(new Font("Segoe UI", Font.BOLD, 14));
         dotOnline.setForeground(new Color(22, 163, 74));
-        JLabel lblOnlineTitle = new JLabel("Người Chơi Online (Thách Đấu)");
+        JLabel lblOnlineTitle = new JLabel("Người Chơi Online");
         lblOnlineTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblOnlineTitle.setForeground(BrutalUI.COLOR_BLACK);
         onlineTitleGroup.add(dotOnline);
@@ -292,7 +319,7 @@ public class LobbyPanel extends JPanel {
         onlineCard.add(onlineHeader, BorderLayout.NORTH);
 
         // Bảng danh sách người chơi online
-        modelOnlineUsers = new DefaultTableModel(new String[]{"ID", "Ảnh", "Tên người chơi", "Điểm IQ", "Trạng thái"}, 0) {
+        modelOnlineUsers = new DefaultTableModel(new String[]{"ID", "Ảnh", "Người chơi", "IQ", "Trạng thái"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
             @Override
@@ -307,11 +334,11 @@ public class LobbyPanel extends JPanel {
         tblOnlineUsers.setSelectionBackground(BrutalUI.COLOR_SELECTED_BG);
         tblOnlineUsers.setSelectionForeground(BrutalUI.COLOR_BLACK);
         tblOnlineUsers.setGridColor(new Color(228, 228, 231));
-        tblOnlineUsers.getColumnModel().getColumn(0).setPreferredWidth(35);
-        tblOnlineUsers.getColumnModel().getColumn(1).setPreferredWidth(45);
-        tblOnlineUsers.getColumnModel().getColumn(2).setPreferredWidth(160);
-        tblOnlineUsers.getColumnModel().getColumn(3).setPreferredWidth(75);
-        tblOnlineUsers.getColumnModel().getColumn(4).setPreferredWidth(85);
+        tblOnlineUsers.getColumnModel().getColumn(0).setPreferredWidth(34);
+        tblOnlineUsers.getColumnModel().getColumn(1).setPreferredWidth(46);
+        tblOnlineUsers.getColumnModel().getColumn(2).setPreferredWidth(140);
+        tblOnlineUsers.getColumnModel().getColumn(3).setPreferredWidth(50);
+        tblOnlineUsers.getColumnModel().getColumn(4).setPreferredWidth(75);
         tblOnlineUsers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         JTableHeader onlineHeaderTbl = tblOnlineUsers.getTableHeader();

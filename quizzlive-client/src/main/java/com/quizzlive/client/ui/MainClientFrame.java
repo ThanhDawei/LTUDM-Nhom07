@@ -34,7 +34,7 @@ public class MainClientFrame extends JFrame {
     public MainClientFrame() {
         setTitle("QuizzLive - Tranh Tài Kiến Thức (Nhóm 07 - Đề tài 09)");
         setSize(1000, 700);
-        setMinimumSize(new Dimension(850, 600));
+        setMinimumSize(new Dimension(640, 560));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
