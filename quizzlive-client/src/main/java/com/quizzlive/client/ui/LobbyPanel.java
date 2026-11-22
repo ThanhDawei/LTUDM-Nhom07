@@ -555,9 +555,14 @@ public class LobbyPanel extends JPanel {
             int ret = chooser.showOpenDialog(dialog);
             if (ret == JFileChooser.APPROVE_OPTION) {
                 java.io.File file = chooser.getSelectedFile();
-                selectedAvatar[0] = AvatarUtil.saveCustomAvatar(file, "avatar_user_" + (currentUserId != null ? currentUserId : "0"));
-                lblAvatarName.setText(file.getName());
-                lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar[0], 56));
+                String sanitized = AvatarUtil.saveCustomAvatar(file, "avatar_user_" + (currentUserId != null ? currentUserId : "0"));
+                if (sanitized != null) {
+                    selectedAvatar[0] = sanitized;
+                    lblAvatarName.setText(file.getName());
+                    lblAvatarPreview.setIcon(AvatarUtil.getAvatarIcon(selectedAvatar[0], 56));
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "File được chọn không phải hình ảnh hợp lệ hoặc bị hỏng!", "Lỗi ảnh", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 

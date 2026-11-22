@@ -647,10 +647,10 @@ public class ServerMainFrame extends JFrame {
             int ret = chooser.showOpenDialog(dialog);
             if (ret == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
-                String b64 = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(file);
+                String b64 = com.quizzlive.shared.util.ImageBase64Util.sanitizeAndEncodeImage(file, 800);
                 if (b64 != null) {
                     selectedImageBase64[0] = b64;
-                    lblImgStatus.setText(file.getName() + " (Đã chuyển thành Base64)");
+                    lblImgStatus.setText("Đã chuẩn hóa PNG an toàn (" + b64.length() + " chars)");
                     lblImgStatus.setForeground(new Color(22, 163, 74));
                     java.awt.image.BufferedImage img = com.quizzlive.shared.util.ImageBase64Util.base64ToImage(b64);
                     if (img != null) {
@@ -658,7 +658,7 @@ public class ServerMainFrame extends JFrame {
                         lblImgPreview.setIcon(new ImageIcon(thumb));
                     }
                 } else {
-                    JOptionPane.showMessageDialog(dialog, "Không thể đọc và chuyển đổi file ảnh này sang Base64!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(dialog, "File được chọn không phải hình ảnh hợp lệ hoặc bị hỏng!", "Lỗi ảnh", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });

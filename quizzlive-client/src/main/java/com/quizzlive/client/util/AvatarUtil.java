@@ -43,42 +43,11 @@ public class AvatarUtil {
     }
 
     /**
-     * Chuyển ảnh người dùng chọn thành chuỗi Base64 Data URI (tối đa 256x256)
-     * để lưu vào CSDL Server và đồng bộ hiển thị cho mọi Client khác.
+     * Kiểm tra ảnh thật, vẽ lại thành PNG sạch (tối đa 256x256) và mã hóa Base64 Data URI.
+     * Trả về null nếu file không phải hình ảnh hợp lệ.
      */
     public static String saveCustomAvatar(File srcFile, String prefix) {
-        if (srcFile == null || !srcFile.exists()) {
-            return "avatar1.png";
-        }
-        try {
-            BufferedImage img = ImageIO.read(srcFile);
-            if (img != null) {
-                int maxDim = 256;
-                int w = img.getWidth();
-                int h = img.getHeight();
-                if (w > maxDim || h > maxDim) {
-                    double scale = Math.min((double) maxDim / w, (double) maxDim / h);
-                    int nw = Math.max(1, (int) Math.round(w * scale));
-                    int nh = Math.max(1, (int) Math.round(h * scale));
-                    BufferedImage scaled = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
-                    Graphics2D g2 = scaled.createGraphics();
-                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                    g2.drawImage(img, 0, 0, nw, nh, null);
-                    g2.dispose();
-                    img = scaled;
-                }
-                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                ImageIO.write(img, "png", baos);
-                String b64 = java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
-                return "data:image/png;base64," + b64;
-            }
-            String fallback = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(srcFile);
-            return fallback != null ? fallback : "avatar1.png";
-        } catch (Exception e) {
-            System.err.println("[AvatarUtil] Lỗi mã hóa avatar Base64: " + e.getMessage());
-            String fallback = com.quizzlive.shared.util.ImageBase64Util.fileToBase64(srcFile);
-            return fallback != null ? fallback : "avatar1.png";
-        }
+        return com.quizzlive.shared.util.ImageBase64Util.sanitizeAndEncodeImage(srcFile, 256);
     }
 
     /**
