@@ -17,7 +17,7 @@ public class TournamentDAO {
                 "COUNT(xh.MaNguoiDung) AS SoNguoiHienTai " +
                 "FROM GIAI_DAU g " +
                 "LEFT JOIN XEP_HANG_GIAI xh ON g.MaGiai = xh.MaGiai " +
-                "WHERE g.TrangThai IN ('UPCOMING', 'ONGOING') " +
+                "WHERE g.TrangThai IN ('UPCOMING', 'ONGOING', 'FINISHED') " +
                 "GROUP BY g.MaGiai, g.TenGiai, g.MoTa, g.TrangThai, g.SoNguoiToiDa, g.ThoiGianBatDau " +
                 "ORDER BY g.MaGiai DESC";
 
@@ -181,5 +181,70 @@ public class TournamentDAO {
             System.err.println("[TournamentDAO] Lỗi updateStandingMatchResult: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public boolean isTournamentFinished(long tournamentId) {
+        String sql = "SELECT TrangThai FROM GIAI_DAU WHERE MaGiai = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return "FINISHED".equalsIgnoreCase(rs.getString("TrangThai"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean createTournament(String title, String description, int maxParticipants) {
+        String sql = "INSERT INTO GIAI_DAU (TenGiai, MoTa, TrangThai, SoNguoiToiDa, ThoiGianBatDau) VALUES (?, ?, 'ONGOING', ?, ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, title);
+            ps.setString(2, description);
+            ps.setInt(3, maxParticipants);
+            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[TournamentDAO] Lỗi createTournament: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * 8. Tổng kết giải đấu: Đóng giải (FINISHED), cập nhật thứ hạng chung cuộc và vinh danh Quán quân
+     */
+    public List<TournamentDTO.StandingItem> finalizeTournament(long tournamentId) {
+        String sqlEnd = "UPDATE GIAI_DAU SET TrangThai = 'FINISHED', ThoiGianKetThuc = ? WHERE MaGiai = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sqlEnd)) {
+            ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+            ps.setLong(2, tournamentId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[TournamentDAO] Lỗi finalizeTournament: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // Cập nhật ViTri & TrangThai (WINNER cho hạng 1) trong XEP_HANG_GIAI
+        List<TournamentDTO.StandingItem> standings = getTournamentStandings(tournamentId);
+        String sqlRank = "UPDATE XEP_HANG_GIAI SET ViTri = ?, TrangThai = ? WHERE MaGiai = ? AND MaNguoiDung = (SELECT MaNguoiDung FROM NGUOI_DUNG WHERE TenDangNhap = ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sqlRank)) {
+            for (TournamentDTO.StandingItem item : standings) {
+                ps.setInt(1, item.rank);
+                ps.setString(2, item.rank == 1 ? "WINNER" : "CONFIRMED");
+                ps.setLong(3, tournamentId);
+                ps.setString(4, item.username);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return standings;
     }
 }

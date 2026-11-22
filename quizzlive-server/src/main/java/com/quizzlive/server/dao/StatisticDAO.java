@@ -162,28 +162,38 @@ public class StatisticDAO {
     public void saveMatchRecord(long matchId, String matchCode, long p1Id, long p2Id,
                                 int p1Score, int p2Score, Long winnerId,
                                 Integer topicId, String difficulty) {
+        saveMatchRecord(matchId, matchCode, p1Id, p2Id, p1Score, p2Score, winnerId, topicId, difficulty, null);
+    }
+
+    public void saveMatchRecord(long matchId, String matchCode, long p1Id, long p2Id,
+                                int p1Score, int p2Score, Long winnerId,
+                                Integer topicId, String difficulty, Long tournamentId) {
         // Không chèn cứng MaTran để tránh trùng khóa chính sau khi restart Server (dùng AUTO_INCREMENT / SERIAL)
-        String sqlTran = "INSERT INTO TRAN_DAU (MaTranCode, LoaiTran, MaChuDe, DoKho, TrangThai, ThoiGianBatDau, ThoiGianKetThuc, NguoiThang) " +
-                "VALUES (?, 'RANKED', ?, ?, 'FINISHED', ?, ?, ?)";
+        String sqlTran = "INSERT INTO TRAN_DAU (MaTranCode, LoaiTran, MaChuDe, DoKho, MaGiai, TrangThai, ThoiGianBatDau, ThoiGianKetThuc, NguoiThang) " +
+                "VALUES (?, ?, ?, ?, ?, 'FINISHED', ?, ?, ?)";
         String sqlNguoiChoi = "INSERT INTO NGUOI_CHOI_TRAN (MaTran, MaNguoiDung, ViTri, Diem, XepHang, ThoiGianHoanThanh) VALUES (?, ?, ?, ?, ?, ?)";
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Timestamp startTime = new Timestamp(System.currentTimeMillis() - 60000);
         // Đảm bảo MaTranCode (VARCHAR 20) luôn duy nhất giữa các lần khởi động lại Server
         String uniqueCode = "M_" + (System.currentTimeMillis() / 1000L) + "_" + (matchId % 1000);
+        String matchType = (tournamentId != null && tournamentId > 0) ? "TOURNAMENT" : "RANKED";
 
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
             long dbMatchId = matchId;
             try (PreparedStatement ps = conn.prepareStatement(sqlTran, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, uniqueCode);
-                if (topicId != null && topicId > 0) ps.setInt(2, topicId);
-                else ps.setNull(2, Types.INTEGER);
-                ps.setString(3, difficulty != null ? difficulty : "MEDIUM");
-                ps.setTimestamp(4, startTime);
-                ps.setTimestamp(5, now);
-                if (winnerId != null) ps.setLong(6, winnerId);
-                else ps.setNull(6, Types.BIGINT);
+                ps.setString(2, matchType);
+                if (topicId != null && topicId > 0) ps.setInt(3, topicId);
+                else ps.setNull(3, Types.INTEGER);
+                ps.setString(4, difficulty != null ? difficulty : "MEDIUM");
+                if (tournamentId != null && tournamentId > 0) ps.setLong(5, tournamentId);
+                else ps.setNull(5, Types.BIGINT);
+                ps.setTimestamp(6, startTime);
+                ps.setTimestamp(7, now);
+                if (winnerId != null) ps.setLong(8, winnerId);
+                else ps.setNull(8, Types.BIGINT);
                 ps.executeUpdate();
 
                 try (ResultSet keys = ps.getGeneratedKeys()) {

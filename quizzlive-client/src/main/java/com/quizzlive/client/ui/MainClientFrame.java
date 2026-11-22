@@ -41,13 +41,11 @@ public class MainClientFrame extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                int confirm = JOptionPane.showConfirmDialog(
+                if (com.quizzlive.client.util.BrutalUI.showConfirm(
                         MainClientFrame.this,
                         "Bạn có chắc muốn thoát ứng dụng?",
-                        "Xác nhận thoát",
-                        JOptionPane.YES_NO_OPTION
-                );
-                if (confirm == JOptionPane.YES_OPTION) {
+                        "Xác nhận thoát"
+                )) {
                     SocketClient.getInstance().disconnect();
                     System.exit(0);
                 }

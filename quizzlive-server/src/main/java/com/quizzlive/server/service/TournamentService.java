@@ -1,10 +1,21 @@
 package com.quizzlive.server.service;
 
 import com.quizzlive.server.dao.TournamentDAO;
+import com.quizzlive.server.dao.UserDAO;
+import com.quizzlive.server.entity.UserProfile;
+import com.quizzlive.server.network.ClientSession;
+import com.quizzlive.shared.dto.MatchmakingDTO;
 import com.quizzlive.shared.dto.TournamentDTO;
+import com.quizzlive.shared.protocol.OpCode;
+import com.quizzlive.shared.protocol.Packet;
+import com.quizzlive.shared.util.JsonUtil;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service xử lý Giải đấu (Tournament)
@@ -14,6 +25,8 @@ import java.util.List;
 public class TournamentService {
 
     private final TournamentDAO tournamentDAO = new TournamentDAO();
+    private final UserDAO userDAO = new UserDAO();
+    private static final Map<Long, List<ClientSession>> tournamentQueues = new ConcurrentHashMap<>();
 
     /**
      * Lấy danh sách các giải đấu đang và sắp diễn ra từ bảng GIAI_DAU
@@ -24,18 +37,107 @@ public class TournamentService {
     }
 
     /**
-     * Đăng ký người chơi vào giải đấu (lưu vào bảng XEP_HANG_GIAI)
+     * Đăng ký người chơi vào giải đấu (lưu vào bảng XEP_HANG_GIAI) và tự động bốc thăm chia bảng
      */
     public boolean registerTournament(long tournamentId, long userId) {
-        // 1. Kiểm tra xem người này đã đăng ký giải đấu này chưa
+        if (tournamentDAO.isTournamentFinished(tournamentId)) {
+            return false;
+        }
         if (tournamentDAO.isUserRegistered(tournamentId, userId)) {
             System.out.println(
                     "[TournamentService] Người dùng " + userId + " đã đăng ký giải " + tournamentId + " trước đó rồi.");
             return false;
         }
 
-        // 2. Tiến hành đăng ký
-        return tournamentDAO.registerParticipant(tournamentId, userId);
+        boolean ok = tournamentDAO.registerParticipant(tournamentId, userId);
+        if (ok) {
+            generateBrackets(tournamentId);
+        }
+        return ok;
+    }
+
+    /**
+     * Ghép cặp thi đấu 1v1 giữa các thí sinh đã đăng ký trong cùng giải đấu
+     * Trả về: "FINISHED", "NOT_REGISTERED", "IN_BATTLE", "WAITING", hoặc "MATCHED"
+     */
+    public String joinTournamentBattleQueue(long tournamentId, ClientSession session) {
+        if (session == null || session.getUserId() == null) {
+            return "ERROR";
+        }
+        long userId = session.getUserId();
+
+        if (tournamentDAO.isTournamentFinished(tournamentId)) {
+            return "FINISHED";
+        }
+        if (!tournamentDAO.isUserRegistered(tournamentId, userId)) {
+            return "NOT_REGISTERED";
+        }
+        if (BattleManager.getInstance().isUserInBattle(userId)) {
+            return "IN_BATTLE";
+        }
+
+        ClientSession opponent = null;
+        synchronized (tournamentQueues) {
+            List<ClientSession> queue = tournamentQueues.computeIfAbsent(tournamentId, k -> new ArrayList<>());
+            Iterator<ClientSession> it = queue.iterator();
+            while (it.hasNext()) {
+                ClientSession s = it.next();
+                if (s == null || s.getUserId() == null || s.getUserId() == userId) {
+                    if (s != null && s.getUserId() != null && s.getUserId() == userId) {
+                        return "WAITING";
+                    }
+                    it.remove();
+                    continue;
+                }
+                if (!BattleManager.getInstance().isUserInBattle(s.getUserId())) {
+                    opponent = s;
+                    it.remove();
+                    break;
+                }
+            }
+            if (opponent == null) {
+                queue.add(session);
+                return "WAITING";
+            }
+        }
+
+        // Tìm thấy đối thủ trong giải -> Khởi tạo phòng đấu giải
+        BattleRoom room = BattleManager.getInstance().createTournamentBattle(opponent, session, tournamentId);
+        sendTournamentMatchFound(room, opponent, session);
+        sendTournamentMatchFound(room, session, opponent);
+        return "MATCHED";
+    }
+
+    private void sendTournamentMatchFound(BattleRoom room, ClientSession receiver, ClientSession opponent) {
+        UserProfile oppProfile = userDAO.getUserProfile(opponent.getUserId());
+        MatchmakingDTO.MatchFoundNotify notify = new MatchmakingDTO.MatchFoundNotify();
+        notify.matchId = room.getMatchId();
+        notify.matchCode = "TOUR_" + room.getMatchId();
+        notify.opponentId = opponent.getUserId();
+        notify.opponentUsername = opponent.getUsername();
+        notify.opponentFullName = (oppProfile != null && oppProfile.getFullName() != null)
+                ? oppProfile.getFullName() : opponent.getUsername();
+        notify.opponentAvatar = (oppProfile != null) ? oppProfile.getAvatar() : null;
+        notify.totalQuestions = BattleRoom.TOTAL_QUESTIONS;
+        notify.timeLimitSeconds = BattleRoom.TIME_LIMIT_SECONDS;
+        notify.topicId = null;
+        notify.topicName = "Đấu Giải";
+        notify.difficulty = "MEDIUM";
+        receiver.sendPacket(new Packet(OpCode.MATCH_FOUND_NOTIFY, JsonUtil.toJson(notify)));
+    }
+
+    public static void leaveAllQueues(long userId) {
+        synchronized (tournamentQueues) {
+            for (List<ClientSession> queue : tournamentQueues.values()) {
+                queue.removeIf(s -> s == null || s.getUserId() == null || s.getUserId() == userId);
+            }
+        }
+    }
+
+    public static void clearTournamentQueue(long tournamentId) {
+        synchronized (tournamentQueues) {
+            tournamentQueues.remove(tournamentId);
+        }
     }
 
     /**

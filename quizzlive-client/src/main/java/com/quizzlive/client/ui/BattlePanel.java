@@ -244,18 +244,15 @@ public class BattlePanel extends JPanel {
         btnSurrender = new BrutalUI.BrutalButton("Đầu Hàng", BrutalUI.BrutalButton.Style.DANGER, 12);
         btnSurrender.setPreferredSize(new Dimension(130, 42));
         btnSurrender.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(
+            if (BrutalUI.showConfirm(
                     this,
                     "Bạn có chắc chắn muốn đầu hàng và xử thua trận đấu này?",
-                    "Xác nhận đầu hàng",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-            );
-            if (confirm == JOptionPane.YES_OPTION) {
+                    "Xác nhận đầu hàng"
+            )) {
                 if (questionTimer != null) questionTimer.stop();
                 battleService.surrender(currentMatchId);
                 resetBattleView();
-                JOptionPane.showMessageDialog(this, "Bạn đã đầu hàng và bị xử thua trận đấu này!", "Đầu Hàng", JOptionPane.INFORMATION_MESSAGE);
+                BrutalUI.showMessage(this, "Bạn đã đầu hàng và bị xử thua trận đấu này!", "Đầu Hàng", BrutalUI.MsgType.WARNING);
                 mainFrame.showPanel(MainClientFrame.CARD_LOBBY);
             }
         });
@@ -435,23 +432,23 @@ public class BattlePanel extends JPanel {
 
         String title;
         String message;
-        int messageType;
+        BrutalUI.MsgType msgType;
 
         if (result.isDraw) {
             title = "KẾT QUẢ: HÒA!";
             message = "Trận đấu kết thúc với tỉ số hòa!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.INFORMATION_MESSAGE;
+            msgType = BrutalUI.MsgType.INFO;
         } else if (result.winnerUserId != null && myUserId != null && result.winnerUserId.equals(myUserId)) {
             title = "CHIẾN THẮNG!";
             message = "Chúc mừng! Bạn đã giành chiến thắng xuất sắc!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.INFORMATION_MESSAGE;
+            msgType = BrutalUI.MsgType.SUCCESS;
         } else {
             title = "THẤT BẠI!";
             message = "Bạn đã thua trận đấu này!\n\nĐiểm của bạn: " + myScore + "\nĐiểm đối thủ: " + oppScore;
-            messageType = JOptionPane.WARNING_MESSAGE;
+            msgType = BrutalUI.MsgType.WARNING;
         }
 
-        JOptionPane.showMessageDialog(this, message, title, messageType);
+        BrutalUI.showMessage(this, message, title, msgType);
         // Dọn dẹp sạch sẽ giao diện trận đấu ngay khi rời phòng đấu
         resetBattleView();
         // Quay về phòng chờ

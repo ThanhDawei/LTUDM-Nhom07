@@ -32,6 +32,14 @@ public class BattleManager {
         return room;
     }
 
+    public BattleRoom createTournamentBattle(ClientSession p1, ClientSession p2, long tournamentId) {
+        long matchId = matchIdGenerator.incrementAndGet();
+        BattleRoom room = new BattleRoom(matchId, p1, p2, null, "MEDIUM", tournamentId);
+        activeRooms.put(matchId, room);
+        room.start();
+        return room;
+    }
+
     /**
      * Kiểm tra xem người chơi có đang trong trận đấu 1v1 chưa kết thúc hay không
      */

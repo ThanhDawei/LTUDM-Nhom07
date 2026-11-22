@@ -153,6 +153,7 @@ public class ClientSession implements Runnable {
         sessionAesKey = null;
         if (userId != null) {
             MatchmakingService.getInstance().leaveQueue(userId);
+            com.quizzlive.server.service.TournamentService.leaveAllQueues(userId);
             BattleManager.getInstance().handleUserDisconnected(userId);
             new UserDAO().updateOnlineStatus(userId, false);
         }

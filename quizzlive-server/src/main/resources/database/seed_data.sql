@@ -693,9 +693,10 @@ ON DUPLICATE KEY UPDATE `Diem` = VALUES(`Diem`);
 
 -- 7. Dữ liệu mẫu Giải Đấu & Xếp Hạng Giải (Requirement 9)
 INSERT INTO `GIAI_DAU` (`MaGiai`, `TenGiai`, `MoTa`, `TrangThai`, `SoNguoiToiDa`, `ThoiGianBatDau`) VALUES
-(1, 'Đại Chiến Tri Thức SGU 2026', 'Giải đấu trắc nghiệm kiến thức đa lĩnh vực toàn trường', 'UPCOMING', 16, '2026-12-01 09:00:00'),
-(2, 'Cúp QuizzLive Mùa Xuân 2026', 'Giải đấu 8 thí sinh tranh tài gay cấn', 'IN_PROGRESS', 8, '2026-11-07 08:00:00')
-ON DUPLICATE KEY UPDATE `TenGiai` = VALUES(`TenGiai`);
+(1, 'Đại Chiến Tri Thức SGU 2026', 'Giải đấu trắc nghiệm kiến thức đa lĩnh vực toàn trường', 'UPCOMING', 16, '2026-11-01 09:00:00'),
+(2, 'Cúp QuizzLive Mùa Xuân 2026', 'Giải đấu 8 thí sinh tranh tài gay cấn', 'IN_PROGRESS', 8, '2026-11-07 08:00:00'),
+(3, 'Giải Đấu Trí Tuệ Mùa Đông 2026', 'Giải đấu kiến thức tổng hợp dành cho sinh viên SGU', 'UPCOMING', 16, '2026-11-24 09:00:00')
+ON DUPLICATE KEY UPDATE `TenGiai` = VALUES(`TenGiai`), `ThoiGianBatDau` = VALUES(`ThoiGianBatDau`);
 
 -- Bảng xếp hạng / Thí sinh tham gia giải đấu số 2 (Đã chia Bảng A và Bảng B)
 INSERT INTO `XEP_HANG_GIAI` (`MaGiai`, `MaNguoiDung`, `BangDau`, `HatGiong`, `SoTran`, `SoTranThang`, `SoTranHoa`, `SoTranThua`, `TongDiem`, `ViTri`) VALUES

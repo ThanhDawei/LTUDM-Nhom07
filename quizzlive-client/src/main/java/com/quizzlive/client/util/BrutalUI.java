@@ -465,5 +465,156 @@ public class BrutalUI {
         lbl.setBorder(BorderFactory.createEmptyBorder(4, 12, 4, 12));
         return lbl;
     }
+
+    public enum MsgType { INFO, SUCCESS, WARNING, ERROR }
+
+    /**
+     * Hộp thoại thông báo chuẩn Neo-Brutalist thay thế JOptionPane.showMessageDialog
+     */
+    public static void showMessage(Component parent, String message, String title, MsgType type) {
+        Window owner = parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
+        if (parent instanceof Window) owner = (Window) parent;
+        JDialog dialog = new JDialog(owner, title != null ? title : "Thông báo", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setResizable(false);
+        dialog.getContentPane().setBackground(COLOR_BG);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        CardPanel card = new CardPanel(16, 4);
+        JPanel content = new JPanel(new BorderLayout(0, 12));
+        content.setOpaque(false);
+        content.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+
+        String badgeText;
+        Color badgeBg;
+        Color badgeFg;
+        switch (type) {
+            case SUCCESS:
+                badgeText = "THÀNH CÔNG"; badgeBg = COLOR_CORRECT_BG; badgeFg = COLOR_CORRECT_TEXT; break;
+            case WARNING:
+                badgeText = "CẢNH BÁO"; badgeBg = COLOR_SELECTED_BG; badgeFg = COLOR_SELECTED_TEXT; break;
+            case ERROR:
+                badgeText = "LỖI"; badgeBg = COLOR_WRONG_BG; badgeFg = COLOR_WRONG_TEXT; break;
+            default:
+                badgeText = "THÔNG BÁO"; badgeBg = COLOR_INFO_BG; badgeFg = COLOR_INFO_TEXT; break;
+        }
+
+        JPanel head = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        head.setOpaque(false);
+        head.add(createBadge(badgeText, badgeBg, badgeFg));
+        JLabel lblTitle = new JLabel(title != null ? title : "Thông báo");
+        lblTitle.setFont(FONT_TITLE);
+        lblTitle.setForeground(COLOR_BLACK);
+        head.add(lblTitle);
+        content.add(head, BorderLayout.NORTH);
+
+        JTextArea txtMsg = new JTextArea(message != null ? message : "");
+        txtMsg.setFont(FONT_BODY);
+        txtMsg.setForeground(COLOR_BLACK);
+        txtMsg.setLineWrap(true);
+        txtMsg.setWrapStyleWord(true);
+        txtMsg.setEditable(false);
+        txtMsg.setOpaque(false);
+        txtMsg.setFocusable(false);
+        txtMsg.setColumns(34);
+        txtMsg.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        JScrollPane scroll = new JScrollPane(txtMsg);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        content.add(scroll, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        footer.setOpaque(false);
+        BrutalButton btnOk = new BrutalButton("Đóng", BrutalButton.Style.PRIMARY, 10);
+        btnOk.setPreferredSize(new Dimension(110, 38));
+        btnOk.addActionListener(e -> dialog.dispose());
+        footer.add(btnOk);
+        content.add(footer, BorderLayout.SOUTH);
+
+        dialog.getRootPane().setDefaultButton(btnOk);
+        card.add(content, BorderLayout.CENTER);
+        wrapper.add(card, BorderLayout.CENTER);
+        dialog.add(wrapper, BorderLayout.CENTER);
+        dialog.pack();
+        if (dialog.getWidth() < 400) dialog.setSize(400, dialog.getHeight());
+        if (dialog.getHeight() > 420) dialog.setSize(dialog.getWidth(), 420);
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Hộp thoại xác nhận chuẩn Neo-Brutalist thay thế JOptionPane.showConfirmDialog
+     */
+    public static boolean showConfirm(Component parent, String message, String title) {
+        Window owner = parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
+        if (parent instanceof Window) owner = (Window) parent;
+        final boolean[] confirmed = {false};
+
+        JDialog dialog = new JDialog(owner, title != null ? title : "Xác nhận", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setResizable(false);
+        dialog.getContentPane().setBackground(COLOR_BG);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        CardPanel card = new CardPanel(16, 4);
+        JPanel content = new JPanel(new BorderLayout(0, 12));
+        content.setOpaque(false);
+        content.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+
+        JPanel head = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        head.setOpaque(false);
+        head.add(createBadge("XÁC NHẬN", COLOR_SELECTED_BG, COLOR_SELECTED_TEXT));
+        JLabel lblTitle = new JLabel(title != null ? title : "Xác nhận");
+        lblTitle.setFont(FONT_TITLE);
+        lblTitle.setForeground(COLOR_BLACK);
+        head.add(lblTitle);
+        content.add(head, BorderLayout.NORTH);
+
+        JTextArea txtMsg = new JTextArea(message != null ? message : "");
+        txtMsg.setFont(FONT_BODY);
+        txtMsg.setForeground(COLOR_BLACK);
+        txtMsg.setLineWrap(true);
+        txtMsg.setWrapStyleWord(true);
+        txtMsg.setEditable(false);
+        txtMsg.setOpaque(false);
+        txtMsg.setFocusable(false);
+        txtMsg.setColumns(34);
+        txtMsg.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        content.add(txtMsg, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        footer.setOpaque(false);
+
+        BrutalButton btnCancel = new BrutalButton("Hủy", BrutalButton.Style.OUTLINE, 10);
+        btnCancel.setPreferredSize(new Dimension(100, 38));
+        btnCancel.addActionListener(e -> { confirmed[0] = false; dialog.dispose(); });
+
+        BrutalButton btnYes = new BrutalButton("Đồng ý", BrutalButton.Style.PRIMARY, 10);
+        btnYes.setPreferredSize(new Dimension(115, 38));
+        btnYes.addActionListener(e -> { confirmed[0] = true; dialog.dispose(); });
+
+        footer.add(btnCancel);
+        footer.add(btnYes);
+        content.add(footer, BorderLayout.SOUTH);
+
+        dialog.getRootPane().setDefaultButton(btnYes);
+        card.add(content, BorderLayout.CENTER);
+        wrapper.add(card, BorderLayout.CENTER);
+        dialog.add(wrapper, BorderLayout.CENTER);
+        dialog.pack();
+        if (dialog.getWidth() < 420) dialog.setSize(420, dialog.getHeight());
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+        return confirmed[0];
+    }
 }
 

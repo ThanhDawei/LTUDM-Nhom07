@@ -161,20 +161,25 @@ public class TournamentPanel extends JPanel {
         scrollTournaments.getViewport().setBackground(Color.WHITE);
         leftCard.add(scrollTournaments, BorderLayout.CENTER);
 
-        JPanel leftActions = new JPanel(new GridLayout(1, 2, 10, 0));
+        JPanel leftActions = new JPanel(new GridLayout(1, 3, 8, 0));
         leftActions.setOpaque(false);
         leftActions.setBorder(BorderFactory.createEmptyBorder(6, 0, 2, 0));
 
-        btnViewDetails = new BrutalUI.BrutalButton("Xem Bảng Đấu", BrutalUI.BrutalButton.Style.OUTLINE, 12);
+        btnViewDetails = new BrutalUI.BrutalButton("Xem Bảng", BrutalUI.BrutalButton.Style.OUTLINE, 12);
         btnViewDetails.setPreferredSize(new Dimension(0, 40));
         btnViewDetails.addActionListener(e -> handleViewStandings());
 
-        btnJoinTournament = new BrutalUI.BrutalButton("Đăng Ký Tham Gia", BrutalUI.BrutalButton.Style.SUCCESS, 12);
+        btnJoinTournament = new BrutalUI.BrutalButton("Đăng Ký", BrutalUI.BrutalButton.Style.SUCCESS, 12);
         btnJoinTournament.setPreferredSize(new Dimension(0, 40));
         btnJoinTournament.addActionListener(e -> handleJoinTournament());
 
+        BrutalUI.BrutalButton btnPlayTour = new BrutalUI.BrutalButton("Đấu Giải", BrutalUI.BrutalButton.Style.PRIMARY, 12);
+        btnPlayTour.setPreferredSize(new Dimension(0, 40));
+        btnPlayTour.addActionListener(e -> handlePlayTournamentMatch());
+
         leftActions.add(btnViewDetails);
         leftActions.add(btnJoinTournament);
+        leftActions.add(btnPlayTour);
         leftCard.add(leftActions, BorderLayout.SOUTH);
 
         centerGrid.add(leftCard);
@@ -288,29 +293,36 @@ public class TournamentPanel extends JPanel {
     private void handleJoinTournament() {
         int row = tblTournaments.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng click chọn 1 giải đấu để đăng ký!", "Thông Báo", JOptionPane.WARNING_MESSAGE);
+            BrutalUI.showMessage(this, "Vui lòng click chọn 1 giải đấu để đăng ký!", "Thông Báo", BrutalUI.MsgType.WARNING);
             return;
         }
 
         long tourId = Long.parseLong(modelTournaments.getValueAt(row, 0).toString());
         String title = modelTournaments.getValueAt(row, 1).toString();
 
-        int confirm = JOptionPane.showConfirmDialog(
+        if (BrutalUI.showConfirm(
                 this,
                 "Bạn có chắc chắn muốn đăng ký tham gia giải đấu:\n[" + title + "] không?",
-                "Xác nhận đăng ký giải",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
-        if (confirm == JOptionPane.YES_OPTION) {
+                "Xác nhận đăng ký giải"
+        )) {
             tournamentService.joinTournament(tourId);
         }
+    }
+
+    private void handlePlayTournamentMatch() {
+        int row = tblTournaments.getSelectedRow();
+        if (row < 0) {
+            BrutalUI.showMessage(this, "Vui lòng chọn 1 giải đấu để vào thi đấu!", "Thông Báo", BrutalUI.MsgType.WARNING);
+            return;
+        }
+        long tourId = Long.parseLong(modelTournaments.getValueAt(row, 0).toString());
+        tournamentService.playTournamentMatch(tourId);
     }
 
     private void handleViewStandings() {
         int row = tblTournaments.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng click chọn 1 giải đấu để xem bảng đấu!", "Thông Báo", JOptionPane.WARNING_MESSAGE);
+            BrutalUI.showMessage(this, "Vui lòng click chọn 1 giải đấu để xem bảng đấu!", "Thông Báo", BrutalUI.MsgType.WARNING);
             return;
         }
 

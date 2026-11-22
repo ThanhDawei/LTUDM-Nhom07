@@ -27,6 +27,7 @@ public class BattleRoom {
     private final ClientSession player2;
     private final Integer topicId;
     private final String difficulty;
+    private final Long tournamentId;
 
     public static final int TOTAL_QUESTIONS = 5;
     public static final int TIME_LIMIT_SECONDS = 10;
@@ -66,11 +67,16 @@ public class BattleRoom {
     }
 
     public BattleRoom(long matchId, ClientSession player1, ClientSession player2, Integer topicId, String difficulty) {
+        this(matchId, player1, player2, topicId, difficulty, null);
+    }
+
+    public BattleRoom(long matchId, ClientSession player1, ClientSession player2, Integer topicId, String difficulty, Long tournamentId) {
         this.matchId = matchId;
         this.player1 = player1;
         this.player2 = player2;
         this.topicId = topicId;
         this.difficulty = difficulty;
+        this.tournamentId = tournamentId;
         loadMatchConfig();
     }
 
@@ -319,7 +325,14 @@ public class BattleRoom {
                 p2TotalScore,
                 winnerUserId,
                 topicId,
-                difficulty);
+                difficulty,
+                tournamentId);
+
+        if (tournamentId != null && tournamentId > 0) {
+            TournamentService ts = new TournamentService();
+            ts.recordMatchResult(tournamentId, player1.getUserId(), p1TotalScore > p2TotalScore, isDraw);
+            ts.recordMatchResult(tournamentId, player2.getUserId(), p2TotalScore > p1TotalScore, isDraw);
+        }
 
         if (currentRoundTimer != null) {
             currentRoundTimer.cancel(true);
@@ -358,7 +371,15 @@ public class BattleRoom {
                 (winner.getUserId().equals(player2.getUserId())) ? Math.max(p2TotalScore, 100) : p2TotalScore,
                 winner.getUserId(),
                 topicId,
-                difficulty);
+                difficulty,
+                tournamentId);
+
+        if (tournamentId != null && tournamentId > 0) {
+            long loserId = (winner.getUserId().equals(player1.getUserId())) ? player2.getUserId() : player1.getUserId();
+            TournamentService ts = new TournamentService();
+            ts.recordMatchResult(tournamentId, winner.getUserId(), true, false);
+            ts.recordMatchResult(tournamentId, loserId, false, false);
+        }
     }
 
     // Xử lý khi người chơi bấm nút "Đầu Hàng"
@@ -392,7 +413,14 @@ public class BattleRoom {
                 (winner.getUserId().equals(player2.getUserId())) ? Math.max(p2TotalScore, 100) : p2TotalScore,
                 winner.getUserId(),
                 topicId,
-                difficulty);
+                difficulty,
+                tournamentId);
+
+        if (tournamentId != null && tournamentId > 0) {
+            TournamentService ts = new TournamentService();
+            ts.recordMatchResult(tournamentId, winner.getUserId(), true, false);
+            ts.recordMatchResult(tournamentId, loser.getUserId(), false, false);
+        }
     }
 
     public long getMatchId() {

@@ -4,10 +4,16 @@ import com.quizzlive.server.dao.MatchConfigDAO;
 import com.quizzlive.server.dao.OtpDAO;
 import com.quizzlive.server.dao.QuestionDAO;
 import com.quizzlive.server.dao.StatisticDAO;
+import com.quizzlive.server.dao.TournamentDAO;
 import com.quizzlive.server.dao.UserDAO;
 import com.quizzlive.server.entity.*;
 import com.quizzlive.server.network.SocketServer;
+import com.quizzlive.server.service.TournamentService;
 import com.quizzlive.shared.dto.LeaderboardDTO;
+import com.quizzlive.shared.dto.TournamentDTO;
+import com.quizzlive.shared.protocol.OpCode;
+import com.quizzlive.shared.protocol.Packet;
+import com.quizzlive.shared.util.JsonUtil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -24,6 +30,7 @@ public class ServerMainFrame extends JFrame {
     private final QuestionDAO questionDAO = new QuestionDAO();
     private final MatchConfigDAO configDAO = new MatchConfigDAO();
     private final StatisticDAO statisticDAO = new StatisticDAO();
+    private final TournamentDAO tournamentDAO = new TournamentDAO();
 
     // Tab navigation
     private final CardLayout contentCardLayout = new CardLayout();
@@ -52,11 +59,17 @@ public class ServerMainFrame extends JFrame {
     private JTable tblTopStreaks;
     private JTable tblMostPlayed;
 
+    // Tournament management
+    private JTable tblTournaments;
+    private DefaultTableModel tournamentTableModel;
+    private JTable tblTourStandings;
+    private DefaultTableModel tourStandingsModel;
+
     public ServerMainFrame(SocketServer server) {
         this.server = server;
         setTitle("Quizzlive Server - Bảng Quản Trị Hệ Thống (Nhóm 07 - Đề tài 09)");
-        setSize(1140, 760);
-        setMinimumSize(new Dimension(980, 660));
+        setSize(1240, 780);
+        setMinimumSize(new Dimension(1020, 680));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         getContentPane().setBackground(ServerBrutalUI.COLOR_BG);
@@ -84,9 +97,10 @@ public class ServerMainFrame extends JFrame {
                 "Trạng Thái & Người Dùng",
                 "Ngân Hàng Câu Hỏi",
                 "Cấu Hình Trận Đấu",
-                "Thống Kê & Báo Cáo"
+                "Thống Kê & Báo Cáo",
+                "Quản Lý Giải Đấu"
         };
-        String[] tabKeys = {"USERS", "QUESTIONS", "CONFIG", "STATS"};
+        String[] tabKeys = {"USERS", "QUESTIONS", "CONFIG", "STATS", "TOURNAMENTS"};
 
         for (int i = 0; i < tabNames.length; i++) {
             final int idx = i;
@@ -117,6 +131,7 @@ public class ServerMainFrame extends JFrame {
         contentCardPanel.add(createQuestionsPanel(), "QUESTIONS");
         contentCardPanel.add(createConfigPanel(), "CONFIG");
         contentCardPanel.add(createStatsPanel(), "STATS");
+        contentCardPanel.add(createTournamentsPanel(), "TOURNAMENTS");
 
         root.add(headerBar, BorderLayout.NORTH);
         root.add(contentCardPanel, BorderLayout.CENTER);
@@ -415,11 +430,186 @@ public class ServerMainFrame extends JFrame {
         }
     }
 
+    // TAB 5: Quản Lý Giải Đấu & Tổng Kết Giải
+    private JPanel createTournamentsPanel() {
+        JPanel panel = new JPanel(new BorderLayout(0, 16));
+        panel.setOpaque(false);
+
+        ServerBrutalUI.CardPanel topCard = new ServerBrutalUI.CardPanel(14, 4);
+        JPanel topBar = new JPanel(new BorderLayout(16, 0));
+        topBar.setOpaque(false);
+
+        JLabel lblHint = new JLabel("Chọn 1 giải đấu để xem BXH hoặc bấm Tổng Kết Giải Đấu để công bố kết quả về toàn bộ Client.");
+        lblHint.setFont(ServerBrutalUI.FONT_SMALL_BOLD);
+        lblHint.setForeground(ServerBrutalUI.COLOR_MUTED);
+
+        JPanel btnGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        btnGroup.setOpaque(false);
+
+        JButton btnRefreshTour = new ServerBrutalUI.BrutalButton("Làm mới", ServerBrutalUI.BrutalButton.Style.OUTLINE);
+        btnRefreshTour.addActionListener(e -> loadTournamentsData());
+
+        JButton btnCreateTour = new ServerBrutalUI.BrutalButton("+ Tạo giải đấu mới", ServerBrutalUI.BrutalButton.Style.PRIMARY);
+        btnCreateTour.addActionListener(e -> showCreateTournamentDialog());
+
+        JButton btnFinalizeTour = new ServerBrutalUI.BrutalButton("Tổng kết giải đấu", ServerBrutalUI.BrutalButton.Style.SUCCESS);
+        btnFinalizeTour.addActionListener(e -> finalizeSelectedTournament());
+
+        btnGroup.add(btnRefreshTour);
+        btnGroup.add(btnCreateTour);
+        btnGroup.add(btnFinalizeTour);
+
+        topBar.add(lblHint, BorderLayout.WEST);
+        topBar.add(btnGroup, BorderLayout.EAST);
+        topCard.add(topBar, BorderLayout.CENTER);
+        panel.add(topCard, BorderLayout.NORTH);
+
+        JPanel tablesGrid = new JPanel(new GridLayout(2, 1, 0, 14));
+        tablesGrid.setOpaque(false);
+
+        tournamentTableModel = new DefaultTableModel(
+                new String[]{"ID", "Tên giải đấu", "Mô tả", "Trạng thái", "Thí sinh", "Ngày bắt đầu"}, 0) {
+            @Override public boolean isCellEditable(int row, int col) { return false; }
+        };
+        tblTournaments = new JTable(tournamentTableModel);
+        tblTournaments.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tblTournaments.getSelectedRow() >= 0) {
+                loadSelectedTournamentStandings();
+            }
+        });
+        tablesGrid.add(createStatCard("Danh Sách Giải Đấu", tblTournaments));
+        tblTournaments.getColumnModel().getColumn(0).setMaxWidth(60);
+
+        tourStandingsModel = new DefaultTableModel(
+                new String[]{"Thứ hạng", "Thí sinh", "Bảng đấu", "Số trận", "Thắng", "Điểm"}, 0) {
+            @Override public boolean isCellEditable(int row, int col) { return false; }
+        };
+        tblTourStandings = new JTable(tourStandingsModel);
+        tablesGrid.add(createStatCard("Bảng Xếp Hạng Giải Đấu Đang Chọn", tblTourStandings));
+
+        panel.add(tablesGrid, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void loadTournamentsData() {
+        int selectedRow = tblTournaments.getSelectedRow();
+        tournamentTableModel.setRowCount(0);
+        for (TournamentDTO.TournamentItem t : tournamentDAO.getActiveTournaments()) {
+            tournamentTableModel.addRow(new Object[]{
+                    t.tournamentId,
+                    t.title,
+                    t.description != null ? t.description : "",
+                    t.status,
+                    t.currentParticipants + " / " + t.maxParticipants,
+                    t.startTime
+            });
+        }
+        if (tournamentTableModel.getRowCount() > 0) {
+            int rowToSelect = (selectedRow >= 0 && selectedRow < tournamentTableModel.getRowCount()) ? selectedRow : 0;
+            tblTournaments.setRowSelectionInterval(rowToSelect, rowToSelect);
+            loadSelectedTournamentStandings();
+        } else {
+            tourStandingsModel.setRowCount(0);
+        }
+    }
+
+    private void loadSelectedTournamentStandings() {
+        int row = tblTournaments.getSelectedRow();
+        if (row < 0) return;
+        long tourId = Long.parseLong(tournamentTableModel.getValueAt(row, 0).toString());
+        tourStandingsModel.setRowCount(0);
+        for (TournamentDTO.StandingItem s : tournamentDAO.getTournamentStandings(tourId)) {
+            tourStandingsModel.addRow(new Object[]{
+                    "#" + s.rank,
+                    s.username,
+                    s.groupName,
+                    s.matchesPlayed,
+                    s.wins,
+                    s.points
+            });
+        }
+    }
+
+    private void showCreateTournamentDialog() {
+        JTextField txtTitle = new JTextField();
+        JTextField txtDesc = new JTextField("Giải đấu tranh tài kiến thức theo bảng");
+        JSpinner spinMax = new JSpinner(new SpinnerNumberModel(16, 2, 64, 2));
+        ServerBrutalUI.styleTextField(txtTitle);
+        ServerBrutalUI.styleTextField(txtDesc);
+
+        JPanel form = new JPanel(new GridLayout(6, 1, 0, 6));
+        form.add(new JLabel("Tên giải đấu:"));
+        form.add(txtTitle);
+        form.add(new JLabel("Mô tả:"));
+        form.add(txtDesc);
+        form.add(new JLabel("Số người tối đa:"));
+        form.add(spinMax);
+
+        int res = JOptionPane.showConfirmDialog(this, form, "Tạo Giải Đấu Mới", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (res == JOptionPane.OK_OPTION && !txtTitle.getText().trim().isEmpty()) {
+            boolean ok = tournamentDAO.createTournament(txtTitle.getText().trim(), txtDesc.getText().trim(), (Integer) spinMax.getValue());
+            if (ok) {
+                JOptionPane.showMessageDialog(this, "Đã tạo giải đấu mới thành công!");
+                loadTournamentsData();
+            }
+        }
+    }
+
+    private void finalizeSelectedTournament() {
+        int row = tblTournaments.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 giải đấu để tổng kết!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        long tourId = Long.parseLong(tournamentTableModel.getValueAt(row, 0).toString());
+        String tourTitle = tournamentTableModel.getValueAt(row, 1).toString();
+        String status = tournamentTableModel.getValueAt(row, 3).toString();
+
+        if ("FINISHED".equalsIgnoreCase(status)) {
+            JOptionPane.showMessageDialog(this, "Giải đấu [" + tourTitle + "] đã được tổng kết trước đó rồi!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bạn có chắc chắn muốn TỔNG KẾT giải đấu [" + tourTitle + "]?\n"
+                        + "Hệ thống sẽ chốt bảng xếp hạng chung cuộc và gửi thông báo tới toàn bộ người chơi đang Online.",
+                "Xác nhận tổng kết giải đấu",
+                JOptionPane.YES_NO_OPTION
+        );
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        TournamentService.clearTournamentQueue(tourId);
+        List<TournamentDTO.StandingItem> finalStandings = tournamentDAO.finalizeTournament(tourId);
+
+        TournamentDTO.TournamentItem tourItem = new TournamentDTO.TournamentItem();
+        tourItem.tournamentId = tourId;
+        tourItem.title = tourTitle;
+        tourItem.status = "FINISHED";
+
+        TournamentDTO.TournamentDetailResponse detail = new TournamentDTO.TournamentDetailResponse();
+        detail.tournament = tourItem;
+        detail.standings = finalStandings;
+
+        if (server != null && server.getSessionManager() != null) {
+            server.getSessionManager().broadcast(new Packet(OpCode.TOURNAMENT_ENDED_NOTIFY, JsonUtil.toJson(detail)));
+        }
+
+        loadTournamentsData();
+        String winnerMsg = (finalStandings != null && !finalStandings.isEmpty())
+                ? ("\nQuán quân: " + finalStandings.get(0).username + " (" + finalStandings.get(0).points + " điểm)")
+                : "";
+        JOptionPane.showMessageDialog(this,
+                "Đã tổng kết giải đấu [" + tourTitle + "] và thông báo cho các Client!" + winnerMsg,
+                "Tổng kết thành công", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void loadAllData() {
         loadUsersData();
         loadQuestionsData();
         loadConfigData();
         loadStatsData();
+        loadTournamentsData();
     }
 
     private void loadUsersData() {
