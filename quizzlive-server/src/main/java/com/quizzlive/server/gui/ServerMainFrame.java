@@ -114,15 +114,7 @@ public class ServerMainFrame extends JFrame {
             tabBar.add(btnTab);
         }
 
-        JLabel lblCryptoStatus = ServerBrutalUI.createBadge(
-                "[BẢO MẬT] Mã hóa lai: RSA-2048 + AES-256 GCM",
-                ServerBrutalUI.COLOR_INFO_LIGHT,
-                ServerBrutalUI.COLOR_INFO_TEXT,
-                new Color(37, 99, 235)
-        );
-
         headerBar.add(tabBar, BorderLayout.CENTER);
-        headerBar.add(lblCryptoStatus, BorderLayout.EAST);
 
         // --- MAIN CONTENT AREA ---
         contentCardPanel.setOpaque(false);
