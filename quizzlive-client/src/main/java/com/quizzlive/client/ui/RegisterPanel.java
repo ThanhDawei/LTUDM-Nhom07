@@ -18,6 +18,10 @@ public class RegisterPanel extends JPanel {
     private final ClientAuthService authService = new ClientAuthService();
 
     // Form Đăng ký
+    private JPanel centerGrid;
+    private BrutalUI.CardPanel leftCard;
+    private BrutalUI.CardPanel rightCard;
+
     private JTextField txtUsername;
     private JTextField txtFullName;
     private JTextField txtEmail;
@@ -49,17 +53,16 @@ public class RegisterPanel extends JPanel {
         setLayout(new GridBagLayout());
         setBackground(BrutalUI.COLOR_BG);
 
-        // Container 2 cột đặt ở giữa màn hình
-        JPanel centerGrid = new JPanel(new GridLayout(1, 2, 24, 0));
+        // Container đặt ở giữa màn hình (tự co giãn khi ẩn/hiện cột OTP)
+        centerGrid = new JPanel(new FlowLayout(FlowLayout.CENTER, 24, 0));
         centerGrid.setOpaque(false);
-        centerGrid.setPreferredSize(new Dimension(890, 530));
-        centerGrid.setMaximumSize(new Dimension(920, 560));
 
         // =========================================================================
         // 1. CỘT TRÁI: FORM ĐĂNG KÝ (BƯỚC 1/2)
         // =========================================================================
-        BrutalUI.CardPanel leftCard = new BrutalUI.CardPanel(16, 4);
+        leftCard = new BrutalUI.CardPanel(16, 4);
         leftCard.setLayout(new BorderLayout(12, 10));
+        leftCard.setPreferredSize(new Dimension(430, 530));
         leftCard.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
 
         // Header Trái
@@ -167,7 +170,12 @@ public class RegisterPanel extends JPanel {
         btnBackToLogin.setForeground(new Color(37, 99, 235));
         btnBackToLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnBackToLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnBackToLogin.addActionListener(e -> mainFrame.showPanel(MainClientFrame.CARD_LOGIN));
+        btnBackToLogin.addActionListener(e -> {
+            rightCard.setVisible(false);
+            revalidate();
+            repaint();
+            mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
+        });
 
         leftFooter.add(btnRegister);
         leftFooter.add(Box.createVerticalStrut(8));
@@ -179,8 +187,9 @@ public class RegisterPanel extends JPanel {
         // =========================================================================
         // 2. CỘT PHẢI: FORM XÁC THỰC MÃ OTP 6 SỐ (BƯỚC 2/2)
         // =========================================================================
-        BrutalUI.CardPanel rightCard = new BrutalUI.CardPanel(16, 4);
+        rightCard = new BrutalUI.CardPanel(16, 4);
         rightCard.setLayout(new BorderLayout(15, 14));
+        rightCard.setPreferredSize(new Dimension(430, 530));
         rightCard.setBorder(BorderFactory.createEmptyBorder(24, 26, 24, 26));
 
         // Header Phải
@@ -196,9 +205,9 @@ public class RegisterPanel extends JPanel {
         lblOtpTitle.setForeground(BrutalUI.COLOR_BLACK);
         lblOtpTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        lblOtpEmailTarget = new JLabel("<html><div style='color:#52525B; font-size:12px; line-height:1.4;'>"
-                + "Nhập mã gồm 6 chữ số đã được gửi về CSDL / Email để kích hoạt tài khoản của bạn:"
-                + "</div></html>");
+        lblOtpEmailTarget = new JLabel("<html><table width='360' cellpadding='0' cellspacing='0'><tr><td style='color:#52525B; font-size:12px; font-family:Segoe UI; line-height:1.4;'>"
+                + "Nhập mã gồm 6 chữ số đã được gửi về Email để kích hoạt tài khoản của bạn:"
+                + "</td></tr></table></html>");
         lblOtpEmailTarget.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         rightHeader.add(badgeOtp);
@@ -264,6 +273,8 @@ public class RegisterPanel extends JPanel {
         rightFooter.add(btnVerifyOtp);
         rightCard.add(rightFooter, BorderLayout.SOUTH);
 
+        // Ban đầu chưa hiển thị panel OTP, chỉ sau khi nhập đầy đủ thông tin và ấn đăng ký mới hiển thị
+        rightCard.setVisible(false);
         centerGrid.add(rightCard);
 
         add(centerGrid);
@@ -343,6 +354,9 @@ public class RegisterPanel extends JPanel {
         lblRegStatus.setText("Đang gửi yêu cầu đăng ký...");
         btnRegister.setEnabled(false);
         this.pendingEmail = email;
+
+        // Hiển thị panel nhập mã OTP sau khi nhập đầy đủ thông tin và ấn xác nhận đăng ký
+        showOtpPanel(email);
 
         new Thread(() -> {
             try {
@@ -426,18 +440,40 @@ public class RegisterPanel extends JPanel {
         }, "Client-ResendOtp-Worker").start();
     }
 
+    public void showOtpPanel(String email) {
+        if (email != null && !email.trim().isEmpty()) {
+            this.pendingEmail = email.trim();
+            lblOtpEmailTarget.setText("<html><table width='360' cellpadding='0' cellspacing='0'><tr><td style='color:#52525B; font-size:12px; font-family:Segoe UI; line-height:1.4;'>"
+                    + "Nhập mã gồm 6 chữ số đã được gửi về Email <b>" + pendingEmail + "</b> để kích hoạt tài khoản của bạn:"
+                    + "</td></tr></table></html>");
+        } else {
+            lblOtpEmailTarget.setText("<html><table width='360' cellpadding='0' cellspacing='0'><tr><td style='color:#52525B; font-size:12px; font-family:Segoe UI; line-height:1.4;'>"
+                    + "Nhập mã gồm 6 chữ số đã được gửi về Email để kích hoạt tài khoản của bạn:"
+                    + "</td></tr></table></html>");
+        }
+        rightCard.setVisible(true);
+        if (centerGrid != null) {
+            centerGrid.revalidate();
+            centerGrid.repaint();
+        }
+        revalidate();
+        repaint();
+        txtOtpCode.requestFocusInWindow();
+    }
+
     /**
      * Callback được gọi bởi ClientPacketHandler khi server phản hồi REGISTER_RESP
      */
     public void onRegisterResponse(boolean success, String message) {
         btnRegister.setEnabled(true);
         if (success) {
+            showOtpPanel(pendingEmail);
             lblRegStatus.setForeground(new Color(22, 163, 74));
             lblRegStatus.setText("Đăng ký thành công! Hãy nhập OTP bên phải.");
 
-            lblOtpEmailTarget.setText("<html><div style='color:#16a34a; font-size:12px; line-height:1.4;'>"
-                    + "Đã gửi mã OTP đến: <b>" + pendingEmail + "</b> (kiểm tra CSDL bảng OTP)."
-                    + "</div></html>");
+            lblOtpEmailTarget.setText("<html><table width='360' cellpadding='0' cellspacing='0'><tr><td style='color:#16a34a; font-size:12px; font-family:Segoe UI; line-height:1.4;'>"
+                    + "Đã gửi mã OTP đến: <b>" + pendingEmail + "</b> (kiểm tra hộp thư email)."
+                    + "</td></tr></table></html>");
 
             lblOtpStatus.setForeground(new Color(37, 99, 235));
             lblOtpStatus.setText("Mã OTP đã tạo, hiệu lực trong 10 phút.");
@@ -446,7 +482,7 @@ public class RegisterPanel extends JPanel {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Mã OTP đã được gửi về CSDL (Bảng OTP) cho email: " + pendingEmail + "!\n"
+                    "Mã OTP đã được gửi về email: " + pendingEmail + "!\n"
                             + "Thời hạn hiệu lực: 10 phút.\n"
                             + "Vui lòng nhập 6 số vào ô 'XÁC THỰC MÃ OTP' ở bên phải để kích hoạt.",
                     "Xác Thực OTP",
@@ -455,6 +491,13 @@ public class RegisterPanel extends JPanel {
         } else {
             lblRegStatus.setForeground(new Color(220, 38, 38));
             lblRegStatus.setText(message != null ? message : "Đăng ký thất bại!");
+            rightCard.setVisible(false);
+            if (centerGrid != null) {
+                centerGrid.revalidate();
+                centerGrid.repaint();
+            }
+            revalidate();
+            repaint();
         }
     }
 
@@ -469,6 +512,11 @@ public class RegisterPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.", "Thành Công", JOptionPane.INFORMATION_MESSAGE);
             txtPassword.setText("");
             txtOtpCode.setText("");
+            rightCard.setVisible(false);
+            if (centerGrid != null) {
+                centerGrid.revalidate();
+                centerGrid.repaint();
+            }
             mainFrame.showPanel(MainClientFrame.CARD_LOGIN);
         } else {
             lblOtpStatus.setForeground(new Color(220, 38, 38));

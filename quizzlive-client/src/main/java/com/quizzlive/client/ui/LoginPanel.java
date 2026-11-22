@@ -248,14 +248,14 @@ public class LoginPanel extends JPanel {
                 int opt = JOptionPane.showConfirmDialog(
                         this,
                         "Tài khoản chưa được kích hoạt!\n\n"
-                                + "Mã OTP xác thực đã được gửi về Cơ sở dữ liệu (Bảng OTP, thời hạn 10 phút).\n"
-                                + "Vui lòng mở Cơ sở dữ liệu (bảng OTP) để lấy mã xác thực.\n\n"
+                                + "Mã OTP xác thực đã được gửi về email của bạn (thời hạn 10 phút).\n\n"
                                 + "Bạn có muốn chuyển sang màn hình kích hoạt để nhập mã OTP ngay không?",
-                        "Kích hoạt tài khoản (Mã OTP từ CSDL)",
+                        "Kích hoạt tài khoản (Xác thực OTP)",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE
                 );
                 if (opt == JOptionPane.YES_OPTION) {
+                    mainFrame.getRegisterPanel().showOtpPanel(txtUsername.getText().trim());
                     mainFrame.showPanel(MainClientFrame.CARD_REGISTER);
                 }
             }
